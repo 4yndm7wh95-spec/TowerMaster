@@ -1,0 +1,81 @@
+﻿幕,遭遇类名,中文名,房间类型,简单遭遇,怪物数,怪物组合(概率),源文件
+第一幕·密林,BygoneEffigyElite,旧日雕像,精英,,1,旧日雕像,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/BygoneEffigyElite.cs
+第一幕·密林,ByrdonisElite,多尼斯异鸟,精英,,1,多尼斯异鸟,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ByrdonisElite.cs
+第一幕·密林,CeremonialBeastBoss,仪式兽,Boss,,1,仪式兽,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/CeremonialBeastBoss.cs
+第一幕·密林,CubexConstructNormal,方柱构装体,普通,,1,方柱构装体,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/CubexConstructNormal.cs
+第一幕·密林,FlyconidNormal,真菌与史莱姆,普通,,2,50% 树叶史莱姆（中） + 飞蝇菌子 | 50% 树枝史莱姆（中） + 飞蝇菌子,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/FlyconidNormal.cs
+第一幕·密林,FogmogNormal,雾菇,普通,,1,雾菇,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/FogmogNormal.cs
+第一幕·密林,FuzzyWurmCrawlerWeak,毛绒伏地虫,普通,是,1,毛绒伏地虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/FuzzyWurmCrawlerWeak.cs
+第一幕·密林,InkletsNormal,墨宝,普通,,3,墨宝 + 墨宝 + 墨宝,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/InkletsNormal.cs
+第一幕·密林,MawlerNormal,蛮兽,普通,,1,蛮兽,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/MawlerNormal.cs
+第一幕·密林,NibbitsNormal,两只小啃兽,普通,,2,小啃兽 + 小啃兽,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/NibbitsNormal.cs
+第一幕·密林,NibbitsWeak,一只落单的小啃兽,普通,是,1,小啃兽,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/NibbitsWeak.cs
+第一幕·密林,OvergrowthCrawlers,密林爬虫,普通,,2,缩小甲虫 + 毛绒伏地虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/OvergrowthCrawlers.cs
+第一幕·密林,PhrogParasiteElite,异蛙寄生虫,精英,,1,异蛙寄生虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/PhrogParasiteElite.cs
+第一幕·密林,RubyRaidersNormal,红宝石劫掠者,普通,,3,10% 劫掠者斧手 + 劫掠者刺客 + 劫掠者暴徒 | 10% 劫掠者斧手 + 劫掠者刺客 + 劫掠者弩手 | 10% 劫掠者斧手 + 劫掠者刺客 + 劫掠者追踪手 | 10% 劫掠者斧手 + 劫掠者暴徒 + 劫掠者弩手 | 10% 劫掠者斧手 + 劫掠者暴徒 + 劫掠者追踪手 | 10% 劫掠者斧手 + 劫掠者弩手 + 劫掠者追踪手 | 10% 劫掠者刺客 + 劫掠者暴徒 + 劫掠者弩手 | 10% 劫掠者刺客 + 劫掠者暴徒 + 劫掠者追踪手 | 10% 劫掠者刺客 + 劫掠者弩手 + 劫掠者追踪手 | 10% 劫掠者暴徒 + 劫掠者弩手 + 劫掠者追踪手,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/RubyRaidersNormal.cs
+第一幕·密林,ShrinkerBeetleWeak,缩小甲虫,普通,是,1,缩小甲虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ShrinkerBeetleWeak.cs
+第一幕·密林,SlimesNormal,一大群史莱姆,普通,,4,树枝史莱姆（中） + 树叶史莱姆（中） + 树叶史莱姆（小） + 树枝史莱姆（小）,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SlimesNormal.cs
+第一幕·密林,SlimesWeak,一群史莱姆,普通,是,3,50% 树叶史莱姆（小） + 树叶史莱姆（中） + 树枝史莱姆（小） | 50% 树叶史莱姆（小） + 树枝史莱姆（中） + 树枝史莱姆（小）,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SlimesWeak.cs
+第一幕·密林,SlitheringStranglerNormal,扼杀者与伙伴,普通,,2/3,33% 闪光贾克斯果 + 蛇行扼杀者 | 17% 树叶史莱姆（中） + 蛇行扼杀者 | 17% 树枝史莱姆（中） + 蛇行扼杀者 | 8% 树叶史莱姆（小） + 树叶史莱姆（小） + 蛇行扼杀者 | 8% 树叶史莱姆（小） + 树枝史莱姆（小） + 蛇行扼杀者 | 8% 树枝史莱姆（小） + 树叶史莱姆（小） + 蛇行扼杀者 | 8% 树枝史莱姆（小） + 树枝史莱姆（小） + 蛇行扼杀者,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SlitheringStranglerNormal.cs
+第一幕·密林,SnappingJaxfruitNormal,密林植物,普通,,2,闪光贾克斯果 + 飞蝇菌子,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SnappingJaxfruitNormal.cs
+第一幕·密林,TheKinBoss,同族小队,Boss,,3,同族信徒 + 同族信徒 + 同族神官,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TheKinBoss.cs
+第一幕·密林,VantomBoss,墨影幻灵,Boss,,1,墨影幻灵,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/VantomBoss.cs
+第一幕·密林,VineShamblerNormal,藤蔓蹒跚者,普通,,1,藤蔓蹒跚者,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/VineShamblerNormal.cs
+第一幕·暗港,CorpseSlugsNormal,许多噬尸蛞蝓,普通,,3,噬尸蛞蝓 + 噬尸蛞蝓 + 噬尸蛞蝓,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/CorpseSlugsNormal.cs
+第一幕·暗港,CorpseSlugsWeak,一些噬尸蛞蝓,普通,是,2,噬尸蛞蝓 + 噬尸蛞蝓,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/CorpseSlugsWeak.cs
+第一幕·暗港,CultistsNormal,邪教徒们,普通,,2,钙化邪教徒 + 潮湿邪教徒,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/CultistsNormal.cs
+第一幕·暗港,FossilStalkerNormal,化石追踪者,普通,,1,化石追踪者,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/FossilStalkerNormal.cs
+第一幕·暗港,GremlinMercNormal,穿着一件大衣的两只地精,普通,,1,地精佣兵,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/GremlinMercNormal.cs
+第一幕·暗港,HauntedShipNormal,幽灵船,普通,,1,幽灵船,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/HauntedShipNormal.cs
+第一幕·暗港,LagavulinMatriarchBoss,乐加维林族母,Boss,,1,乐加维林族母,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/LagavulinMatriarchBoss.cs
+第一幕·暗港,LivingFogNormal,邪恶气体,普通,,1,活雾,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/LivingFogNormal.cs
+第一幕·暗港,PhantasmalGardenersElite,花园幽灵鳗,精英,,4,花园幽灵鳗 + 花园幽灵鳗 + 花园幽灵鳗 + 花园幽灵鳗,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/PhantasmalGardenersElite.cs
+第一幕·暗港,PunchConstructNormal,拳击构装体,普通,,1,拳击构装体,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/PunchConstructNormal.cs
+第一幕·暗港,SeapunkNormal,暗港野生动物,普通,,2,钙化邪教徒 + 海洋混混,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SeapunkNormal.cs
+第一幕·暗港,SeapunkWeak,海洋混混,普通,是,1,海洋混混,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SeapunkWeak.cs
+第一幕·暗港,SewerClamNormal,下水道蚌,普通,,1,下水道蚌,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SewerClamNormal.cs
+第一幕·暗港,SkulkingColonyElite,鬼祟珊瑚群,精英,,1,鬼祟珊瑚群,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SkulkingColonyElite.cs
+第一幕·暗港,SludgeSpinnerWeak,淤泥旋螺,普通,是,1,淤泥旋螺,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SludgeSpinnerWeak.cs
+第一幕·暗港,SoulFyshBoss,灵魂异鱼,Boss,,1,灵魂异鱼,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SoulFyshBoss.cs
+第一幕·暗港,TerrorEelElite,骇鳗,精英,,1,骇鳗,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TerrorEelElite.cs
+第一幕·暗港,ToadpolesWeak,蟾蜍蝌蚪,普通,是,2,蟾蜍蝌蚪 + 蟾蜍蝌蚪,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ToadpolesWeak.cs
+第一幕·暗港,TwoTailedRatsNormal,双尾鼠,普通,,3,双尾鼠 + 双尾鼠 + 双尾鼠,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TwoTailedRatsNormal.cs
+第一幕·暗港,WaterfallGiantBoss,瀑布巨兽,Boss,,1,瀑布巨兽,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/WaterfallGiantBoss.cs
+第二幕·蜂巢,BowlbugsNormal,盛碗虫群,普通,,3,33% 盛碗虫（石） + 盛碗虫（卵） + 盛碗虫（丝） | 33% 盛碗虫（石） + 盛碗虫（卵） + 盛碗虫（蜜） | 33% 盛碗虫（石） + 盛碗虫（丝） + 盛碗虫（蜜）,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/BowlbugsNormal.cs
+第二幕·蜂巢,BowlbugsWeak,盛碗虫,普通,是,2,50% 盛碗虫（石） + 盛碗虫（卵） | 50% 盛碗虫（石） + 盛碗虫（蜜）,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/BowlbugsWeak.cs
+第二幕·蜂巢,ChompersNormal,一对自动机械,普通,,2,啃咬机 + 啃咬机,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ChompersNormal.cs
+第二幕·蜂巢,DecimillipedeElite,残杀千足虫,精英,,3,残杀千足虫 + 残杀千足虫 + 残杀千足虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/DecimillipedeElite.cs
+第二幕·蜂巢,EntomancerElite,蜂群术士,精英,,1,蜂群术士,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/EntomancerElite.cs
+第二幕·蜂巢,ExoskeletonsNormal,许多外骨骼虫,普通,,4,外骨骼虫 + 外骨骼虫 + 外骨骼虫 + 外骨骼虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ExoskeletonsNormal.cs
+第二幕·蜂巢,ExoskeletonsWeak,外骨骼虫,普通,是,3,外骨骼虫 + 外骨骼虫 + 外骨骼虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ExoskeletonsWeak.cs
+第二幕·蜂巢,HunterKillerNormal,猎人杀手,普通,,1,猎人杀手,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/HunterKillerNormal.cs
+第二幕·蜂巢,KaiserCrabBoss,帝皇蟹,Boss,,2,碾碎爪 + 火箭,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/KaiserCrabBoss.cs
+第二幕·蜂巢,InfestedPrismsElite,感染棱柱,精英,,1,感染棱柱,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/InfestedPrismsElite.cs
+第二幕·蜂巢,KnowledgeDemonBoss,知识恶魔,Boss,,1,知识恶魔,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/KnowledgeDemonBoss.cs
+第二幕·蜂巢,LouseProgenitorNormal,虱虫之祖,普通,,1,虱虫之祖,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/LouseProgenitorNormal.cs
+第二幕·蜂巢,MytesNormal,一群异螨,普通,,2,异螨 + 异螨,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/MytesNormal.cs
+第二幕·蜂巢,OvicopterNormal,直飞产卵虫,普通,,1,直飞产卵虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/OvicopterNormal.cs
+第二幕·蜂巢,SlumberingBeetleNormal,熟睡派对,普通,,3,盛碗虫（石） + 盛碗虫（丝） + 熟睡甲虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SlumberingBeetleNormal.cs
+第二幕·蜂巢,SpinyToadNormal,棘刺蟾蜍,普通,,1,棘刺蟾蜍,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SpinyToadNormal.cs
+第二幕·蜂巢,TheInsatiableBoss,无厌沙虫,Boss,,1,无厌沙虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TheInsatiableBoss.cs
+第二幕·蜂巢,TheObscuraNormal,胧光怪,普通,,1,胧光怪,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TheObscuraNormal.cs
+第二幕·蜂巢,ThievingHopperWeak,偷窃草蜢,普通,是,1,偷窃草蜢,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ThievingHopperWeak.cs
+第二幕·蜂巢,TunnelerWeak,地道虫,普通,是,1,地道虫,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TunnelerWeak.cs
+第三幕·荣耀,AxebotsNormal,巨斧机器人,普通,,1,巨斧机器人,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/AxebotsNormal.cs
+第三幕·荣耀,ConstructMenagerieNormal,一些构装体,普通,,3,拳击构装体 + 方柱构装体 + 方柱构装体,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ConstructMenagerieNormal.cs
+第三幕·荣耀,DevotedSculptorWeak,虔诚雕刻师,普通,是,1,虔诚雕刻师,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/DevotedSculptorWeak.cs
+第三幕·荣耀,AeonglassBoss,永世沙漏,Boss,,1,永世沙漏,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/AeonglassBoss.cs
+第三幕·荣耀,FabricatorNormal,组装师,普通,,1,组装师,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/FabricatorNormal.cs
+第三幕·荣耀,FrogKnightNormal,青蛙骑士,普通,,1,青蛙骑士,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/FrogKnightNormal.cs
+第三幕·荣耀,GlobeHeadNormal,一个孤单的电球头,普通,,1,电球头,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/GlobeHeadNormal.cs
+第三幕·荣耀,KnightsElite,骑士团伙,精英,,3,连枷骑士 + 幽灵骑士 + 魔法骑士,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/KnightsElite.cs
+第三幕·荣耀,MechaKnightElite,机甲骑士,精英,,1,机甲骑士,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/MechaKnightElite.cs
+第三幕·荣耀,OwlMagistrateNormal,猫头鹰法官,普通,,1,猫头鹰法官,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/OwlMagistrateNormal.cs
+第三幕·荣耀,QueenBoss,女王,Boss,,2,火炬头聚合体 + 女王,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/QueenBoss.cs
+第三幕·荣耀,ScrollsOfBitingNormal,许多咬人卷轴,普通,,4,咬人卷轴 + 咬人卷轴 + 咬人卷轴 + 咬人卷轴,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ScrollsOfBitingNormal.cs
+第三幕·荣耀,ScrollsOfBitingWeak,咬人卷轴,普通,是,3,咬人卷轴 + 咬人卷轴 + 咬人卷轴,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/ScrollsOfBitingWeak.cs
+第三幕·荣耀,SlimedBerserkerNormal,史莱姆狂战士,普通,,1,史莱姆狂战士,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SlimedBerserkerNormal.cs
+第三幕·荣耀,SoulNexusElite,灵魂枢纽,精英,,1,灵魂枢纽,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/SoulNexusElite.cs
+第三幕·荣耀,TestSubjectBoss,实验体,Boss,,1,实验体 #C{Count},decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TestSubjectBoss.cs
+第三幕·荣耀,TheLostAndForgottenNormal,失落与遗忘之物,普通,,2,失落之物 + 遗忘之物,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TheLostAndForgottenNormal.cs
+第三幕·荣耀,TurretOperatorWeak,高塔炮手,普通,是,2,活体盾 + 高塔炮手,decompiled/sts2/MegaCrit.Sts2.Core.Models.Encounters/TurretOperatorWeak.cs

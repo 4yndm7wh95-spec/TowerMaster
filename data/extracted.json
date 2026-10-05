@@ -1,0 +1,6225 @@
+{
+ "monsters": {
+  "Aeonglass": {
+   "class": "Aeonglass",
+   "name_zh": "永世沙漏",
+   "name_en": "Aeonglass",
+   "hp_min": 512,
+   "hp_max": 512,
+   "moves": [
+    {
+     "id": "EBB_MOVE",
+     "title": "消退",
+     "intents": [
+      [
+       "attack",
+       22,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "EYE_LASERS_MOVE",
+     "title": "眼部激光",
+     "intents": [
+      [
+       "attack",
+       11,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "INCREASING_INTENSITY_MOVE",
+     "title": "加大力度",
+     "intents": [
+      [
+       "status",
+       1,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Aeonglass.cs"
+  },
+  "Architect": {
+   "class": "Architect",
+   "name_zh": "建筑师",
+   "name_en": "The Architect",
+   "hp_min": 9999,
+   "hp_max": 9999,
+   "moves": [
+    {
+     "id": "NOTHING",
+     "title": "无",
+     "intents": [
+      [
+       "hidden",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Architect.cs"
+  },
+  "AssassinRubyRaider": {
+   "class": "AssassinRubyRaider",
+   "name_zh": "劫掠者刺客",
+   "name_en": "Assassin Raider",
+   "hp_min": 18,
+   "hp_max": 23,
+   "moves": [
+    {
+     "id": "KILLSHOT_MOVE",
+     "title": "致命射击",
+     "intents": [
+      [
+       "attack",
+       10,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/AssassinRubyRaider.cs"
+  },
+  "Axebot": {
+   "class": "Axebot",
+   "name_zh": "巨斧机器人",
+   "name_en": "Axebot",
+   "hp_min": 70,
+   "hp_max": 78,
+   "moves": [
+    {
+     "id": "BOOT_UP_MOVE",
+     "title": "启动",
+     "intents": [
+      [
+       "defend",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "ONE_TWO_MOVE",
+     "title": "两连击",
+     "intents": [
+      [
+       "attack",
+       10,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "HAMMER_UPPERCUT_MOVE",
+     "title": "上勾锤击",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Axebot.cs"
+  },
+  "AxeRubyRaider": {
+   "class": "AxeRubyRaider",
+   "name_zh": "劫掠者斧手",
+   "name_en": "Axe Raider",
+   "hp_min": 20,
+   "hp_max": 22,
+   "moves": [
+    {
+     "id": "SWING_1",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       5,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SWING_2",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       5,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BIG_SWING",
+     "title": "大力挥舞",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/AxeRubyRaider.cs"
+  },
+  "BattleFriendV1": {
+   "class": "BattleFriendV1",
+   "name_zh": "战斗好伙伴V1.0",
+   "name_en": "Battle Friend V1.0",
+   "hp_min": 75,
+   "hp_max": 75,
+   "moves": [
+    {
+     "id": "NOTHING_MOVE",
+     "title": "无",
+     "intents": []
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BattleFriendV1.cs"
+  },
+  "BattleFriendV2": {
+   "class": "BattleFriendV2",
+   "name_zh": "战斗好伙伴V2.0",
+   "name_en": "Battle Friend V2.0",
+   "hp_min": 150,
+   "hp_max": 150,
+   "moves": [
+    {
+     "id": "NOTHING_MOVE",
+     "title": "无",
+     "intents": []
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BattleFriendV2.cs"
+  },
+  "BattleFriendV3": {
+   "class": "BattleFriendV3",
+   "name_zh": "战斗好伙伴V3.0",
+   "name_en": "Battle Friend V3.0",
+   "hp_min": 300,
+   "hp_max": 300,
+   "moves": [
+    {
+     "id": "NOTHING_MOVE",
+     "title": "无",
+     "intents": []
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BattleFriendV3.cs"
+  },
+  "BigDummy": {
+   "class": "BigDummy",
+   "name_zh": "大型假人",
+   "name_en": "Big Dummy",
+   "hp_min": 9999,
+   "hp_max": 9999,
+   "moves": [
+    {
+     "id": "NOTHING",
+     "title": "无",
+     "intents": [
+      [
+       "hidden",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BigDummy.cs"
+  },
+  "BowlbugEgg": {
+   "class": "BowlbugEgg",
+   "name_zh": "盛碗虫（卵）",
+   "name_en": "Bowlbug (Egg)",
+   "hp_min": 21,
+   "hp_max": 22,
+   "moves": [
+    {
+     "id": "BITE_MOVE",
+     "title": "啃咬",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BowlbugEgg.cs"
+  },
+  "BowlbugNectar": {
+   "class": "BowlbugNectar",
+   "name_zh": "盛碗虫（蜜）",
+   "name_en": "Bowlbug (Nectar)",
+   "hp_min": 35,
+   "hp_max": 38,
+   "moves": [
+    {
+     "id": "THRASH_MOVE",
+     "title": "撕扯",
+     "intents": [
+      [
+       "attack",
+       3,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BUFF_MOVE",
+     "title": "强化",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "THRASH2_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       3,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BowlbugNectar.cs"
+  },
+  "BowlbugRock": {
+   "class": "BowlbugRock",
+   "name_zh": "盛碗虫（石）",
+   "name_en": "Bowlbug (Rock)",
+   "hp_min": 45,
+   "hp_max": 48,
+   "moves": [
+    {
+     "id": "HEADBUTT_MOVE",
+     "title": "头槌",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "DIZZY_MOVE",
+     "title": "昏头转向",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BowlbugRock.cs"
+  },
+  "BowlbugSilk": {
+   "class": "BowlbugSilk",
+   "name_zh": "盛碗虫（丝）",
+   "name_en": "Bowlbug (Silk)",
+   "hp_min": 40,
+   "hp_max": 43,
+   "moves": [
+    {
+     "id": "THRASH_MOVE",
+     "title": "撕扯",
+     "intents": [
+      [
+       "attack",
+       4,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "TOXIC_SPIT_MOVE",
+     "title": "毒性喷吐",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BowlbugSilk.cs"
+  },
+  "BruteRubyRaider": {
+   "class": "BruteRubyRaider",
+   "name_zh": "劫掠者暴徒",
+   "name_en": "Brute Raider",
+   "hp_min": 30,
+   "hp_max": 33,
+   "moves": [
+    {
+     "id": "BEAT_MOVE",
+     "title": "殴打",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "ROAR_MOVE",
+     "title": "怒吼",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BruteRubyRaider.cs"
+  },
+  "BygoneEffigy": {
+   "class": "BygoneEffigy",
+   "name_zh": "旧日雕像",
+   "name_en": "Bygone Effigy",
+   "hp_min": 127,
+   "hp_max": 127,
+   "moves": [
+    {
+     "id": "SLEEP_MOVE",
+     "title": "沉睡",
+     "intents": [
+      [
+       "sleep",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "WAKE_MOVE",
+     "title": "苏醒",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SLEEP_MOVE_2",
+     "title": "",
+     "intents": [
+      [
+       "sleep",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SLASHES_MOVE",
+     "title": "斩击",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/BygoneEffigy.cs"
+  },
+  "Byrdonis": {
+   "class": "Byrdonis",
+   "name_zh": "多尼斯异鸟",
+   "name_en": "Byrdonis",
+   "hp_min": 81,
+   "hp_max": 84,
+   "moves": [
+    {
+     "id": "PECK_MOVE",
+     "title": "啄击",
+     "intents": [
+      [
+       "attack",
+       3,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "SWOOP_MOVE",
+     "title": "飞扑",
+     "intents": [
+      [
+       "attack",
+       17,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Byrdonis.cs"
+  },
+  "Byrdpip": {
+   "class": "Byrdpip",
+   "name_zh": "异鸟宝宝",
+   "name_en": "Byrdpip",
+   "hp_min": 9999,
+   "hp_max": 9999,
+   "moves": [
+    {
+     "id": "NOTHING_MOVE",
+     "title": "无",
+     "intents": []
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Byrdpip.cs"
+  },
+  "CalcifiedCultist": {
+   "class": "CalcifiedCultist",
+   "name_zh": "钙化邪教徒",
+   "name_en": "Calcified Cultist",
+   "hp_min": 38,
+   "hp_max": 41,
+   "moves": [
+    {
+     "id": "INCANTATION_MOVE",
+     "title": "念咒",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DARK_STRIKE_MOVE",
+     "title": "黑暗打击",
+     "intents": [
+      [
+       "attack",
+       9,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/CalcifiedCultist.cs"
+  },
+  "CeremonialBeast": {
+   "class": "CeremonialBeast",
+   "name_zh": "仪式兽",
+   "name_en": "Ceremonial Beast",
+   "hp_min": 252,
+   "hp_max": 252,
+   "moves": [
+    {
+     "id": "STAMP_MOVE",
+     "title": "跺地",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PLOW_MOVE",
+     "title": "横冲直撞",
+     "intents": [
+      [
+       "attack",
+       18,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "STUN_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BEAST_CRY_MOVE",
+     "title": "野兽咆哮",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "STOMP_MOVE",
+     "title": "踩踏",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "CRUSH_MOVE",
+     "title": "碾碎",
+     "intents": [
+      [
+       "attack",
+       17,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/CeremonialBeast.cs"
+  },
+  "Chomper": {
+   "class": "Chomper",
+   "name_zh": "啃咬机",
+   "name_en": "Chomper",
+   "hp_min": 60,
+   "hp_max": 64,
+   "moves": [
+    {
+     "id": "CLAMP_MOVE",
+     "title": "猛夹",
+     "intents": [
+      [
+       "attack",
+       8,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "SCREECH_MOVE",
+     "title": "尖锐鸣叫",
+     "intents": [
+      [
+       "status",
+       3,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Chomper.cs"
+  },
+  "CorpseSlug": {
+   "class": "CorpseSlug",
+   "name_zh": "噬尸蛞蝓",
+   "name_en": "Corpse Slug",
+   "hp_min": 25,
+   "hp_max": 27,
+   "moves": [
+    {
+     "id": "WHIP_SLAP_MOVE",
+     "title": "鞭打",
+     "intents": [
+      [
+       "attack",
+       3,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "GLOMP_MOVE",
+     "title": "扑上",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "GOOP_MOVE",
+     "title": "黏液",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/CorpseSlug.cs"
+  },
+  "CrossbowRubyRaider": {
+   "class": "CrossbowRubyRaider",
+   "name_zh": "劫掠者弩手",
+   "name_en": "Crossbow Raider",
+   "hp_min": 18,
+   "hp_max": 21,
+   "moves": [
+    {
+     "id": "FIRE_MOVE",
+     "title": "射击！",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "RELOAD_MOVE",
+     "title": "装填",
+     "intents": [
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/CrossbowRubyRaider.cs"
+  },
+  "Crusher": {
+   "class": "Crusher",
+   "name_zh": "碾碎爪",
+   "name_en": "Crusher",
+   "hp_min": 209,
+   "hp_max": 209,
+   "moves": [
+    {
+     "id": "THRASH_MOVE",
+     "title": "撕扯",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "ENLARGING_STRIKE_MOVE",
+     "title": "巨化打击",
+     "intents": [
+      [
+       "attack",
+       4,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BUG_STING_MOVE",
+     "title": "虫蛰",
+     "intents": [
+      [
+       "attack",
+       6,
+       2
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "ADAPT_MOVE",
+     "title": "适应",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "GUARDED_STRIKE_MOVE",
+     "title": "戒备打击",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Crusher.cs"
+  },
+  "CubexConstruct": {
+   "class": "CubexConstruct",
+   "name_zh": "方柱构装体",
+   "name_en": "Cubex Construct",
+   "hp_min": 65,
+   "hp_max": 65,
+   "moves": [
+    {
+     "id": "CHARGE_UP_MOVE",
+     "title": "蓄能",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "REPEATER_BLAST_MOVE",
+     "title": "重复轰击",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "REPEATER_BLAST_MOVE_2",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "EXPEL_MOVE",
+     "title": "排出",
+     "intents": [
+      [
+       "attack",
+       5,
+       2
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/CubexConstruct.cs"
+  },
+  "DampCultist": {
+   "class": "DampCultist",
+   "name_zh": "潮湿邪教徒",
+   "name_en": "Damp Cultist",
+   "hp_min": 51,
+   "hp_max": 53,
+   "moves": [
+    {
+     "id": "INCANTATION_MOVE",
+     "title": "念咒",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DARK_STRIKE_MOVE",
+     "title": "黑暗打击",
+     "intents": [
+      [
+       "attack",
+       1,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/DampCultist.cs"
+  },
+  "DecimillipedeSegment": {
+   "class": "DecimillipedeSegment",
+   "name_zh": "残杀千足虫",
+   "name_en": "Decimillipede",
+   "hp_min": 40,
+   "hp_max": 46,
+   "moves": [
+    {
+     "id": "WRITHE_MOVE",
+     "title": "扭动",
+     "intents": [
+      [
+       "attack",
+       5,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "BULK_MOVE",
+     "title": "胀大",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "CONSTRICT_MOVE",
+     "title": "紧缠",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DEAD_MOVE",
+     "title": "死亡",
+     "intents": []
+    },
+    {
+     "id": "REATTACH_MOVE",
+     "title": "接续",
+     "intents": [
+      [
+       "heal",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/DecimillipedeSegment.cs"
+  },
+  "DecimillipedeSegmentBack": {
+   "class": "DecimillipedeSegmentBack",
+   "name_zh": "",
+   "name_en": "",
+   "hp_min": null,
+   "hp_max": null,
+   "moves": [],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/DecimillipedeSegmentBack.cs"
+  },
+  "DecimillipedeSegmentFront": {
+   "class": "DecimillipedeSegmentFront",
+   "name_zh": "",
+   "name_en": "",
+   "hp_min": null,
+   "hp_max": null,
+   "moves": [],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/DecimillipedeSegmentFront.cs"
+  },
+  "DecimillipedeSegmentMiddle": {
+   "class": "DecimillipedeSegmentMiddle",
+   "name_zh": "",
+   "name_en": "",
+   "hp_min": null,
+   "hp_max": null,
+   "moves": [],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/DecimillipedeSegmentMiddle.cs"
+  },
+  "DeprecatedMonster": {
+   "class": "DeprecatedMonster",
+   "name_zh": "已弃用怪物",
+   "name_en": "Deprecated Monster",
+   "hp_min": 0,
+   "hp_max": 0,
+   "moves": [
+    {
+     "id": "STUB",
+     "title": "",
+     "intents": [
+      [
+       "hidden",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/DeprecatedMonster.cs"
+  },
+  "DevotedSculptor": {
+   "class": "DevotedSculptor",
+   "name_zh": "虔诚雕刻师",
+   "name_en": "Devoted Sculptor",
+   "hp_min": 162,
+   "hp_max": 162,
+   "moves": [
+    {
+     "id": "FORBIDDEN_INCANTATION_MOVE",
+     "title": "禁忌唱诵",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SAVAGE_MOVE",
+     "title": "猛烈攻击",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/DevotedSculptor.cs"
+  },
+  "Entomancer": {
+   "class": "Entomancer",
+   "name_zh": "蜂群术士",
+   "name_en": "Entomancer",
+   "hp_min": 145,
+   "hp_max": 145,
+   "moves": [
+    {
+     "id": "PHEROMONE_SPIT_MOVE",
+     "title": "喷射信息素",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BEES_MOVE",
+     "title": "蜜——蜂——！",
+     "intents": [
+      [
+       "attack",
+       3,
+       7
+      ]
+     ]
+    },
+    {
+     "id": "SPEAR_MOVE",
+     "title": "矛击！",
+     "intents": [
+      [
+       "attack",
+       18,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Entomancer.cs"
+  },
+  "Exoskeleton": {
+   "class": "Exoskeleton",
+   "name_zh": "外骨骼虫",
+   "name_en": "Exoskeleton",
+   "hp_min": 24,
+   "hp_max": 28,
+   "moves": [
+    {
+     "id": "SKITTER_MOVE",
+     "title": "忙乱",
+     "intents": [
+      [
+       "attack",
+       1,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "MANDIBLES_MOVE",
+     "title": "啃食",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "ENRAGE_MOVE",
+     "title": "激怒",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Exoskeleton.cs"
+  },
+  "EyeWithTeeth": {
+   "class": "EyeWithTeeth",
+   "name_zh": "利齿之眼",
+   "name_en": "Eye with Teeth",
+   "hp_min": 6,
+   "hp_max": 6,
+   "moves": [
+    {
+     "id": "DISTRACT_MOVE",
+     "title": "牵制",
+     "intents": [
+      [
+       "status",
+       3,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/EyeWithTeeth.cs"
+  },
+  "Fabricator": {
+   "class": "Fabricator",
+   "name_zh": "组装师",
+   "name_en": "Fabricator",
+   "hp_min": 150,
+   "hp_max": 150,
+   "moves": [
+    {
+     "id": "FABRICATE_MOVE",
+     "title": "组装",
+     "intents": [
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "FABRICATING_STRIKE_MOVE",
+     "title": "组装打击",
+     "intents": [
+      [
+       "attack",
+       18,
+       1
+      ],
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DISINTEGRATE_MOVE",
+     "title": "瓦解",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Fabricator.cs"
+  },
+  "FakeMerchantMonster": {
+   "class": "FakeMerchantMonster",
+   "name_zh": "商人？？？",
+   "name_en": "The Merchant???",
+   "hp_min": 165,
+   "hp_max": 165,
+   "moves": [
+    {
+     "id": "SWIPE_MOVE",
+     "title": "顺走",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SPEW_COINS_MOVE",
+     "title": "喷吐硬币",
+     "intents": [
+      [
+       "attack",
+       2,
+       8
+      ]
+     ]
+    },
+    {
+     "id": "THROW_RELIC_MOVE",
+     "title": "投掷遗物",
+     "intents": [
+      [
+       "attack",
+       9,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "ENRAGE_MOVE",
+     "title": "激怒",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/FakeMerchantMonster.cs"
+  },
+  "FatGremlin": {
+   "class": "FatGremlin",
+   "name_zh": "胖地精",
+   "name_en": "Fat Gremlin",
+   "hp_min": 13,
+   "hp_max": 17,
+   "moves": [
+    {
+     "id": "SPAWNED_MOVE",
+     "title": "醒来",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "FLEE_MOVE",
+     "title": "逃跑",
+     "intents": [
+      [
+       "escape",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/FatGremlin.cs"
+  },
+  "FlailKnight": {
+   "class": "FlailKnight",
+   "name_zh": "连枷骑士",
+   "name_en": "Flail Knight",
+   "hp_min": 101,
+   "hp_max": 101,
+   "moves": [
+    {
+     "id": "WAR_CHANT",
+     "title": "战争吟唱",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "FLAIL_MOVE",
+     "title": "连枷",
+     "intents": [
+      [
+       "attack",
+       9,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "RAM_MOVE",
+     "title": "撞击",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/FlailKnight.cs"
+  },
+  "Flyconid": {
+   "class": "Flyconid",
+   "name_zh": "飞蝇菌子",
+   "name_en": "Flyconid",
+   "hp_min": 47,
+   "hp_max": 49,
+   "moves": [
+    {
+     "id": "VULNERABLE_SPORES_MOVE",
+     "title": "易伤孢子",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "FRAIL_SPORES_MOVE",
+     "title": "脆弱孢子",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SMASH_MOVE",
+     "title": "猛砸",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Flyconid.cs"
+  },
+  "Fogmog": {
+   "class": "Fogmog",
+   "name_zh": "雾菇",
+   "name_en": "Fogmog",
+   "hp_min": 74,
+   "hp_max": 74,
+   "moves": [
+    {
+     "id": "ILLUSION_MOVE",
+     "title": "虚幻孢子",
+     "intents": [
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SWIPE_MOVE",
+     "title": "重击",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SWIPE_RANDOM_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "HEADBUTT_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Fogmog.cs"
+  },
+  "FossilStalker": {
+   "class": "FossilStalker",
+   "name_zh": "化石追踪者",
+   "name_en": "Fossil Stalker",
+   "hp_min": 51,
+   "hp_max": 53,
+   "moves": [
+    {
+     "id": "TACKLE_MOVE",
+     "title": "冲撞",
+     "intents": [
+      [
+       "attack",
+       9,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "LATCH_MOVE",
+     "title": "缠上",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "LASH_MOVE",
+     "title": "甩动",
+     "intents": [
+      [
+       "attack",
+       3,
+       2
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/FossilStalker.cs"
+  },
+  "FrogKnight": {
+   "class": "FrogKnight",
+   "name_zh": "青蛙骑士",
+   "name_en": "Frog Knight",
+   "hp_min": 191,
+   "hp_max": 191,
+   "moves": [
+    {
+     "id": "FOR_THE_QUEEN",
+     "title": "为了女王",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "STRIKE_DOWN_EVIL",
+     "title": "惩恶一击",
+     "intents": [
+      [
+       "attack",
+       21,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "TONGUE_LASH",
+     "title": "吐舌",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BEETLE_CHARGE",
+     "title": "甲虫冲锋",
+     "intents": [
+      [
+       "attack",
+       35,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/FrogKnight.cs"
+  },
+  "FuzzyWurmCrawler": {
+   "class": "FuzzyWurmCrawler",
+   "name_zh": "毛绒伏地虫",
+   "name_en": "Fuzzy Wurm Crawler",
+   "hp_min": 55,
+   "hp_max": 57,
+   "moves": [
+    {
+     "id": "FIRST_ACID_GOOP",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       4,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "ACID_GOOP",
+     "title": "酸液黏球",
+     "intents": [
+      [
+       "attack",
+       4,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "INHALE",
+     "title": "吸入",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/FuzzyWurmCrawler.cs"
+  },
+  "GasBomb": {
+   "class": "GasBomb",
+   "name_zh": "气态炸弹",
+   "name_en": "Gas Bomb",
+   "hp_min": 7,
+   "hp_max": 7,
+   "moves": [
+    {
+     "id": "EXPLODE_MOVE",
+     "title": "爆炸",
+     "intents": [
+      [
+       "deathblow",
+       8,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/GasBomb.cs"
+  },
+  "GlobeHead": {
+   "class": "GlobeHead",
+   "name_zh": "电球头",
+   "name_en": "Globe Head",
+   "hp_min": 148,
+   "hp_max": 148,
+   "moves": [
+    {
+     "id": "THUNDER_STRIKE",
+     "title": "生成闪电",
+     "intents": [
+      [
+       "attack",
+       6,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "SHOCKING_SLAP",
+     "title": "电击掌",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "GALVANIC_BURST",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/GlobeHead.cs"
+  },
+  "GremlinMerc": {
+   "class": "GremlinMerc",
+   "name_zh": "地精佣兵",
+   "name_en": "Gremlin Merc",
+   "hp_min": 47,
+   "hp_max": 49,
+   "moves": [
+    {
+     "id": "GIMME_MOVE",
+     "title": "拿来",
+     "intents": [
+      [
+       "attack",
+       7,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "DOUBLE_SMASH_MOVE",
+     "title": "双重猛击",
+     "intents": [
+      [
+       "attack",
+       6,
+       2
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "HEHE_MOVE",
+     "title": "嘿嘿",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/GremlinMerc.cs"
+  },
+  "Guardbot": {
+   "class": "Guardbot",
+   "name_zh": "守护机器人",
+   "name_en": "Guardbot",
+   "hp_min": 16,
+   "hp_max": 20,
+   "moves": [
+    {
+     "id": "GUARD_MOVE",
+     "title": "守护",
+     "intents": [
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Guardbot.cs"
+  },
+  "HauntedShip": {
+   "class": "HauntedShip",
+   "name_zh": "幽灵船",
+   "name_en": "Haunted Ship",
+   "hp_min": 63,
+   "hp_max": 63,
+   "moves": [
+    {
+     "id": "SWIPE_MOVE",
+     "title": "扫击",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "STOMP_MOVE",
+     "title": "践踏",
+     "intents": [
+      [
+       "attack",
+       4,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "HAUNT_MOVE",
+     "title": "纠缠",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ],
+      [
+       "status",
+       5,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/HauntedShip.cs"
+  },
+  "HunterKiller": {
+   "class": "HunterKiller",
+   "name_zh": "猎人杀手",
+   "name_en": "Hunter Killer",
+   "hp_min": 121,
+   "hp_max": 121,
+   "moves": [
+    {
+     "id": "TENDERIZING_GOOP_MOVE",
+     "title": "嫩化黏液",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BITE_MOVE",
+     "title": "啃咬",
+     "intents": [
+      [
+       "attack",
+       17,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "PUNCTURE_MOVE",
+     "title": "刺穿",
+     "intents": [
+      [
+       "attack",
+       7,
+       3
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/HunterKiller.cs"
+  },
+  "InfestedPrism": {
+   "class": "InfestedPrism",
+   "name_zh": "感染棱柱",
+   "name_en": "Infested Prism",
+   "hp_min": 161,
+   "hp_max": 161,
+   "moves": [
+    {
+     "id": "JAB_MOVE",
+     "title": "刺击",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "RADIATE_MOVE",
+     "title": "辐射",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "WHIRLWIND_MOVE",
+     "title": "旋风",
+     "intents": [
+      [
+       "attack",
+       5,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "PULSATE_MOVE",
+     "title": "脉动",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/InfestedPrism.cs"
+  },
+  "Inklet": {
+   "class": "Inklet",
+   "name_zh": "墨宝",
+   "name_en": "Inklet",
+   "hp_min": 11,
+   "hp_max": 17,
+   "moves": [
+    {
+     "id": "JAB_MOVE",
+     "title": "刺击",
+     "intents": [
+      [
+       "attack",
+       3,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "WHIRLWIND_MOVE",
+     "title": "旋风",
+     "intents": [
+      [
+       "attack",
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "PIERCING_GAZE_MOVE",
+     "title": "锐利凝视",
+     "intents": [
+      [
+       "attack",
+       10,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Inklet.cs"
+  },
+  "KinFollower": {
+   "class": "KinFollower",
+   "name_zh": "同族信徒",
+   "name_en": "Kin Follower",
+   "hp_min": 58,
+   "hp_max": 59,
+   "moves": [
+    {
+     "id": "QUICK_SLASH_MOVE",
+     "title": "快斩",
+     "intents": [
+      [
+       "attack",
+       5,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BOOMERANG_MOVE",
+     "title": "回旋镖",
+     "intents": [
+      [
+       "attack",
+       2,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "POWER_DANCE_MOVE",
+     "title": "力量之舞",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/KinFollower.cs"
+  },
+  "KinPriest": {
+   "class": "KinPriest",
+   "name_zh": "同族神官",
+   "name_en": "Kin Priest",
+   "hp_min": 190,
+   "hp_max": 190,
+   "moves": [
+    {
+     "id": "ORB_OF_FRAILTY_MOVE",
+     "title": "脆弱法球",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "ORB_OF_WEAKNESS_MOVE",
+     "title": "虚弱法球",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BEAM_MOVE",
+     "title": "灵魂光束",
+     "intents": [
+      [
+       "attack",
+       3,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "RITUAL_MOVE",
+     "title": "黑暗仪式",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/KinPriest.cs"
+  },
+  "KnowledgeDemon": {
+   "class": "KnowledgeDemon",
+   "name_zh": "知识恶魔",
+   "name_en": "Knowledge Demon",
+   "hp_min": 379,
+   "hp_max": 379,
+   "moves": [
+    {
+     "id": "CURSE_OF_KNOWLEDGE_MOVE",
+     "title": "知识的诅咒",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SLAP_MOVE",
+     "title": "抽打",
+     "intents": [
+      [
+       "attack",
+       17,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "KNOWLEDGE_OVERWHELMING_MOVE",
+     "title": "知识过载",
+     "intents": [
+      [
+       "attack",
+       8,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "PONDER_MOVE",
+     "title": "思考",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ],
+      [
+       "heal",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/KnowledgeDemon.cs"
+  },
+  "LagavulinMatriarch": {
+   "class": "LagavulinMatriarch",
+   "name_zh": "乐加维林族母",
+   "name_en": "Lagavulin Matriarch",
+   "hp_min": 222,
+   "hp_max": 222,
+   "moves": [
+    {
+     "id": "SLEEP_MOVE",
+     "title": "沉睡",
+     "intents": [
+      [
+       "sleep",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SLASH_MOVE",
+     "title": "斩击",
+     "intents": [
+      [
+       "attack",
+       19,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SLASH2_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DISEMBOWEL_MOVE",
+     "title": "开膛破肚",
+     "intents": [
+      [
+       "attack",
+       9,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "SOUL_SIPHON_MOVE",
+     "title": "灵魂汲取",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/LagavulinMatriarch.cs"
+  },
+  "LeafSlimeM": {
+   "class": "LeafSlimeM",
+   "name_zh": "树叶史莱姆（中）",
+   "name_en": "Leaf Slime (M)",
+   "hp_min": 32,
+   "hp_max": 35,
+   "moves": [
+    {
+     "id": "CLUMP_SHOT",
+     "title": "团块射击",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "STICKY_SHOT",
+     "title": "黏糊射击",
+     "intents": [
+      [
+       "status",
+       2,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/LeafSlimeM.cs"
+  },
+  "LeafSlimeS": {
+   "class": "LeafSlimeS",
+   "name_zh": "树叶史莱姆（小）",
+   "name_en": "Leaf Slime (S)",
+   "hp_min": 11,
+   "hp_max": 15,
+   "moves": [
+    {
+     "id": "TACKLE_MOVE",
+     "title": "冲撞",
+     "intents": [
+      [
+       "attack",
+       3,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "GOOP_MOVE",
+     "title": "黏液",
+     "intents": [
+      [
+       "status",
+       1,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/LeafSlimeS.cs"
+  },
+  "LivingFog": {
+   "class": "LivingFog",
+   "name_zh": "活雾",
+   "name_en": "Living Fog",
+   "hp_min": 80,
+   "hp_max": 80,
+   "moves": [
+    {
+     "id": "ADVANCED_GAS_MOVE",
+     "title": "先进毒气",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "carddebuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BLOAT_MOVE",
+     "title": "膨胀",
+     "intents": [
+      [
+       "attack",
+       5,
+       1
+      ],
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SUPER_GAS_BLAST_MOVE",
+     "title": "超级毒气爆炸",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/LivingFog.cs"
+  },
+  "LivingShield": {
+   "class": "LivingShield",
+   "name_zh": "活体盾",
+   "name_en": "Living Shield",
+   "hp_min": 55,
+   "hp_max": 55,
+   "moves": [
+    {
+     "id": "SHIELD_SLAM_MOVE",
+     "title": "盾击",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SMASH_MOVE",
+     "title": "砸击",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/LivingShield.cs"
+  },
+  "LouseProgenitor": {
+   "class": "LouseProgenitor",
+   "name_zh": "虱虫之祖",
+   "name_en": "Louse Progenitor",
+   "hp_min": 134,
+   "hp_max": 136,
+   "moves": [
+    {
+     "id": "WEB_CANNON_MOVE",
+     "title": "吐网炮",
+     "intents": [
+      [
+       "attack",
+       9,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "POUNCE_MOVE",
+     "title": "猛扑",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "CURL_AND_GROW_MOVE",
+     "title": "蜷身成长",
+     "intents": [
+      [
+       "defend",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/LouseProgenitor.cs"
+  },
+  "MagiKnight": {
+   "class": "MagiKnight",
+   "name_zh": "魔法骑士",
+   "name_en": "Magi Knight",
+   "hp_min": 82,
+   "hp_max": 82,
+   "moves": [
+    {
+     "id": "POWER_SHIELD_MOVE",
+     "title": "强力护盾",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DAMPEN_MOVE",
+     "title": "抑制",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PREP_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "MAGIC_BOMB",
+     "title": "魔法炸弹",
+     "intents": [
+      [
+       "attack",
+       35,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "RAM_MOVE",
+     "title": "撞击",
+     "intents": [
+      [
+       "attack",
+       10,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/MagiKnight.cs"
+  },
+  "Mawler": {
+   "class": "Mawler",
+   "name_zh": "蛮兽",
+   "name_en": "Mawler",
+   "hp_min": 72,
+   "hp_max": 72,
+   "moves": [
+    {
+     "id": "RIP_AND_TEAR_MOVE",
+     "title": "狂乱撕扯",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "ROAR_MOVE",
+     "title": "怒吼",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "CLAW_MOVE",
+     "title": "爪击",
+     "intents": [
+      [
+       "attack",
+       4,
+       2
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Mawler.cs"
+  },
+  "MechaKnight": {
+   "class": "MechaKnight",
+   "name_zh": "机甲骑士",
+   "name_en": "Mecha Knight",
+   "hp_min": 300,
+   "hp_max": 300,
+   "moves": [
+    {
+     "id": "CHARGE_MOVE",
+     "title": "冲锋",
+     "intents": [
+      [
+       "attack",
+       25,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "FLAMETHROWER_MOVE",
+     "title": "喷火器",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "status",
+       4,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "WINDUP_MOVE",
+     "title": "举起蓄力",
+     "intents": [
+      [
+       "defend",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "HEAVY_CLEAVE_MOVE",
+     "title": "重斩",
+     "intents": [
+      [
+       "attack",
+       35,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/MechaKnight.cs"
+  },
+  "MultiAttackMoveMonster": {
+   "class": "MultiAttackMoveMonster",
+   "name_zh": "",
+   "name_en": "",
+   "hp_min": 999,
+   "hp_max": 999,
+   "moves": [
+    {
+     "id": "POKE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       1,
+       5
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/MultiAttackMoveMonster.cs"
+  },
+  "MysteriousKnight": {
+   "class": "MysteriousKnight",
+   "name_zh": "神秘骑士",
+   "name_en": "Mysterious Knight",
+   "hp_min": null,
+   "hp_max": null,
+   "moves": [],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/MysteriousKnight.cs"
+  },
+  "Myte": {
+   "class": "Myte",
+   "name_zh": "异螨",
+   "name_en": "Myte",
+   "hp_min": 61,
+   "hp_max": 67,
+   "moves": [
+    {
+     "id": "TOXIC_MOVE",
+     "title": "浓毒",
+     "intents": [
+      [
+       "status",
+       2,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BITE_MOVE",
+     "title": "啃咬",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SUCK_MOVE",
+     "title": "吸吮",
+     "intents": [
+      [
+       "attack",
+       4,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Myte.cs"
+  },
+  "Nibbit": {
+   "class": "Nibbit",
+   "name_zh": "小啃兽",
+   "name_en": "Nibbit",
+   "hp_min": 42,
+   "hp_max": 46,
+   "moves": [
+    {
+     "id": "BUTT_MOVE",
+     "title": "顶撞",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SLICE_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "HISS_MOVE",
+     "title": "哈气",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Nibbit.cs"
+  },
+  "Noisebot": {
+   "class": "Noisebot",
+   "name_zh": "噪音机器人",
+   "name_en": "Noisebot",
+   "hp_min": 18,
+   "hp_max": 23,
+   "moves": [
+    {
+     "id": "NOISE_MOVE",
+     "title": "噪音",
+     "intents": [
+      [
+       "status",
+       2,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Noisebot.cs"
+  },
+  "OneHpMonster": {
+   "class": "OneHpMonster",
+   "name_zh": "",
+   "name_en": "",
+   "hp_min": 1,
+   "hp_max": 1,
+   "moves": [
+    {
+     "id": "NOTHING",
+     "title": "",
+     "intents": [
+      [
+       "hidden",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/OneHpMonster.cs"
+  },
+  "Osty": {
+   "class": "Osty",
+   "name_zh": "奥斯提",
+   "name_en": "Osty",
+   "hp_min": 1,
+   "hp_max": 1,
+   "moves": [
+    {
+     "id": "NOTHING_MOVE",
+     "title": "",
+     "intents": []
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Osty.cs"
+  },
+  "Ovicopter": {
+   "class": "Ovicopter",
+   "name_zh": "直飞产卵虫",
+   "name_en": "Ovicopter",
+   "hp_min": 124,
+   "hp_max": 130,
+   "moves": [
+    {
+     "id": "LAY_EGGS_MOVE",
+     "title": "产卵",
+     "intents": [
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SMASH_MOVE",
+     "title": "猛砸",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "TENDERIZER_MOVE",
+     "title": "嫩化",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "NUTRITIONAL_PASTE_MOVE",
+     "title": "高营养糊糊",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Ovicopter.cs"
+  },
+  "OwlMagistrate": {
+   "class": "OwlMagistrate",
+   "name_zh": "猫头鹰法官",
+   "name_en": "Owl Magistrate",
+   "hp_min": 231,
+   "hp_max": 231,
+   "moves": [
+    {
+     "id": "MAGISTRATE_SCRUTINY",
+     "title": "法官审查",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "PECK_ASSAULT",
+     "title": "猛啄袭击",
+     "intents": [
+      [
+       "attack",
+       4,
+       6
+      ]
+     ]
+    },
+    {
+     "id": "JUDICIAL_FLIGHT",
+     "title": "飞法行为",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "VERDICT",
+     "title": "裁决",
+     "intents": [
+      [
+       "attack",
+       33,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/OwlMagistrate.cs"
+  },
+  "PaelsLegion": {
+   "class": "PaelsLegion",
+   "name_zh": "佩尔的士兵",
+   "name_en": "Pael's Legion",
+   "hp_min": 9999,
+   "hp_max": 9999,
+   "moves": [
+    {
+     "id": "NOTHING_MOVE",
+     "title": "无",
+     "intents": []
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/PaelsLegion.cs"
+  },
+  "Parafright": {
+   "class": "Parafright",
+   "name_zh": "寄生惧魔",
+   "name_en": "Parafright",
+   "hp_min": 21,
+   "hp_max": 21,
+   "moves": [
+    {
+     "id": "SLAM_MOVE",
+     "title": "砸击",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Parafright.cs"
+  },
+  "PhantasmalGardener": {
+   "class": "PhantasmalGardener",
+   "name_zh": "花园幽灵鳗",
+   "name_en": "Phantasmal Gardener",
+   "hp_min": 26,
+   "hp_max": 31,
+   "moves": [
+    {
+     "id": "BITE_MOVE",
+     "title": "啃咬",
+     "intents": [
+      [
+       "attack",
+       5,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "LASH_MOVE",
+     "title": "甩动",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "FLAIL_MOVE",
+     "title": "猛晃",
+     "intents": [
+      [
+       "attack",
+       1,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "ENLARGE_MOVE",
+     "title": "变大",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/PhantasmalGardener.cs"
+  },
+  "PhrogParasite": {
+   "class": "PhrogParasite",
+   "name_zh": "异蛙寄生虫",
+   "name_en": "Phrog Parasite",
+   "hp_min": 61,
+   "hp_max": 64,
+   "moves": [
+    {
+     "id": "INFECT_MOVE",
+     "title": "感染",
+     "intents": [
+      [
+       "status",
+       3,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "LASH_MOVE",
+     "title": "甩动",
+     "intents": [
+      [
+       "attack",
+       4,
+       4
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/PhrogParasite.cs"
+  },
+  "PunchConstruct": {
+   "class": "PunchConstruct",
+   "name_zh": "拳击构装体",
+   "name_en": "Punch Construct",
+   "hp_min": 55,
+   "hp_max": 55,
+   "moves": [
+    {
+     "id": "READY_MOVE",
+     "title": "准备就绪",
+     "intents": [
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "STRONG_PUNCH_MOVE",
+     "title": "强力拳",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "FAST_PUNCH_MOVE",
+     "title": "快速拳",
+     "intents": [
+      [
+       "attack",
+       5,
+       2
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/PunchConstruct.cs"
+  },
+  "Queen": {
+   "class": "Queen",
+   "name_zh": "女王",
+   "name_en": "Queen",
+   "hp_min": 400,
+   "hp_max": 400,
+   "moves": [
+    {
+     "id": "PUPPET_STRINGS_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "carddebuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "YOU_ARE_MINE_MOVE",
+     "title": "你是我的了",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BURN_BRIGHT_FOR_ME_MOVE",
+     "title": "为我尽力燃烧吧",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "OFF_WITH_YOUR_HEAD_MOVE",
+     "title": "将头砍下",
+     "intents": [
+      [
+       "attack",
+       3,
+       5
+      ]
+     ]
+    },
+    {
+     "id": "EXECUTION_MOVE",
+     "title": "处决",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "ENRAGE_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Queen.cs"
+  },
+  "Rocket": {
+   "class": "Rocket",
+   "name_zh": "火箭",
+   "name_en": "Rocket",
+   "hp_min": 199,
+   "hp_max": 199,
+   "moves": [
+    {
+     "id": "TARGETING_RETICLE_MOVE",
+     "title": "瞄准十字",
+     "intents": [
+      [
+       "attack",
+       3,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "PRECISION_BEAM_MOVE",
+     "title": "精准光束",
+     "intents": [
+      [
+       "attack",
+       18,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "CHARGE_UP_MOVE",
+     "title": "蓄能",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "LASER_MOVE",
+     "title": "激光",
+     "intents": [
+      [
+       "attack",
+       31,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "RECHARGE_MOVE",
+     "title": "重新充能",
+     "intents": [
+      [
+       "sleep",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Rocket.cs"
+  },
+  "ScrollOfBiting": {
+   "class": "ScrollOfBiting",
+   "name_zh": "咬人卷轴",
+   "name_en": "Scroll of Biting",
+   "hp_min": 30,
+   "hp_max": 37,
+   "moves": [
+    {
+     "id": "CHOMP",
+     "title": "大啃",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "CHEW",
+     "title": "咀嚼",
+     "intents": [
+      [
+       "attack",
+       5,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "MORE_TEETH",
+     "title": "更多牙齿",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/ScrollOfBiting.cs"
+  },
+  "Seapunk": {
+   "class": "Seapunk",
+   "name_zh": "海洋混混",
+   "name_en": "Seapunk",
+   "hp_min": 44,
+   "hp_max": 46,
+   "moves": [
+    {
+     "id": "SEA_KICK_MOVE",
+     "title": "海洋踢",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SPINNING_KICK_MOVE",
+     "title": "回旋踢",
+     "intents": [
+      [
+       "attack",
+       2,
+       4
+      ]
+     ]
+    },
+    {
+     "id": "BUBBLE_BURP_MOVE",
+     "title": "吐泡泡",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Seapunk.cs"
+  },
+  "SewerClam": {
+   "class": "SewerClam",
+   "name_zh": "下水道蚌",
+   "name_en": "Sewer Clam",
+   "hp_min": 56,
+   "hp_max": 56,
+   "moves": [
+    {
+     "id": "PRESSURIZE_MOVE",
+     "title": "增压",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "JET_MOVE",
+     "title": "喷射",
+     "intents": [
+      [
+       "attack",
+       10,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SewerClam.cs"
+  },
+  "ShrinkerBeetle": {
+   "class": "ShrinkerBeetle",
+   "name_zh": "缩小甲虫",
+   "name_en": "Shrinker Beetle",
+   "hp_min": 38,
+   "hp_max": 40,
+   "moves": [
+    {
+     "id": "SHRINKER_MOVE",
+     "title": "缩小",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "CHOMP_MOVE",
+     "title": "大啃",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "STOMP_MOVE",
+     "title": "践踏",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/ShrinkerBeetle.cs"
+  },
+  "SingleAttackMoveMonster": {
+   "class": "SingleAttackMoveMonster",
+   "name_zh": "",
+   "name_en": "",
+   "hp_min": 999,
+   "hp_max": 999,
+   "moves": [
+    {
+     "id": "POKE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       1,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SingleAttackMoveMonster.cs"
+  },
+  "SkulkingColony": {
+   "class": "SkulkingColony",
+   "name_zh": "鬼祟珊瑚群",
+   "name_en": "Skulking Colony",
+   "hp_min": 75,
+   "hp_max": 75,
+   "moves": [
+    {
+     "id": "ZOOM_MOVE",
+     "title": "猛冲",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "ZOOM_MOVE_2",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "INERTIA_MOVE",
+     "title": "惯性",
+     "intents": [
+      [
+       "attack",
+       9,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PIERCING_STABS_MOVE",
+     "title": "穿刺戳击",
+     "intents": [
+      [
+       "attack",
+       7,
+       2
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SkulkingColony.cs"
+  },
+  "SlimedBerserker": {
+   "class": "SlimedBerserker",
+   "name_zh": "史莱姆狂战士",
+   "name_en": "Slimed Berserker",
+   "hp_min": 261,
+   "hp_max": 261,
+   "moves": [
+    {
+     "id": "VOMIT_ICHOR_MOVE",
+     "title": "喷吐脓水",
+     "intents": [
+      [
+       "status",
+       10,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "LEECHING_HUG_MOVE",
+     "title": "汲取之拥",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SMOTHER_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       30,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "FURIOUS_PUMMELING_MOVE",
+     "title": "狂怒连击",
+     "intents": [
+      [
+       "attack",
+       4,
+       4
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SlimedBerserker.cs"
+  },
+  "SlitheringStrangler": {
+   "class": "SlitheringStrangler",
+   "name_zh": "蛇行扼杀者",
+   "name_en": "Slithering Strangler",
+   "hp_min": 53,
+   "hp_max": 55,
+   "moves": [
+    {
+     "id": "CONSTRICT",
+     "title": "缠身",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "THWACK",
+     "title": "重击",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "LASH",
+     "title": "甩动",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SlitheringStrangler.cs"
+  },
+  "SludgeSpinner": {
+   "class": "SludgeSpinner",
+   "name_zh": "淤泥旋螺",
+   "name_en": "Sludge Spinner",
+   "hp_min": 37,
+   "hp_max": 39,
+   "moves": [
+    {
+     "id": "OIL_SPRAY_MOVE",
+     "title": "喷油",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SLAM_MOVE",
+     "title": "砸击",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "RAGE_MOVE",
+     "title": "狂怒",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SludgeSpinner.cs"
+  },
+  "SlumberingBeetle": {
+   "class": "SlumberingBeetle",
+   "name_zh": "熟睡甲虫",
+   "name_en": "Slumbering Beetle",
+   "hp_min": 86,
+   "hp_max": 86,
+   "moves": [
+    {
+     "id": "SNORE_MOVE",
+     "title": "打鼾",
+     "intents": [
+      [
+       "sleep",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "ROLL_OUT_MOVE",
+     "title": "出击",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SlumberingBeetle.cs"
+  },
+  "SnappingJaxfruit": {
+   "class": "SnappingJaxfruit",
+   "name_zh": "闪光贾克斯果",
+   "name_en": "Snapping Jaxfruit",
+   "hp_min": 31,
+   "hp_max": 33,
+   "moves": [
+    {
+     "id": "ENERGY_ORB_MOVE",
+     "title": "能量球",
+     "intents": [
+      [
+       "attack",
+       3,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SnappingJaxfruit.cs"
+  },
+  "SneakyGremlin": {
+   "class": "SneakyGremlin",
+   "name_zh": "卑鄙地精",
+   "name_en": "Sneaky Gremlin",
+   "hp_min": 10,
+   "hp_max": 14,
+   "moves": [
+    {
+     "id": "SPAWNED_MOVE",
+     "title": "醒来",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "TACKLE_MOVE",
+     "title": "冲撞",
+     "intents": [
+      [
+       "attack",
+       9,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SneakyGremlin.cs"
+  },
+  "SoulFysh": {
+   "class": "SoulFysh",
+   "name_zh": "灵魂异鱼",
+   "name_en": "Soul Fysh",
+   "hp_min": 211,
+   "hp_max": 211,
+   "moves": [
+    {
+     "id": "BECKON_MOVE",
+     "title": "呼唤",
+     "intents": [
+      [
+       "status",
+       2,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DE_GAS_MOVE",
+     "title": "排气",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "GAZE_MOVE",
+     "title": "凝视",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ],
+      [
+       "status",
+       1,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "FADE_MOVE",
+     "title": "消逝",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SCREAM_MOVE",
+     "title": "尖叫",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SoulFysh.cs"
+  },
+  "SoulNexus": {
+   "class": "SoulNexus",
+   "name_zh": "灵魂枢纽",
+   "name_en": "Soul Nexus",
+   "hp_min": 234,
+   "hp_max": 234,
+   "moves": [
+    {
+     "id": "SOUL_BURN_MOVE",
+     "title": "灵魂灼烧",
+     "intents": [
+      [
+       "attack",
+       29,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "MAELSTROM_MOVE",
+     "title": "大漩涡",
+     "intents": [
+      [
+       "attack",
+       6,
+       4
+      ]
+     ]
+    },
+    {
+     "id": "DRAIN_LIFE_MOVE",
+     "title": "汲取生命",
+     "intents": [
+      [
+       "attack",
+       18,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SoulNexus.cs"
+  },
+  "SpectralKnight": {
+   "class": "SpectralKnight",
+   "name_zh": "幽灵骑士",
+   "name_en": "Spectral Knight",
+   "hp_min": 93,
+   "hp_max": 93,
+   "moves": [
+    {
+     "id": "HEX",
+     "title": "恶咒",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SOUL_SLASH",
+     "title": "灵魂斩击",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SOUL_FLAME",
+     "title": "灵魂火焰",
+     "intents": [
+      [
+       "attack",
+       3,
+       3
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SpectralKnight.cs"
+  },
+  "SpinyToad": {
+   "class": "SpinyToad",
+   "name_zh": "棘刺蟾蜍",
+   "name_en": "Spiny Toad",
+   "hp_min": 116,
+   "hp_max": 119,
+   "moves": [
+    {
+     "id": "PROTRUDING_SPIKES_MOVE",
+     "title": "伸出尖刺",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SPIKE_EXPLOSION_MOVE",
+     "title": "尖刺爆破",
+     "intents": [
+      [
+       "attack",
+       23,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "TONGUE_LASH_MOVE",
+     "title": "吐舌",
+     "intents": [
+      [
+       "attack",
+       17,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/SpinyToad.cs"
+  },
+  "Stabbot": {
+   "class": "Stabbot",
+   "name_zh": "戳刺机器人",
+   "name_en": "Stabbot",
+   "hp_min": 18,
+   "hp_max": 23,
+   "moves": [
+    {
+     "id": "STAB_MOVE",
+     "title": "戳刺",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Stabbot.cs"
+  },
+  "TenHpMonster": {
+   "class": "TenHpMonster",
+   "name_zh": "",
+   "name_en": "",
+   "hp_min": 10,
+   "hp_max": 10,
+   "moves": [
+    {
+     "id": "NOTHING",
+     "title": "",
+     "intents": [
+      [
+       "hidden",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TenHpMonster.cs"
+  },
+  "TerrorEel": {
+   "class": "TerrorEel",
+   "name_zh": "骇鳗",
+   "name_en": "Terror Eel",
+   "hp_min": 140,
+   "hp_max": 140,
+   "moves": [
+    {
+     "id": "CRASH_MOVE",
+     "title": "撞击",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "THRASH_MOVE",
+     "title": "撕扯",
+     "intents": [
+      [
+       "attack",
+       3,
+       3
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "STUN_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "TERROR_MOVE",
+     "title": "恐吓",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TerrorEel.cs"
+  },
+  "TestSubject": {
+   "class": "TestSubject",
+   "name_zh": "实验体 #C{Count}",
+   "name_en": "Test Subject #C{Count}",
+   "hp_min": 100,
+   "hp_max": 100,
+   "moves": [
+    {
+     "id": "RESPAWN_MOVE",
+     "title": "重生",
+     "intents": [
+      [
+       "heal",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BITE_MOVE",
+     "title": "噬咬",
+     "intents": [
+      [
+       "attack",
+       20,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SKULL_BASH_MOVE",
+     "title": "颅骨重击",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "MULTI_CLAW_MOVE",
+     "title": "多次爪击",
+     "intents": [
+      [
+       "attack",
+       10,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PHASE3_LACERATE_MOVE",
+     "title": "撕碎",
+     "intents": [
+      [
+       "attack",
+       10,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "BIG_POUNCE",
+     "title": "大力猛扑",
+     "intents": [
+      [
+       "attack",
+       45,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BURNING_GROWL_MOVE",
+     "title": "燃烧之吼",
+     "intents": [
+      [
+       "status",
+       3,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TestSubject.cs"
+  },
+  "TheAdversaryMkOne": {
+   "class": "TheAdversaryMkOne",
+   "name_zh": "对手1型",
+   "name_en": "The Adversary Mk 1",
+   "hp_min": 100,
+   "hp_max": 100,
+   "moves": [
+    {
+     "id": "SMASH_MOVE",
+     "title": "砸击",
+     "intents": [
+      [
+       "attack",
+       12,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BEAM_MOVE",
+     "title": "光束",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BARRAGE_MOVE",
+     "title": "弹幕",
+     "intents": [
+      [
+       "attack",
+       8,
+       2
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TheAdversaryMkOne.cs"
+  },
+  "TheAdversaryMkThree": {
+   "class": "TheAdversaryMkThree",
+   "name_zh": "对手3型",
+   "name_en": "The Adversary Mk 3",
+   "hp_min": 300,
+   "hp_max": 300,
+   "moves": [
+    {
+     "id": "CRASH_MOVE",
+     "title": "冲击",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "FLAME_BEAM_MOVE",
+     "title": "火焰光束",
+     "intents": [
+      [
+       "attack",
+       18,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BARRAGE_MOVE",
+     "title": "弹幕",
+     "intents": [
+      [
+       "attack",
+       10,
+       2
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TheAdversaryMkThree.cs"
+  },
+  "TheAdversaryMkTwo": {
+   "class": "TheAdversaryMkTwo",
+   "name_zh": "对手2型",
+   "name_en": "The Adversary Mk 2",
+   "hp_min": 200,
+   "hp_max": 200,
+   "moves": [
+    {
+     "id": "BASH_MOVE",
+     "title": "猛击",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "FLAME_BEAM_MOVE",
+     "title": "火焰光束",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BARRAGE_MOVE",
+     "title": "弹幕",
+     "intents": [
+      [
+       "attack",
+       9,
+       2
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TheAdversaryMkTwo.cs"
+  },
+  "TheForgotten": {
+   "class": "TheForgotten",
+   "name_zh": "遗忘之物",
+   "name_en": "The Forgotten",
+   "hp_min": 106,
+   "hp_max": 106,
+   "moves": [
+    {
+     "id": "MIASMA",
+     "title": "瘴气",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ],
+      [
+       "defend",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "DREAD",
+     "title": "恐惧",
+     "intents": [
+      [
+       "attack",
+       null,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TheForgotten.cs"
+  },
+  "TheInsatiable": {
+   "class": "TheInsatiable",
+   "name_zh": "无厌沙虫",
+   "name_en": "The Insatiable",
+   "hp_min": 321,
+   "hp_max": 321,
+   "moves": [
+    {
+     "id": "LIQUIFY_GROUND_MOVE",
+     "title": "液化地面",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ],
+      [
+       "status",
+       6,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "THRASH_MOVE",
+     "title": "撕扯",
+     "intents": [
+      [
+       "attack",
+       8,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "THRASH_MOVE_2",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       8,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "LUNGING_BITE_MOVE",
+     "title": "前扑啃咬",
+     "intents": [
+      [
+       "attack",
+       28,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SALIVATE_MOVE",
+     "title": "分泌唾液",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TheInsatiable.cs"
+  },
+  "TheLost": {
+   "class": "TheLost",
+   "name_zh": "失落之物",
+   "name_en": "The Lost",
+   "hp_min": 93,
+   "hp_max": 93,
+   "moves": [
+    {
+     "id": "DEBILITATING_SMOG",
+     "title": "致残雾霾",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "EYE_LASERS",
+     "title": "眼部激光",
+     "intents": [
+      [
+       "attack",
+       4,
+       2
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TheLost.cs"
+  },
+  "TheObscura": {
+   "class": "TheObscura",
+   "name_zh": "胧光怪",
+   "name_en": "The Obscura",
+   "hp_min": 123,
+   "hp_max": 123,
+   "moves": [
+    {
+     "id": "ILLUSION_MOVE",
+     "title": "幻象",
+     "intents": [
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PIERCING_GAZE_MOVE",
+     "title": "锐利凝视",
+     "intents": [
+      [
+       "attack",
+       10,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SAIL_MOVE",
+     "title": "起航",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "HARDENING_STRIKE_MOVE",
+     "title": "硬化攻击",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TheObscura.cs"
+  },
+  "ThievingHopper": {
+   "class": "ThievingHopper",
+   "name_zh": "偷窃草蜢",
+   "name_en": "Thieving Hopper",
+   "hp_min": 79,
+   "hp_max": 79,
+   "moves": [
+    {
+     "id": "THIEVERY_MOVE",
+     "title": "偷盗",
+     "intents": [
+      [
+       "attack",
+       17,
+       1
+      ],
+      [
+       "carddebuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "NAB_MOVE",
+     "title": "抢夺",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "HAT_TRICK_MOVE",
+     "title": "帽子戏法",
+     "intents": [
+      [
+       "attack",
+       21,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "FLUTTER_MOVE",
+     "title": "振翅",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "ESCAPE_MOVE",
+     "title": "逃跑",
+     "intents": [
+      [
+       "escape",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/ThievingHopper.cs"
+  },
+  "Toadpole": {
+   "class": "Toadpole",
+   "name_zh": "蟾蜍蝌蚪",
+   "name_en": "Toadpole",
+   "hp_min": 21,
+   "hp_max": 25,
+   "moves": [
+    {
+     "id": "SPIKE_SPIT_MOVE",
+     "title": "吐刺",
+     "intents": [
+      [
+       "attack",
+       3,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "WHIRL_MOVE",
+     "title": "旋转",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SPIKEN_MOVE",
+     "title": "带刺",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Toadpole.cs"
+  },
+  "TorchHeadAmalgam": {
+   "class": "TorchHeadAmalgam",
+   "name_zh": "火炬头聚合体",
+   "name_en": "Torch Head Amalgam",
+   "hp_min": 199,
+   "hp_max": 199,
+   "moves": [
+    {
+     "id": "STRONG_TACKLE_MOVE",
+     "title": "强力冲撞",
+     "intents": [
+      [
+       "attack",
+       26,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "TACKLE_2_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       18,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BEAM_MOVE",
+     "title": "光束",
+     "intents": [
+      [
+       "attack",
+       8,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "TACKLE_3_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "TACKLE_4_MOVE",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TorchHeadAmalgam.cs"
+  },
+  "ToughEgg": {
+   "class": "ToughEgg",
+   "name_zh": "结实的卵",
+   "name_en": "Tough Egg",
+   "hp_min": 14,
+   "hp_max": 18,
+   "moves": [
+    {
+     "id": "HATCH_MOVE",
+     "title": "孵化",
+     "intents": [
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "NIBBLE_MOVE",
+     "title": "啃咬",
+     "intents": [
+      [
+       "attack",
+       4,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/ToughEgg.cs"
+  },
+  "TrackerRubyRaider": {
+   "class": "TrackerRubyRaider",
+   "name_zh": "劫掠者追踪手",
+   "name_en": "Tracker Raider",
+   "hp_min": 21,
+   "hp_max": 25,
+   "moves": [
+    {
+     "id": "TRACK_MOVE",
+     "title": "追踪",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "HOUNDS_MOVE",
+     "title": "放狗",
+     "intents": [
+      [
+       "attack",
+       1,
+       8
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TrackerRubyRaider.cs"
+  },
+  "Tunneler": {
+   "class": "Tunneler",
+   "name_zh": "地道虫",
+   "name_en": "Tunneler",
+   "hp_min": 87,
+   "hp_max": 87,
+   "moves": [
+    {
+     "id": "BITE_MOVE",
+     "title": "啃咬",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "BURROW_MOVE",
+     "title": "钻洞",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ],
+      [
+       "defend",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "BELOW_MOVE",
+     "title": "下方攻击",
+     "intents": [
+      [
+       "attack",
+       23,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "DIZZY_MOVE",
+     "title": "昏头转向",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Tunneler.cs"
+  },
+  "TurretOperator": {
+   "class": "TurretOperator",
+   "name_zh": "高塔炮手",
+   "name_en": "Turret Operator",
+   "hp_min": 41,
+   "hp_max": 41,
+   "moves": [
+    {
+     "id": "UNLOAD_MOVE",
+     "title": "弹雨！",
+     "intents": [
+      [
+       "attack",
+       3,
+       5
+      ]
+     ]
+    },
+    {
+     "id": "UNLOAD_MOVE_2",
+     "title": "",
+     "intents": [
+      [
+       "attack",
+       3,
+       5
+      ]
+     ]
+    },
+    {
+     "id": "RELOAD_MOVE",
+     "title": "装弹",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TurretOperator.cs"
+  },
+  "TwigSlimeM": {
+   "class": "TwigSlimeM",
+   "name_zh": "树枝史莱姆（中）",
+   "name_en": "Twig Slime (M)",
+   "hp_min": 26,
+   "hp_max": 28,
+   "moves": [
+    {
+     "id": "POKEY_POUNCE_MOVE",
+     "title": "戳刺扑击",
+     "intents": [
+      [
+       "attack",
+       11,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "STICKY_SHOT_MOVE",
+     "title": "黏糊射击",
+     "intents": [
+      [
+       "status",
+       1,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TwigSlimeM.cs"
+  },
+  "TwigSlimeS": {
+   "class": "TwigSlimeS",
+   "name_zh": "树枝史莱姆（小）",
+   "name_en": "Twig Slime (S)",
+   "hp_min": 7,
+   "hp_max": 11,
+   "moves": [
+    {
+     "id": "TACKLE_MOVE",
+     "title": "冲撞",
+     "intents": [
+      [
+       "attack",
+       4,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TwigSlimeS.cs"
+  },
+  "TwoTailedRat": {
+   "class": "TwoTailedRat",
+   "name_zh": "双尾鼠",
+   "name_en": "Two-Tailed Rat",
+   "hp_min": 17,
+   "hp_max": 21,
+   "moves": [
+    {
+     "id": "SCRATCH_MOVE",
+     "title": "抓挠",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "DISEASE_BITE_MOVE",
+     "title": "疾病啃咬",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "SCREECH_MOVE",
+     "title": "尖声嘶吼",
+     "intents": [
+      [
+       "debuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "CALL_FOR_BACKUP_MOVE",
+     "title": "呼唤后援",
+     "intents": [
+      [
+       "summon",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/TwoTailedRat.cs"
+  },
+  "Vantom": {
+   "class": "Vantom",
+   "name_zh": "墨影幻灵",
+   "name_en": "Vantom",
+   "hp_min": 173,
+   "hp_max": 173,
+   "moves": [
+    {
+     "id": "INK_BLOT_MOVE",
+     "title": "墨迹",
+     "intents": [
+      [
+       "attack",
+       7,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "INKY_LANCE_MOVE",
+     "title": "墨水长枪",
+     "intents": [
+      [
+       "attack",
+       6,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "DISMEMBER_MOVE",
+     "title": "肢解",
+     "intents": [
+      [
+       "attack",
+       26,
+       1
+      ],
+      [
+       "status",
+       3,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PREPARE_MOVE",
+     "title": "准备",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Vantom.cs"
+  },
+  "VineShambler": {
+   "class": "VineShambler",
+   "name_zh": "藤蔓蹒跚者",
+   "name_en": "Vine Shambler",
+   "hp_min": 61,
+   "hp_max": 61,
+   "moves": [
+    {
+     "id": "GRASPING_VINES_MOVE",
+     "title": "紧绕藤蔓",
+     "intents": [
+      [
+       "attack",
+       8,
+       1
+      ],
+      [
+       "carddebuff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SWIPE_MOVE",
+     "title": "挥击",
+     "intents": [
+      [
+       "attack",
+       6,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "CHOMP_MOVE",
+     "title": "大啃",
+     "intents": [
+      [
+       "attack",
+       16,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/VineShambler.cs"
+  },
+  "WaterfallGiant": {
+   "class": "WaterfallGiant",
+   "name_zh": "瀑布巨兽",
+   "name_en": "Waterfall Giant",
+   "hp_min": 240,
+   "hp_max": 240,
+   "moves": [
+    {
+     "id": "PRESSURIZE_MOVE",
+     "title": "增压",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "STOMP_MOVE",
+     "title": "践踏",
+     "intents": [
+      [
+       "attack",
+       15,
+       1
+      ],
+      [
+       "debuff",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "RAM_MOVE",
+     "title": "撞击",
+     "intents": [
+      [
+       "attack",
+       10,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SIPHON_MOVE",
+     "title": "虹吸",
+     "intents": [
+      [
+       "heal",
+       null,
+       null
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PRESSURE_GUN_MOVE",
+     "title": "压力炮",
+     "intents": [
+      [
+       "attack",
+       null,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "PRESSURE_UP_MOVE",
+     "title": "增压",
+     "intents": [
+      [
+       "attack",
+       13,
+       1
+      ],
+      [
+       "buff",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "ABOUT_TO_BLOW_MOVE",
+     "title": "即将爆发",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "EXPLODE_MOVE",
+     "title": "爆炸",
+     "intents": [
+      [
+       "deathblow",
+       null,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/WaterfallGiant.cs"
+  },
+  "Wriggler": {
+   "class": "Wriggler",
+   "name_zh": "扭动虫",
+   "name_en": "Wriggler",
+   "hp_min": 17,
+   "hp_max": 21,
+   "moves": [
+    {
+     "id": "NASTY_BITE_MOVE",
+     "title": "污秽啃咬",
+     "intents": [
+      [
+       "attack",
+       6,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "WRIGGLE_MOVE",
+     "title": "扭动",
+     "intents": [
+      [
+       "buff",
+       null,
+       null
+      ],
+      [
+       "status",
+       1,
+       null
+      ]
+     ]
+    },
+    {
+     "id": "SPAWNED_MOVE",
+     "title": "生成",
+     "intents": [
+      [
+       "stun",
+       null,
+       null
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Wriggler.cs"
+  },
+  "Zapbot": {
+   "class": "Zapbot",
+   "name_zh": "电击机器人",
+   "name_en": "Zapbot",
+   "hp_min": 18,
+   "hp_max": 23,
+   "moves": [
+    {
+     "id": "ZAP",
+     "title": "电击",
+     "intents": [
+      [
+       "attack",
+       14,
+       1
+      ]
+     ]
+    }
+   ],
+   "file": "decompiled/sts2/MegaCrit.Sts2.Core.Models.Monsters/Zapbot.cs"
+  }
+ },
+ "encounters": {
+  "AeonglassBoss": {
+   "class": "AeonglassBoss",
+   "name_zh": "永世沙漏",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "Aeonglass"
+   ]
+  },
+  "AxebotsNormal": {
+   "class": "AxebotsNormal",
+   "name_zh": "巨斧机器人",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Axebot"
+   ]
+  },
+  "BattlewornDummyEventEncounter": {
+   "class": "BattlewornDummyEventEncounter",
+   "name_zh": "",
+   "room_type": null,
+   "is_weak": false,
+   "generated": []
+  },
+  "BattlewornDummyEventV1Encounter": {
+   "class": "BattlewornDummyEventV1Encounter",
+   "name_zh": "历战假人",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "BattleFriendV1"
+   ]
+  },
+  "BattlewornDummyEventV2Encounter": {
+   "class": "BattlewornDummyEventV2Encounter",
+   "name_zh": "历战假人",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "BattleFriendV2"
+   ]
+  },
+  "BattlewornDummyEventV3Encounter": {
+   "class": "BattlewornDummyEventV3Encounter",
+   "name_zh": "历战假人",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "BattleFriendV3"
+   ]
+  },
+  "BowlbugsNormal": {
+   "class": "BowlbugsNormal",
+   "name_zh": "盛碗虫群",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "BowlbugRock"
+   ]
+  },
+  "BowlbugsWeak": {
+   "class": "BowlbugsWeak",
+   "name_zh": "盛碗虫",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "BowlbugRock"
+   ]
+  },
+  "BygoneEffigyElite": {
+   "class": "BygoneEffigyElite",
+   "name_zh": "旧日雕像",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "BygoneEffigy"
+   ]
+  },
+  "ByrdonisElite": {
+   "class": "ByrdonisElite",
+   "name_zh": "多尼斯异鸟",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "Byrdonis"
+   ]
+  },
+  "CeremonialBeastBoss": {
+   "class": "CeremonialBeastBoss",
+   "name_zh": "仪式兽",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "CeremonialBeast"
+   ]
+  },
+  "ChompersNormal": {
+   "class": "ChompersNormal",
+   "name_zh": "一对自动机械",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Chomper",
+    "Chomper"
+   ]
+  },
+  "ConstructMenagerieNormal": {
+   "class": "ConstructMenagerieNormal",
+   "name_zh": "一些构装体",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "PunchConstruct",
+    "CubexConstruct",
+    "CubexConstruct"
+   ]
+  },
+  "CorpseSlugsNormal": {
+   "class": "CorpseSlugsNormal",
+   "name_zh": "许多噬尸蛞蝓",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "CorpseSlug",
+    "CorpseSlug",
+    "CorpseSlug"
+   ]
+  },
+  "CorpseSlugsWeak": {
+   "class": "CorpseSlugsWeak",
+   "name_zh": "一些噬尸蛞蝓",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "CorpseSlug",
+    "CorpseSlug"
+   ]
+  },
+  "CubexConstructNormal": {
+   "class": "CubexConstructNormal",
+   "name_zh": "方柱构装体",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "CubexConstruct"
+   ]
+  },
+  "CultistsNormal": {
+   "class": "CultistsNormal",
+   "name_zh": "邪教徒们",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "CalcifiedCultist",
+    "DampCultist"
+   ]
+  },
+  "DecimillipedeElite": {
+   "class": "DecimillipedeElite",
+   "name_zh": "残杀千足虫",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "DecimillipedeSegmentFront",
+    "DecimillipedeSegmentMiddle",
+    "DecimillipedeSegmentBack"
+   ]
+  },
+  "DenseVegetationEventEncounter": {
+   "class": "DenseVegetationEventEncounter",
+   "name_zh": "扭动虫",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Wriggler"
+   ]
+  },
+  "DeprecatedEncounter": {
+   "class": "DeprecatedEncounter",
+   "name_zh": "已移除遭遇战",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": []
+  },
+  "DevotedSculptorWeak": {
+   "class": "DevotedSculptorWeak",
+   "name_zh": "虔诚雕刻师",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "DevotedSculptor"
+   ]
+  },
+  "EntomancerElite": {
+   "class": "EntomancerElite",
+   "name_zh": "蜂群术士",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "Entomancer"
+   ]
+  },
+  "ExoskeletonsNormal": {
+   "class": "ExoskeletonsNormal",
+   "name_zh": "许多外骨骼虫",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Exoskeleton",
+    "Exoskeleton",
+    "Exoskeleton",
+    "Exoskeleton"
+   ]
+  },
+  "ExoskeletonsWeak": {
+   "class": "ExoskeletonsWeak",
+   "name_zh": "外骨骼虫",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "Exoskeleton",
+    "Exoskeleton",
+    "Exoskeleton"
+   ]
+  },
+  "FabricatorNormal": {
+   "class": "FabricatorNormal",
+   "name_zh": "组装师",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Fabricator"
+   ]
+  },
+  "FakeMerchantEventEncounter": {
+   "class": "FakeMerchantEventEncounter",
+   "name_zh": "商人？？？",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "FakeMerchantMonster"
+   ]
+  },
+  "FlyconidNormal": {
+   "class": "FlyconidNormal",
+   "name_zh": "真菌与史莱姆",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Flyconid"
+   ]
+  },
+  "FogmogNormal": {
+   "class": "FogmogNormal",
+   "name_zh": "雾菇",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Fogmog"
+   ]
+  },
+  "FossilStalkerNormal": {
+   "class": "FossilStalkerNormal",
+   "name_zh": "化石追踪者",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "FossilStalker"
+   ]
+  },
+  "FrogKnightNormal": {
+   "class": "FrogKnightNormal",
+   "name_zh": "青蛙骑士",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "FrogKnight"
+   ]
+  },
+  "FuzzyWurmCrawlerWeak": {
+   "class": "FuzzyWurmCrawlerWeak",
+   "name_zh": "毛绒伏地虫",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "FuzzyWurmCrawler"
+   ]
+  },
+  "GlobeHeadNormal": {
+   "class": "GlobeHeadNormal",
+   "name_zh": "一个孤单的电球头",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "GlobeHead"
+   ]
+  },
+  "GremlinMercNormal": {
+   "class": "GremlinMercNormal",
+   "name_zh": "穿着一件大衣的两只地精",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "GremlinMerc"
+   ]
+  },
+  "HauntedShipNormal": {
+   "class": "HauntedShipNormal",
+   "name_zh": "幽灵船",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "HauntedShip"
+   ]
+  },
+  "HunterKillerNormal": {
+   "class": "HunterKillerNormal",
+   "name_zh": "猎人杀手",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "HunterKiller"
+   ]
+  },
+  "InfestedPrismsElite": {
+   "class": "InfestedPrismsElite",
+   "name_zh": "感染棱柱",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "InfestedPrism"
+   ]
+  },
+  "InkletsNormal": {
+   "class": "InkletsNormal",
+   "name_zh": "墨宝",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Inklet",
+    "Inklet",
+    "Inklet"
+   ]
+  },
+  "KaiserCrabBoss": {
+   "class": "KaiserCrabBoss",
+   "name_zh": "帝皇蟹",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "Crusher",
+    "Rocket"
+   ]
+  },
+  "KnightsElite": {
+   "class": "KnightsElite",
+   "name_zh": "骑士团伙",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "FlailKnight",
+    "SpectralKnight",
+    "MagiKnight"
+   ]
+  },
+  "KnowledgeDemonBoss": {
+   "class": "KnowledgeDemonBoss",
+   "name_zh": "知识恶魔",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "KnowledgeDemon"
+   ]
+  },
+  "LagavulinMatriarchBoss": {
+   "class": "LagavulinMatriarchBoss",
+   "name_zh": "乐加维林族母",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "LagavulinMatriarch"
+   ]
+  },
+  "LivingFogNormal": {
+   "class": "LivingFogNormal",
+   "name_zh": "邪恶气体",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "LivingFog"
+   ]
+  },
+  "LouseProgenitorNormal": {
+   "class": "LouseProgenitorNormal",
+   "name_zh": "虱虫之祖",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "LouseProgenitor"
+   ]
+  },
+  "MawlerNormal": {
+   "class": "MawlerNormal",
+   "name_zh": "蛮兽",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Mawler"
+   ]
+  },
+  "MechaKnightElite": {
+   "class": "MechaKnightElite",
+   "name_zh": "机甲骑士",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "MechaKnight"
+   ]
+  },
+  "MysteriousKnightEventEncounter": {
+   "class": "MysteriousKnightEventEncounter",
+   "name_zh": "神秘骑士",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "MysteriousKnight"
+   ]
+  },
+  "MytesNormal": {
+   "class": "MytesNormal",
+   "name_zh": "一群异螨",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Myte",
+    "Myte"
+   ]
+  },
+  "NibbitsNormal": {
+   "class": "NibbitsNormal",
+   "name_zh": "两只小啃兽",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Nibbit",
+    "Nibbit"
+   ]
+  },
+  "NibbitsWeak": {
+   "class": "NibbitsWeak",
+   "name_zh": "一只落单的小啃兽",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "Nibbit"
+   ]
+  },
+  "OvergrowthCrawlers": {
+   "class": "OvergrowthCrawlers",
+   "name_zh": "密林爬虫",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "ShrinkerBeetle",
+    "FuzzyWurmCrawler"
+   ]
+  },
+  "OvicopterNormal": {
+   "class": "OvicopterNormal",
+   "name_zh": "直飞产卵虫",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Ovicopter"
+   ]
+  },
+  "OwlMagistrateNormal": {
+   "class": "OwlMagistrateNormal",
+   "name_zh": "猫头鹰法官",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "OwlMagistrate"
+   ]
+  },
+  "PhantasmalGardenersElite": {
+   "class": "PhantasmalGardenersElite",
+   "name_zh": "花园幽灵鳗",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "PhantasmalGardener",
+    "PhantasmalGardener",
+    "PhantasmalGardener",
+    "PhantasmalGardener"
+   ]
+  },
+  "PhrogParasiteElite": {
+   "class": "PhrogParasiteElite",
+   "name_zh": "异蛙寄生虫",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "PhrogParasite"
+   ]
+  },
+  "PunchConstructNormal": {
+   "class": "PunchConstructNormal",
+   "name_zh": "拳击构装体",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "PunchConstruct"
+   ]
+  },
+  "PunchOffEventEncounter": {
+   "class": "PunchOffEventEncounter",
+   "name_zh": "拳击构装体",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "PunchConstruct",
+    "PunchConstruct"
+   ]
+  },
+  "QueenBoss": {
+   "class": "QueenBoss",
+   "name_zh": "女王",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "TorchHeadAmalgam",
+    "Queen"
+   ]
+  },
+  "RubyRaidersNormal": {
+   "class": "RubyRaidersNormal",
+   "name_zh": "红宝石劫掠者",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": []
+  },
+  "ScrollsOfBitingNormal": {
+   "class": "ScrollsOfBitingNormal",
+   "name_zh": "许多咬人卷轴",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "ScrollOfBiting",
+    "ScrollOfBiting",
+    "ScrollOfBiting",
+    "ScrollOfBiting"
+   ]
+  },
+  "ScrollsOfBitingWeak": {
+   "class": "ScrollsOfBitingWeak",
+   "name_zh": "咬人卷轴",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "ScrollOfBiting",
+    "ScrollOfBiting",
+    "ScrollOfBiting"
+   ]
+  },
+  "SeapunkNormal": {
+   "class": "SeapunkNormal",
+   "name_zh": "暗港野生动物",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "CalcifiedCultist",
+    "Seapunk"
+   ]
+  },
+  "SeapunkWeak": {
+   "class": "SeapunkWeak",
+   "name_zh": "海洋混混",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "Seapunk"
+   ]
+  },
+  "SewerClamNormal": {
+   "class": "SewerClamNormal",
+   "name_zh": "下水道蚌",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "SewerClam"
+   ]
+  },
+  "ShrinkerBeetleWeak": {
+   "class": "ShrinkerBeetleWeak",
+   "name_zh": "缩小甲虫",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "ShrinkerBeetle"
+   ]
+  },
+  "SkulkingColonyElite": {
+   "class": "SkulkingColonyElite",
+   "name_zh": "鬼祟珊瑚群",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "SkulkingColony"
+   ]
+  },
+  "SlimedBerserkerNormal": {
+   "class": "SlimedBerserkerNormal",
+   "name_zh": "史莱姆狂战士",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "SlimedBerserker"
+   ]
+  },
+  "SlimesNormal": {
+   "class": "SlimesNormal",
+   "name_zh": "一大群史莱姆",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "LeafSlimeS",
+    "TwigSlimeS",
+    "TwigSlimeS",
+    "LeafSlimeS",
+    "TwigSlimeM",
+    "LeafSlimeM"
+   ]
+  },
+  "SlimesWeak": {
+   "class": "SlimesWeak",
+   "name_zh": "一群史莱姆",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": []
+  },
+  "SlitheringStranglerNormal": {
+   "class": "SlitheringStranglerNormal",
+   "name_zh": "扼杀者与伙伴",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "SnappingJaxfruit",
+    "SlitheringStrangler"
+   ]
+  },
+  "SludgeSpinnerWeak": {
+   "class": "SludgeSpinnerWeak",
+   "name_zh": "淤泥旋螺",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "SludgeSpinner"
+   ]
+  },
+  "SlumberingBeetleNormal": {
+   "class": "SlumberingBeetleNormal",
+   "name_zh": "熟睡派对",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "BowlbugRock",
+    "BowlbugSilk",
+    "SlumberingBeetle"
+   ]
+  },
+  "SnappingJaxfruitNormal": {
+   "class": "SnappingJaxfruitNormal",
+   "name_zh": "密林植物",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "SnappingJaxfruit",
+    "Flyconid"
+   ]
+  },
+  "SoulFyshBoss": {
+   "class": "SoulFyshBoss",
+   "name_zh": "灵魂异鱼",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "SoulFysh"
+   ]
+  },
+  "SoulNexusElite": {
+   "class": "SoulNexusElite",
+   "name_zh": "灵魂枢纽",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "SoulNexus"
+   ]
+  },
+  "SpinyToadNormal": {
+   "class": "SpinyToadNormal",
+   "name_zh": "棘刺蟾蜍",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "SpinyToad"
+   ]
+  },
+  "TerrorEelElite": {
+   "class": "TerrorEelElite",
+   "name_zh": "骇鳗",
+   "room_type": "Elite",
+   "is_weak": false,
+   "generated": [
+    "TerrorEel"
+   ]
+  },
+  "TestSubjectBoss": {
+   "class": "TestSubjectBoss",
+   "name_zh": "实验体",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "TestSubject"
+   ]
+  },
+  "TheArchitectEventEncounter": {
+   "class": "TheArchitectEventEncounter",
+   "name_zh": "建筑师",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Architect"
+   ]
+  },
+  "TheInsatiableBoss": {
+   "class": "TheInsatiableBoss",
+   "name_zh": "无厌沙虫",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "TheInsatiable"
+   ]
+  },
+  "TheKinBoss": {
+   "class": "TheKinBoss",
+   "name_zh": "同族小队",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "KinFollower",
+    "KinFollower",
+    "KinPriest"
+   ]
+  },
+  "TheLostAndForgottenNormal": {
+   "class": "TheLostAndForgottenNormal",
+   "name_zh": "失落与遗忘之物",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "TheLost",
+    "TheForgotten"
+   ]
+  },
+  "TheObscuraNormal": {
+   "class": "TheObscuraNormal",
+   "name_zh": "胧光怪",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "TheObscura"
+   ]
+  },
+  "ThievingHopperWeak": {
+   "class": "ThievingHopperWeak",
+   "name_zh": "偷窃草蜢",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "ThievingHopper"
+   ]
+  },
+  "ToadpolesWeak": {
+   "class": "ToadpolesWeak",
+   "name_zh": "蟾蜍蝌蚪",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "Toadpole",
+    "Toadpole"
+   ]
+  },
+  "TunnelerNormal": {
+   "class": "TunnelerNormal",
+   "name_zh": "地道组合",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "Chomper",
+    "Tunneler"
+   ]
+  },
+  "TunnelerWeak": {
+   "class": "TunnelerWeak",
+   "name_zh": "地道虫",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "Tunneler"
+   ]
+  },
+  "TurretOperatorWeak": {
+   "class": "TurretOperatorWeak",
+   "name_zh": "高塔炮手",
+   "room_type": "Monster",
+   "is_weak": true,
+   "generated": [
+    "LivingShield",
+    "TurretOperator"
+   ]
+  },
+  "TwoTailedRatsNormal": {
+   "class": "TwoTailedRatsNormal",
+   "name_zh": "双尾鼠",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "TwoTailedRat",
+    "TwoTailedRat",
+    "TwoTailedRat"
+   ]
+  },
+  "VantomBoss": {
+   "class": "VantomBoss",
+   "name_zh": "墨影幻灵",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "Vantom"
+   ]
+  },
+  "VineShamblerNormal": {
+   "class": "VineShamblerNormal",
+   "name_zh": "藤蔓蹒跚者",
+   "room_type": "Monster",
+   "is_weak": false,
+   "generated": [
+    "VineShambler"
+   ]
+  },
+  "WaterfallGiantBoss": {
+   "class": "WaterfallGiantBoss",
+   "name_zh": "瀑布巨兽",
+   "room_type": "Boss",
+   "is_weak": false,
+   "generated": [
+    "WaterfallGiant"
+   ]
+  }
+ },
+ "acts": {
+  "Overgrowth": {
+   "index": 0,
+   "weak_count": 3,
+   "encounters": [
+    "BygoneEffigyElite",
+    "ByrdonisElite",
+    "CeremonialBeastBoss",
+    "CubexConstructNormal",
+    "FlyconidNormal",
+    "FogmogNormal",
+    "FuzzyWurmCrawlerWeak",
+    "InkletsNormal",
+    "MawlerNormal",
+    "NibbitsNormal",
+    "NibbitsWeak",
+    "OvergrowthCrawlers",
+    "PhrogParasiteElite",
+    "RubyRaidersNormal",
+    "ShrinkerBeetleWeak",
+    "SlimesNormal",
+    "SlimesWeak",
+    "SlitheringStranglerNormal",
+    "SnappingJaxfruitNormal",
+    "TheKinBoss",
+    "VantomBoss",
+    "VineShamblerNormal"
+   ]
+  },
+  "Underdocks": {
+   "index": 0,
+   "weak_count": 3,
+   "encounters": [
+    "CorpseSlugsNormal",
+    "CorpseSlugsWeak",
+    "CultistsNormal",
+    "FossilStalkerNormal",
+    "GremlinMercNormal",
+    "HauntedShipNormal",
+    "LagavulinMatriarchBoss",
+    "LivingFogNormal",
+    "PhantasmalGardenersElite",
+    "PunchConstructNormal",
+    "SeapunkNormal",
+    "SeapunkWeak",
+    "SewerClamNormal",
+    "SkulkingColonyElite",
+    "SludgeSpinnerWeak",
+    "SoulFyshBoss",
+    "TerrorEelElite",
+    "ToadpolesWeak",
+    "TwoTailedRatsNormal",
+    "WaterfallGiantBoss"
+   ]
+  },
+  "Hive": {
+   "index": 1,
+   "weak_count": 2,
+   "encounters": [
+    "BowlbugsNormal",
+    "BowlbugsWeak",
+    "ChompersNormal",
+    "DecimillipedeElite",
+    "EntomancerElite",
+    "ExoskeletonsNormal",
+    "ExoskeletonsWeak",
+    "HunterKillerNormal",
+    "KaiserCrabBoss",
+    "InfestedPrismsElite",
+    "KnowledgeDemonBoss",
+    "LouseProgenitorNormal",
+    "MytesNormal",
+    "OvicopterNormal",
+    "SlumberingBeetleNormal",
+    "SpinyToadNormal",
+    "TheInsatiableBoss",
+    "TheObscuraNormal",
+    "ThievingHopperWeak",
+    "TunnelerWeak"
+   ]
+  },
+  "Glory": {
+   "index": 2,
+   "weak_count": 2,
+   "encounters": [
+    "AxebotsNormal",
+    "ConstructMenagerieNormal",
+    "DevotedSculptorWeak",
+    "AeonglassBoss",
+    "FabricatorNormal",
+    "FrogKnightNormal",
+    "GlobeHeadNormal",
+    "KnightsElite",
+    "MechaKnightElite",
+    "OwlMagistrateNormal",
+    "QueenBoss",
+    "ScrollsOfBitingNormal",
+    "ScrollsOfBitingWeak",
+    "SlimedBerserkerNormal",
+    "SoulNexusElite",
+    "TestSubjectBoss",
+    "TheLostAndForgottenNormal",
+    "TurretOperatorWeak"
+   ]
+  }
+ }
+}
