@@ -265,6 +265,30 @@ def main():
     print(f"精英系数 {ELITE_MULT}（第一幕精英平均 {elite_mean:.2f}）")
     (ROOT / "data" / "calibration.json").write_text(json.dumps(
         {"k": k, "elite_mult": ELITE_MULT, "rows": calib_rows}, ensure_ascii=False, indent=1), encoding="utf-8")
+    write_price_book(k, acts_of, weak_of)
+
+
+ROLE_EN = {"普通": "Normal", "精英": "Elite", "Boss": "Boss", "召唤物": "Summon"}
+
+
+def write_price_book(k, acts_of, weak_of):
+    """mod/TowerMaster.Core 读取的价格表：每幕可召唤的怪物、召唤价，以及每个原版遭遇的组合与标准开销。"""
+    book = {"version": "v0.111.0", "act_coefficient": k, "elite_multiplier": ELITE_MULT, "acts": {}}
+    for act in ACT_ORDER:
+        n = ACT_NO[act]
+        monsters = {}
+        for cls in sorted(c for c in M if act in acts_of[c]):
+            monsters[cls] = {"name_zh": MON[cls]["name_zh"], "role": ROLE_EN[M[cls]["role"]],
+                             "weak_pool": act in weak_of.get(cls, ()), "price": price(cls, k[n])}
+        encounters = {}
+        for enc in ACTS[act]["encounters"]:
+            encounters[enc] = {"name_zh": ENC[enc]["name_zh"], "room": ENC[enc]["room_type"],
+                               "weak": ENC[enc]["is_weak"],
+                               "lineups": [{"p": round(p, 6), "monsters": lu} for p, lu in lineups(enc)],
+                               "standard_cost": round(encounter_cost(enc, k[n])[0], 2)}
+        book["acts"][act] = {"act_no": n, "name_zh": ACT_ZH[act], "monsters": monsters, "encounters": encounters}
+    (ROOT / "data" / "price_book.json").write_text(
+        json.dumps(book, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

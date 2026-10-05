@@ -1,3 +1,6 @@
 # 游戏本体的反编译代码和从 .pck 提取的资源：不要上传（版权）
 decompiled/
 tools/
+__pycache__/
+bin/
+obj/

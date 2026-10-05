@@ -1,0 +1,1985 @@
+{
+ "version": "v0.111.0",
+ "act_coefficient": {
+  "1": 0.218,
+  "2": 0.192,
+  "3": 0.176
+ },
+ "elite_multiplier": 2.35,
+ "acts": {
+  "Overgrowth": {
+   "act_no": 1,
+   "name_zh": "第一幕·密林",
+   "monsters": {
+    "AssassinRubyRaider": {
+     "name_zh": "劫掠者刺客",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "AxeRubyRaider": {
+     "name_zh": "劫掠者斧手",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 1
+    },
+    "BruteRubyRaider": {
+     "name_zh": "劫掠者暴徒",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "BygoneEffigy": {
+     "name_zh": "旧日雕像",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 8
+    },
+    "Byrdonis": {
+     "name_zh": "多尼斯异鸟",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 9
+    },
+    "CeremonialBeast": {
+     "name_zh": "仪式兽",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 8
+    },
+    "CrossbowRubyRaider": {
+     "name_zh": "劫掠者弩手",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 1
+    },
+    "CubexConstruct": {
+     "name_zh": "方柱构装体",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "EyeWithTeeth": {
+     "name_zh": "利齿之眼",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    },
+    "Flyconid": {
+     "name_zh": "飞蝇菌子",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "Fogmog": {
+     "name_zh": "雾菇",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "FuzzyWurmCrawler": {
+     "name_zh": "毛绒伏地虫",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "Inklet": {
+     "name_zh": "墨宝",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 1
+    },
+    "KinFollower": {
+     "name_zh": "同族信徒",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 2
+    },
+    "KinPriest": {
+     "name_zh": "同族神官",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 5
+    },
+    "LeafSlimeM": {
+     "name_zh": "树叶史莱姆（中）",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 1
+    },
+    "LeafSlimeS": {
+     "name_zh": "树叶史莱姆（小）",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 1
+    },
+    "Mawler": {
+     "name_zh": "蛮兽",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "Nibbit": {
+     "name_zh": "小啃兽",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "PhrogParasite": {
+     "name_zh": "异蛙寄生虫",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 11
+    },
+    "ShrinkerBeetle": {
+     "name_zh": "缩小甲虫",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "SlitheringStrangler": {
+     "name_zh": "蛇行扼杀者",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "SnappingJaxfruit": {
+     "name_zh": "闪光贾克斯果",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "TrackerRubyRaider": {
+     "name_zh": "劫掠者追踪手",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 1
+    },
+    "TwigSlimeM": {
+     "name_zh": "树枝史莱姆（中）",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 1
+    },
+    "TwigSlimeS": {
+     "name_zh": "树枝史莱姆（小）",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 1
+    },
+    "Vantom": {
+     "name_zh": "墨影幻灵",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 7
+    },
+    "VineShambler": {
+     "name_zh": "藤蔓蹒跚者",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "Wriggler": {
+     "name_zh": "扭动虫",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    }
+   },
+   "encounters": {
+    "BygoneEffigyElite": {
+     "name_zh": "旧日雕像",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "BygoneEffigy"
+       ]
+      }
+     ],
+     "standard_cost": 8.0
+    },
+    "ByrdonisElite": {
+     "name_zh": "多尼斯异鸟",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Byrdonis"
+       ]
+      }
+     ],
+     "standard_cost": 9.0
+    },
+    "CeremonialBeastBoss": {
+     "name_zh": "仪式兽",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "CeremonialBeast"
+       ]
+      }
+     ],
+     "standard_cost": 8.0
+    },
+    "CubexConstructNormal": {
+     "name_zh": "方柱构装体",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "CubexConstruct"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "FlyconidNormal": {
+     "name_zh": "真菌与史莱姆",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 0.5,
+       "monsters": [
+        "LeafSlimeM",
+        "Flyconid"
+       ]
+      },
+      {
+       "p": 0.5,
+       "monsters": [
+        "TwigSlimeM",
+        "Flyconid"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "FogmogNormal": {
+     "name_zh": "雾菇",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Fogmog"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "FuzzyWurmCrawlerWeak": {
+     "name_zh": "毛绒伏地虫",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "FuzzyWurmCrawler"
+       ]
+      }
+     ],
+     "standard_cost": 2.0
+    },
+    "InkletsNormal": {
+     "name_zh": "墨宝",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Inklet",
+        "Inklet",
+        "Inklet"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    },
+    "MawlerNormal": {
+     "name_zh": "蛮兽",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Mawler"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "NibbitsNormal": {
+     "name_zh": "两只小啃兽",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Nibbit",
+        "Nibbit"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "NibbitsWeak": {
+     "name_zh": "一只落单的小啃兽",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Nibbit"
+       ]
+      }
+     ],
+     "standard_cost": 2.0
+    },
+    "OvergrowthCrawlers": {
+     "name_zh": "密林爬虫",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "ShrinkerBeetle",
+        "FuzzyWurmCrawler"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "PhrogParasiteElite": {
+     "name_zh": "异蛙寄生虫",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "PhrogParasite"
+       ]
+      }
+     ],
+     "standard_cost": 11.0
+    },
+    "RubyRaidersNormal": {
+     "name_zh": "红宝石劫掠者",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 0.1,
+       "monsters": [
+        "AxeRubyRaider",
+        "AssassinRubyRaider",
+        "BruteRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AxeRubyRaider",
+        "AssassinRubyRaider",
+        "CrossbowRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AxeRubyRaider",
+        "AssassinRubyRaider",
+        "TrackerRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AxeRubyRaider",
+        "BruteRubyRaider",
+        "CrossbowRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AxeRubyRaider",
+        "BruteRubyRaider",
+        "TrackerRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AxeRubyRaider",
+        "CrossbowRubyRaider",
+        "TrackerRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AssassinRubyRaider",
+        "BruteRubyRaider",
+        "CrossbowRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AssassinRubyRaider",
+        "BruteRubyRaider",
+        "TrackerRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "AssassinRubyRaider",
+        "CrossbowRubyRaider",
+        "TrackerRubyRaider"
+       ]
+      },
+      {
+       "p": 0.1,
+       "monsters": [
+        "BruteRubyRaider",
+        "CrossbowRubyRaider",
+        "TrackerRubyRaider"
+       ]
+      }
+     ],
+     "standard_cost": 7.2
+    },
+    "ShrinkerBeetleWeak": {
+     "name_zh": "缩小甲虫",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "ShrinkerBeetle"
+       ]
+      }
+     ],
+     "standard_cost": 2.0
+    },
+    "SlimesNormal": {
+     "name_zh": "一大群史莱姆",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TwigSlimeM",
+        "LeafSlimeM",
+        "LeafSlimeS",
+        "TwigSlimeS"
+       ]
+      }
+     ],
+     "standard_cost": 10.0
+    },
+    "SlimesWeak": {
+     "name_zh": "一群史莱姆",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 0.5,
+       "monsters": [
+        "LeafSlimeS",
+        "LeafSlimeM",
+        "TwigSlimeS"
+       ]
+      },
+      {
+       "p": 0.5,
+       "monsters": [
+        "LeafSlimeS",
+        "TwigSlimeM",
+        "TwigSlimeS"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    },
+    "SlitheringStranglerNormal": {
+     "name_zh": "扼杀者与伙伴",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 0.333333,
+       "monsters": [
+        "SnappingJaxfruit",
+        "SlitheringStrangler"
+       ]
+      },
+      {
+       "p": 0.166667,
+       "monsters": [
+        "LeafSlimeM",
+        "SlitheringStrangler"
+       ]
+      },
+      {
+       "p": 0.166667,
+       "monsters": [
+        "TwigSlimeM",
+        "SlitheringStrangler"
+       ]
+      },
+      {
+       "p": 0.083333,
+       "monsters": [
+        "LeafSlimeS",
+        "LeafSlimeS",
+        "SlitheringStrangler"
+       ]
+      },
+      {
+       "p": 0.083333,
+       "monsters": [
+        "LeafSlimeS",
+        "TwigSlimeS",
+        "SlitheringStrangler"
+       ]
+      },
+      {
+       "p": 0.083333,
+       "monsters": [
+        "TwigSlimeS",
+        "LeafSlimeS",
+        "SlitheringStrangler"
+       ]
+      },
+      {
+       "p": 0.083333,
+       "monsters": [
+        "TwigSlimeS",
+        "TwigSlimeS",
+        "SlitheringStrangler"
+       ]
+      }
+     ],
+     "standard_cost": 5.33
+    },
+    "SnappingJaxfruitNormal": {
+     "name_zh": "密林植物",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SnappingJaxfruit",
+        "Flyconid"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "TheKinBoss": {
+     "name_zh": "同族小队",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "KinFollower",
+        "KinFollower",
+        "KinPriest"
+       ]
+      }
+     ],
+     "standard_cost": 12.0
+    },
+    "VantomBoss": {
+     "name_zh": "墨影幻灵",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Vantom"
+       ]
+      }
+     ],
+     "standard_cost": 7.0
+    },
+    "VineShamblerNormal": {
+     "name_zh": "藤蔓蹒跚者",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "VineShambler"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    }
+   }
+  },
+  "Underdocks": {
+   "act_no": 1,
+   "name_zh": "第一幕·暗港",
+   "monsters": {
+    "CalcifiedCultist": {
+     "name_zh": "钙化邪教徒",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "CorpseSlug": {
+     "name_zh": "噬尸蛞蝓",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "DampCultist": {
+     "name_zh": "潮湿邪教徒",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "FatGremlin": {
+     "name_zh": "胖地精",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    },
+    "FossilStalker": {
+     "name_zh": "化石追踪者",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "GasBomb": {
+     "name_zh": "气态炸弹",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    },
+    "GremlinMerc": {
+     "name_zh": "地精佣兵",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "HauntedShip": {
+     "name_zh": "幽灵船",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "LagavulinMatriarch": {
+     "name_zh": "乐加维林族母",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 7
+    },
+    "LivingFog": {
+     "name_zh": "活雾",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "PhantasmalGardener": {
+     "name_zh": "花园幽灵鳗",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 4
+    },
+    "PunchConstruct": {
+     "name_zh": "拳击构装体",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "Seapunk": {
+     "name_zh": "海洋混混",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "SewerClam": {
+     "name_zh": "下水道蚌",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "SkulkingColony": {
+     "name_zh": "鬼祟珊瑚群",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 9
+    },
+    "SludgeSpinner": {
+     "name_zh": "淤泥旋螺",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "SneakyGremlin": {
+     "name_zh": "卑鄙地精",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    },
+    "SoulFysh": {
+     "name_zh": "灵魂异鱼",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 7
+    },
+    "TerrorEel": {
+     "name_zh": "骇鳗",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 13
+    },
+    "Toadpole": {
+     "name_zh": "蟾蜍蝌蚪",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 1
+    },
+    "TwoTailedRat": {
+     "name_zh": "双尾鼠",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "WaterfallGiant": {
+     "name_zh": "瀑布巨兽",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 7
+    }
+   },
+   "encounters": {
+    "CorpseSlugsNormal": {
+     "name_zh": "许多噬尸蛞蝓",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "CorpseSlug",
+        "CorpseSlug",
+        "CorpseSlug"
+       ]
+      }
+     ],
+     "standard_cost": 9.0
+    },
+    "CorpseSlugsWeak": {
+     "name_zh": "一些噬尸蛞蝓",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "CorpseSlug",
+        "CorpseSlug"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "CultistsNormal": {
+     "name_zh": "邪教徒们",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "CalcifiedCultist",
+        "DampCultist"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "FossilStalkerNormal": {
+     "name_zh": "化石追踪者",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "FossilStalker"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "GremlinMercNormal": {
+     "name_zh": "穿着一件大衣的两只地精",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "GremlinMerc"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "HauntedShipNormal": {
+     "name_zh": "幽灵船",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "HauntedShip"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "LagavulinMatriarchBoss": {
+     "name_zh": "乐加维林族母",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "LagavulinMatriarch"
+       ]
+      }
+     ],
+     "standard_cost": 7.0
+    },
+    "LivingFogNormal": {
+     "name_zh": "邪恶气体",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "LivingFog"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "PhantasmalGardenersElite": {
+     "name_zh": "花园幽灵鳗",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "PhantasmalGardener",
+        "PhantasmalGardener",
+        "PhantasmalGardener",
+        "PhantasmalGardener"
+       ]
+      }
+     ],
+     "standard_cost": 16.0
+    },
+    "PunchConstructNormal": {
+     "name_zh": "拳击构装体",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "PunchConstruct"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "SeapunkNormal": {
+     "name_zh": "暗港野生动物",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "CalcifiedCultist",
+        "Seapunk"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "SeapunkWeak": {
+     "name_zh": "海洋混混",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Seapunk"
+       ]
+      }
+     ],
+     "standard_cost": 2.0
+    },
+    "SewerClamNormal": {
+     "name_zh": "下水道蚌",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SewerClam"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "SkulkingColonyElite": {
+     "name_zh": "鬼祟珊瑚群",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SkulkingColony"
+       ]
+      }
+     ],
+     "standard_cost": 9.0
+    },
+    "SludgeSpinnerWeak": {
+     "name_zh": "淤泥旋螺",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SludgeSpinner"
+       ]
+      }
+     ],
+     "standard_cost": 2.0
+    },
+    "SoulFyshBoss": {
+     "name_zh": "灵魂异鱼",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SoulFysh"
+       ]
+      }
+     ],
+     "standard_cost": 7.0
+    },
+    "TerrorEelElite": {
+     "name_zh": "骇鳗",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TerrorEel"
+       ]
+      }
+     ],
+     "standard_cost": 13.0
+    },
+    "ToadpolesWeak": {
+     "name_zh": "蟾蜍蝌蚪",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Toadpole",
+        "Toadpole"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    },
+    "TwoTailedRatsNormal": {
+     "name_zh": "双尾鼠",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TwoTailedRat",
+        "TwoTailedRat",
+        "TwoTailedRat"
+       ]
+      }
+     ],
+     "standard_cost": 9.0
+    },
+    "WaterfallGiantBoss": {
+     "name_zh": "瀑布巨兽",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "WaterfallGiant"
+       ]
+      }
+     ],
+     "standard_cost": 7.0
+    }
+   }
+  },
+  "Hive": {
+   "act_no": 2,
+   "name_zh": "第二幕·蜂巢",
+   "monsters": {
+    "BowlbugEgg": {
+     "name_zh": "盛碗虫（卵）",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 1
+    },
+    "BowlbugNectar": {
+     "name_zh": "盛碗虫（蜜）",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "BowlbugRock": {
+     "name_zh": "盛碗虫（石）",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "BowlbugSilk": {
+     "name_zh": "盛碗虫（丝）",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 1
+    },
+    "Chomper": {
+     "name_zh": "啃咬机",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "Crusher": {
+     "name_zh": "碾碎爪",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 5
+    },
+    "DecimillipedeSegment": {
+     "name_zh": "残杀千足虫",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 6
+    },
+    "Entomancer": {
+     "name_zh": "蜂群术士",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 11
+    },
+    "Exoskeleton": {
+     "name_zh": "外骨骼虫",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 1
+    },
+    "HunterKiller": {
+     "name_zh": "猎人杀手",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 4
+    },
+    "InfestedPrism": {
+     "name_zh": "感染棱柱",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 12
+    },
+    "KnowledgeDemon": {
+     "name_zh": "知识恶魔",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 10
+    },
+    "LouseProgenitor": {
+     "name_zh": "虱虫之祖",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 5
+    },
+    "Myte": {
+     "name_zh": "异螨",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "Ovicopter": {
+     "name_zh": "直飞产卵虫",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 4
+    },
+    "Parafright": {
+     "name_zh": "寄生惧魔",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 2
+    },
+    "Rocket": {
+     "name_zh": "火箭",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 5
+    },
+    "SlumberingBeetle": {
+     "name_zh": "熟睡甲虫",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "SpinyToad": {
+     "name_zh": "棘刺蟾蜍",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 4
+    },
+    "TheInsatiable": {
+     "name_zh": "无厌沙虫",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 9
+    },
+    "TheObscura": {
+     "name_zh": "胧光怪",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 4
+    },
+    "ThievingHopper": {
+     "name_zh": "偷窃草蜢",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 4
+    },
+    "ToughEgg": {
+     "name_zh": "结实的卵",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    },
+    "Tunneler": {
+     "name_zh": "地道虫",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 3
+    }
+   },
+   "encounters": {
+    "BowlbugsNormal": {
+     "name_zh": "盛碗虫群",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 0.333333,
+       "monsters": [
+        "BowlbugRock",
+        "BowlbugEgg",
+        "BowlbugSilk"
+       ]
+      },
+      {
+       "p": 0.333333,
+       "monsters": [
+        "BowlbugRock",
+        "BowlbugEgg",
+        "BowlbugNectar"
+       ]
+      },
+      {
+       "p": 0.333333,
+       "monsters": [
+        "BowlbugRock",
+        "BowlbugSilk",
+        "BowlbugNectar"
+       ]
+      }
+     ],
+     "standard_cost": 7.67
+    },
+    "BowlbugsWeak": {
+     "name_zh": "盛碗虫",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 0.5,
+       "monsters": [
+        "BowlbugRock",
+        "BowlbugEgg"
+       ]
+      },
+      {
+       "p": 0.5,
+       "monsters": [
+        "BowlbugRock",
+        "BowlbugNectar"
+       ]
+      }
+     ],
+     "standard_cost": 4.5
+    },
+    "ChompersNormal": {
+     "name_zh": "一对自动机械",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Chomper",
+        "Chomper"
+       ]
+      }
+     ],
+     "standard_cost": 7.0
+    },
+    "DecimillipedeElite": {
+     "name_zh": "残杀千足虫",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "DecimillipedeSegment",
+        "DecimillipedeSegment",
+        "DecimillipedeSegment"
+       ]
+      }
+     ],
+     "standard_cost": 18.0
+    },
+    "EntomancerElite": {
+     "name_zh": "蜂群术士",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Entomancer"
+       ]
+      }
+     ],
+     "standard_cost": 11.0
+    },
+    "ExoskeletonsNormal": {
+     "name_zh": "许多外骨骼虫",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Exoskeleton",
+        "Exoskeleton",
+        "Exoskeleton",
+        "Exoskeleton"
+       ]
+      }
+     ],
+     "standard_cost": 10.0
+    },
+    "ExoskeletonsWeak": {
+     "name_zh": "外骨骼虫",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Exoskeleton",
+        "Exoskeleton",
+        "Exoskeleton"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    },
+    "HunterKillerNormal": {
+     "name_zh": "猎人杀手",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "HunterKiller"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "KaiserCrabBoss": {
+     "name_zh": "帝皇蟹",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Crusher",
+        "Rocket"
+       ]
+      }
+     ],
+     "standard_cost": 11.0
+    },
+    "InfestedPrismsElite": {
+     "name_zh": "感染棱柱",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "InfestedPrism"
+       ]
+      }
+     ],
+     "standard_cost": 12.0
+    },
+    "KnowledgeDemonBoss": {
+     "name_zh": "知识恶魔",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "KnowledgeDemon"
+       ]
+      }
+     ],
+     "standard_cost": 10.0
+    },
+    "LouseProgenitorNormal": {
+     "name_zh": "虱虫之祖",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "LouseProgenitor"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "MytesNormal": {
+     "name_zh": "一群异螨",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Myte",
+        "Myte"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "OvicopterNormal": {
+     "name_zh": "直飞产卵虫",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Ovicopter"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "SlumberingBeetleNormal": {
+     "name_zh": "熟睡派对",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "BowlbugRock",
+        "BowlbugSilk",
+        "SlumberingBeetle"
+       ]
+      }
+     ],
+     "standard_cost": 9.0
+    },
+    "SpinyToadNormal": {
+     "name_zh": "棘刺蟾蜍",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SpinyToad"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "TheInsatiableBoss": {
+     "name_zh": "无厌沙虫",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TheInsatiable"
+       ]
+      }
+     ],
+     "standard_cost": 9.0
+    },
+    "TheObscuraNormal": {
+     "name_zh": "胧光怪",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TheObscura"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "ThievingHopperWeak": {
+     "name_zh": "偷窃草蜢",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "ThievingHopper"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "TunnelerWeak": {
+     "name_zh": "地道虫",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Tunneler"
+       ]
+      }
+     ],
+     "standard_cost": 3.0
+    }
+   }
+  },
+  "Glory": {
+   "act_no": 3,
+   "name_zh": "第三幕·荣耀",
+   "monsters": {
+    "Aeonglass": {
+     "name_zh": "永世沙漏",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 12
+    },
+    "Axebot": {
+     "name_zh": "巨斧机器人",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 6
+    },
+    "CubexConstruct": {
+     "name_zh": "方柱构装体",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "DevotedSculptor": {
+     "name_zh": "虔诚雕刻师",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 4
+    },
+    "Fabricator": {
+     "name_zh": "组装师",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 4
+    },
+    "FlailKnight": {
+     "name_zh": "连枷骑士",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 7
+    },
+    "FrogKnight": {
+     "name_zh": "青蛙骑士",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 6
+    },
+    "GlobeHead": {
+     "name_zh": "电球头",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 5
+    },
+    "Guardbot": {
+     "name_zh": "守护机器人",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    },
+    "LivingShield": {
+     "name_zh": "活体盾",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 3
+    },
+    "MagiKnight": {
+     "name_zh": "魔法骑士",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 6
+    },
+    "MechaKnight": {
+     "name_zh": "机甲骑士",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 18
+    },
+    "Noisebot": {
+     "name_zh": "噪音机器人",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 1
+    },
+    "OwlMagistrate": {
+     "name_zh": "猫头鹰法官",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 6
+    },
+    "PunchConstruct": {
+     "name_zh": "拳击构装体",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 2
+    },
+    "Queen": {
+     "name_zh": "女王",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 8
+    },
+    "ScrollOfBiting": {
+     "name_zh": "咬人卷轴",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "SlimedBerserker": {
+     "name_zh": "史莱姆狂战士",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 6
+    },
+    "SoulNexus": {
+     "name_zh": "灵魂枢纽",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 16
+    },
+    "SpectralKnight": {
+     "name_zh": "幽灵骑士",
+     "role": "Elite",
+     "weak_pool": false,
+     "price": 7
+    },
+    "Stabbot": {
+     "name_zh": "戳刺机器人",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 2
+    },
+    "TestSubject": {
+     "name_zh": "实验体 #C{Count}",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 13
+    },
+    "TheForgotten": {
+     "name_zh": "遗忘之物",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "TheLost": {
+     "name_zh": "失落之物",
+     "role": "Normal",
+     "weak_pool": false,
+     "price": 3
+    },
+    "TorchHeadAmalgam": {
+     "name_zh": "火炬头聚合体",
+     "role": "Boss",
+     "weak_pool": false,
+     "price": 5
+    },
+    "TurretOperator": {
+     "name_zh": "高塔炮手",
+     "role": "Normal",
+     "weak_pool": true,
+     "price": 2
+    },
+    "Zapbot": {
+     "name_zh": "电击机器人",
+     "role": "Summon",
+     "weak_pool": false,
+     "price": 2
+    }
+   },
+   "encounters": {
+    "AxebotsNormal": {
+     "name_zh": "巨斧机器人",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Axebot"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    },
+    "ConstructMenagerieNormal": {
+     "name_zh": "一些构装体",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "PunchConstruct",
+        "CubexConstruct",
+        "CubexConstruct"
+       ]
+      }
+     ],
+     "standard_cost": 11.0
+    },
+    "DevotedSculptorWeak": {
+     "name_zh": "虔诚雕刻师",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "DevotedSculptor"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "AeonglassBoss": {
+     "name_zh": "永世沙漏",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Aeonglass"
+       ]
+      }
+     ],
+     "standard_cost": 12.0
+    },
+    "FabricatorNormal": {
+     "name_zh": "组装师",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "Fabricator"
+       ]
+      }
+     ],
+     "standard_cost": 4.0
+    },
+    "FrogKnightNormal": {
+     "name_zh": "青蛙骑士",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "FrogKnight"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    },
+    "GlobeHeadNormal": {
+     "name_zh": "一个孤单的电球头",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "GlobeHead"
+       ]
+      }
+     ],
+     "standard_cost": 5.0
+    },
+    "KnightsElite": {
+     "name_zh": "骑士团伙",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "FlailKnight",
+        "SpectralKnight",
+        "MagiKnight"
+       ]
+      }
+     ],
+     "standard_cost": 20.0
+    },
+    "MechaKnightElite": {
+     "name_zh": "机甲骑士",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "MechaKnight"
+       ]
+      }
+     ],
+     "standard_cost": 18.0
+    },
+    "OwlMagistrateNormal": {
+     "name_zh": "猫头鹰法官",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "OwlMagistrate"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    },
+    "QueenBoss": {
+     "name_zh": "女王",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TorchHeadAmalgam",
+        "Queen"
+       ]
+      }
+     ],
+     "standard_cost": 14.0
+    },
+    "ScrollsOfBitingNormal": {
+     "name_zh": "许多咬人卷轴",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "ScrollOfBiting",
+        "ScrollOfBiting",
+        "ScrollOfBiting",
+        "ScrollOfBiting"
+       ]
+      }
+     ],
+     "standard_cost": 14.0
+    },
+    "ScrollsOfBitingWeak": {
+     "name_zh": "咬人卷轴",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "ScrollOfBiting",
+        "ScrollOfBiting",
+        "ScrollOfBiting"
+       ]
+      }
+     ],
+     "standard_cost": 9.0
+    },
+    "SlimedBerserkerNormal": {
+     "name_zh": "史莱姆狂战士",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SlimedBerserker"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    },
+    "SoulNexusElite": {
+     "name_zh": "灵魂枢纽",
+     "room": "Elite",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "SoulNexus"
+       ]
+      }
+     ],
+     "standard_cost": 16.0
+    },
+    "TestSubjectBoss": {
+     "name_zh": "实验体",
+     "room": "Boss",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TestSubject"
+       ]
+      }
+     ],
+     "standard_cost": 13.0
+    },
+    "TheLostAndForgottenNormal": {
+     "name_zh": "失落与遗忘之物",
+     "room": "Monster",
+     "weak": false,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "TheLost",
+        "TheForgotten"
+       ]
+      }
+     ],
+     "standard_cost": 7.0
+    },
+    "TurretOperatorWeak": {
+     "name_zh": "高塔炮手",
+     "room": "Monster",
+     "weak": true,
+     "lineups": [
+      {
+       "p": 1,
+       "monsters": [
+        "LivingShield",
+        "TurretOperator"
+       ]
+      }
+     ],
+     "standard_cost": 6.0
+    }
+   }
+  }
+ }
+}
