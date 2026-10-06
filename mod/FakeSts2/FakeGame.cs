@@ -87,6 +87,7 @@ namespace MegaCrit.Sts2.Core.Runs
         public int TotalFloor { get; set; }
         public ActModel Act { get; set; } = new MegaCrit.Sts2.Core.Models.Acts.Overgrowth();
         public RunRng Rng { get; } = new();
+        public List<MegaCrit.Sts2.Core.Entities.Players.Player> Players { get; } = new();
     }
     public sealed class RunRng { public ulong Seed { get; set; } = 123; }
 }
@@ -97,6 +98,27 @@ namespace MegaCrit.Sts2.Core.Combat
     {
         public EncounterModel Encounter { get; } = encounter;
         public MegaCrit.Sts2.Core.Runs.IRunState RunState { get; } = runState;
+        public IReadOnlyList<MegaCrit.Sts2.Core.Entities.Players.Player> Players =>
+            (RunState as MegaCrit.Sts2.Core.Runs.RunState)?.Players ?? [];
+        public List<MegaCrit.Sts2.Core.Entities.Creatures.Creature> Enemies { get; } = new();
+
+        // 真游戏：按人数缩放怪物血量（调用方读 Players.Count 传进公式）
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public MegaCrit.Sts2.Core.Entities.Creatures.Creature CreateCreature(MonsterModel monster, int baseHp)
+        {
+            var creature = new MegaCrit.Sts2.Core.Entities.Creatures.Creature(
+                MegaCrit.Sts2.Core.Entities.Creatures.Creature.ScaleHpForMultiplayer(baseHp, Players.Count)) { Monster = monster };
+            Enemies.Add(creature);
+            return creature;
+        }
+    }
+
+    public sealed class CombatManager
+    {
+        public CombatState? State { get; private set; }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void SetUpCombat(CombatState state) => State = state;
     }
 }
 
@@ -152,4 +174,37 @@ namespace MegaCrit.Sts2.Core.Models.Encounters
 namespace MegaCrit.Sts2.Core.Models.Acts
 {
     public sealed class Overgrowth() : ActModel(ModelDb.Encounter<MawlerNormal>()) { }
+}
+
+namespace MegaCrit.Sts2.Core.Entities.Creatures
+{
+    public sealed class Creature(int maxHp)
+    {
+        public int MaxHp { get; } = maxHp;
+        public int CurrentHp { get; private set; } = maxHp;
+        public bool IsDead => CurrentHp <= 0;
+        public MegaCrit.Sts2.Core.Entities.Players.Player? Player { get; init; }
+        public MonsterModel? Monster { get; init; }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static int ScaleHpForMultiplayer(int hp, int playerCount) => hp * playerCount;
+    }
+}
+namespace MegaCrit.Sts2.Core.Models.Powers
+{
+    /// <summary>仿造按人数缩放层数的能力（范围内，应改写）。</summary>
+    public static class FakeScaledPower
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static int Amount(MegaCrit.Sts2.Core.Combat.CombatState state, int baseAmount) => baseAmount * state.Players.Count;
+    }
+}
+namespace MegaCrit.Sts2.Core.Multiplayer.Game
+{
+    /// <summary>仿造等所有玩家投票的同步器（范围外，不应改写）。</summary>
+    public static class FakeVoteSynchronizer
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool AllVoted(MegaCrit.Sts2.Core.Combat.CombatState state, int votes) => votes >= state.Players.Count;
+    }
 }

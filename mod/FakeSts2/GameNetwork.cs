@@ -9,7 +9,12 @@ namespace MegaCrit.Sts2.Core.Entities.Multiplayer
 }
 namespace MegaCrit.Sts2.Core.Entities.Players
 {
-    public sealed class Player(ulong id) { public ulong NetId { get; } = id; }
+    public sealed class Player
+    {
+        public Player(ulong id) { NetId = id; Creature = new MegaCrit.Sts2.Core.Entities.Creatures.Creature(80) { Player = this }; }
+        public ulong NetId { get; }
+        public MegaCrit.Sts2.Core.Entities.Creatures.Creature Creature { get; }
+    }
 }
 namespace MegaCrit.Sts2.Core.Multiplayer.Serialization
 {

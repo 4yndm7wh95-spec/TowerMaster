@@ -45,7 +45,12 @@ internal static class GameProbe
     ];
 
     /// <summary>这些类型把全部成员签名都写出来，后面写补丁要用。</summary>
-    private static readonly string[] DumpAllMembers = ["ModelDb", "INetAction", "INetMessage", "IPacketSerializable", "ModInitializerAttribute"];
+    private static readonly string[] DumpAllMembers =
+    [
+        "ModelDb", "INetAction", "INetMessage", "IPacketSerializable", "ModInitializerAttribute",
+        // 测试 2：塔主退场、胜负、复活、人数缩放要用
+        "Player", "Creature", "CombatState", "CombatManager", "MultiplayerScalingModel", "CreatureCmd", "LocalContext",
+    ];
 
     public static void Run()
     {

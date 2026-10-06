@@ -119,6 +119,7 @@ internal static class GameReflection
     {
         if (value == null) return "null";
         if (value is string s) return s;
+        if (value.GetType().IsPrimitive || value is decimal || value.GetType().IsEnum) return value.ToString() ?? "";
         if (depth > 2) return value.GetType().Name;
         var type = value.GetType();
         if (type.FullName?.StartsWith("System.ValueTuple") == true)
