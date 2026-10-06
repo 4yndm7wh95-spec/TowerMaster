@@ -240,6 +240,7 @@ internal sealed class SummonPanel : ISummonUi
                 MouseFilter = G.Control.MouseFilterEnum.Ignore,
             };
             container.AddChild(viewport);
+            FreezeAfterFirstFrames(viewport, visuals);
             return container;
         }
         catch (Exception e)
@@ -247,6 +248,24 @@ internal sealed class SummonPanel : ISummonUi
             Log.Warn($"召唤面板：画不出 {monsterId} 的形象，只显示名字：{e.InnerException?.Message ?? e.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// 省性能：模型摆好姿势、画出头几帧后就定格——视口不再每帧重画，模型（含 Spine 动画）暂停处理。
+    /// 十几张卡片同时开着也几乎没有持续开销，代价是怪物不会动。
+    /// </summary>
+    private static void FreezeAfterFirstFrames(G.SubViewport viewport, G.Node2D visuals, int frames = 5)
+    {
+        int left = frames;
+        void Tick()
+        {
+            if (!G.GodotObject.IsInstanceValid(viewport)) { Tree.ProcessFrame -= Tick; return; }
+            if (--left > 0) return;
+            Tree.ProcessFrame -= Tick;
+            viewport.RenderTargetUpdateMode = G.SubViewport.UpdateMode.Disabled;
+            if (G.GodotObject.IsInstanceValid(visuals)) visuals.ProcessMode = G.Node.ProcessModeEnum.Disabled;
+        }
+        Tree.ProcessFrame += Tick;
     }
 
     private void BuildChosenTray(G.VBoxContainer box)
