@@ -366,7 +366,7 @@ TOOLS = [
          lambda a: call(a["instance"], "/cards/pick", {"index": a["index"], "confirm": a.get("confirm", False)})),
     tool("tm_hand", "本机玩家手牌（序号、类型、标题、目标类型、费用）、能量、回合数、怪物下标，以及是否正被塔主回合暂停。", INST, ["instance"],
          lambda a: call(a["instance"], "/combat/hand")),
-    tool("tm_play", "本机玩家打出第 index 张手牌（入队原版 PlayCardAction）；需要目标的牌给 target（怪物下标）。只代表入队，用 tm_hand 看是否打出。",
+    tool("tm_play", "本机玩家打出第 index 张手牌（入队原版 PlayCardAction）；单体攻击牌可给 target（怪物下标，不给就打第一只活着的怪），其他牌的目标按牌的类型自动处理。只代表入队，用 tm_hand 看是否打出。",
          {**INST, "index": I, "target": I}, ["instance", "index"],
          lambda a: call(a["instance"], "/combat/play", {k: a[k] for k in ("index", "target") if k in a})),
     tool("tm_end_turn", "本机玩家结束回合（入队原版 EndPlayerTurnAction）。", INST, ["instance"],

@@ -650,18 +650,27 @@ internal static class TestBridge
         var cards = (GameReflection.Get(GameReflection.Get(pcs, "Hand")!, "Cards") as IEnumerable)!.Cast<object>().ToList();
         int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
         if (index < 0 || index >= cards.Count) throw Fail("bad_request", $"手牌只有 {cards.Count} 张");
+        // 按牌的 TargetType 定目标（0.0.21 实测：给「自身」牌传怪物目标，原版取消这张牌并报 ERROR）：
+        // 单体敌人牌用给的 target，没给就打第一只活着的怪；指定友方的牌打自己；其他（自身、全体、随机、无）不给目标
+        var targetType = GameReflection.Get(cards[index], "TargetType")?.ToString();
         object? target = null;
-        if (a["target"]?.GetValue<int>() is { } t)
+        var enemies = (GameReflection.Get(CombatState()!, "Enemies") as IEnumerable)!.Cast<object>().ToList();
+        if (targetType == "AnyEnemy")
         {
-            var enemies = (GameReflection.Get(CombatState()!, "Enemies") as IEnumerable)!.Cast<object>().ToList();
-            if (t < 0 || t >= enemies.Count) throw Fail("bad_request", $"只有 {enemies.Count} 只怪");
-            target = enemies[t];
+            if (a["target"]?.GetValue<int>() is { } t)
+            {
+                if (t < 0 || t >= enemies.Count) throw Fail("bad_request", $"只有 {enemies.Count} 只怪");
+                target = enemies[t];
+            }
+            else target = enemies.FirstOrDefault(e => GameReflection.Get(e, "IsAlive") is true)
+                          ?? throw Fail("invalid_phase", "没有活着的怪可以打");
         }
+        else if (targetType is "AnyAlly" or "AnyPlayer") target = GameReflection.Get(player, "Creature");
         var type = RuntimeNetAction.Required("PlayCardAction");
         var ctor = type.GetConstructors(GameReflection.All).First(c => c.GetParameters().Length == 2 && c.GetParameters()[0].ParameterType.Name == "CardModel");
         var action = ctor.Invoke([cards[index], target]);
         RuntimeNetAction.Call(GameReflection.Get(RunOrNull()!, "ActionQueueSynchronizer")!, "RequestEnqueue", action);
-        return new { enqueued = cards[index].GetType().Name, target = a["target"]?.GetValue<int>() };
+        return new { enqueued = cards[index].GetType().Name, target_type = targetType, target = target == null ? null : enemies.IndexOf(target) is var i && i >= 0 ? $"enemy {i}" : "self" };
     }
 
     /// <summary>本机玩家结束回合：入队 EndPlayerTurnAction(Player, 回合数)，和按结束回合按钮一样。</summary>

@@ -1,3 +1,9 @@
+## 0.0.21 实测通过（2026-10-06）
+
+塔主回合：不同步已修（首场 5 回合不用 win，两端 37 条塔主回合日志一致，StateDivergence 0）；暂停期间出牌、结束回合会排队，塔主结束后执行；格挡、力量、回血、虚弱/易伤/脆弱、眩晕、全体力量都通过；同回合第二次减益被拒；精英 4 点、Boss 5 点；面板左侧、无倒计时。
+小问题：控制台 win 在塔主回合中也会排队（tm_battle 已先结束塔主回合）；爬塔玩家有 2 次原版多人位置图标 CompressedTexture2D 已释放异常（NMultiplayerPlayerState.TweenLocationIconIn），未归因。
+接口：tm_play 按牌的 TargetType 自动定目标（之前给自身牌传怪物目标会被原版取消）。
+
 ## 0.0.20 实测 → 0.0.21（塔主回合不同步修复）
 
 0.0.20 实测：第一回合正常（威胁点 3、看得到手牌、超时结束）；第二回合开始 StateDivergence（校验 ID 9：房主「After player turn start」，客户端「finished action execution TowerMasterSummonGameAction」，客户端手牌还在抽牌堆）。
