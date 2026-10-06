@@ -91,7 +91,7 @@ public class SummonPhaseTests
         var session = Assert.Single(Shown).Session;
         Assert.Equal(RoomKind.Monster, session.Room.Room);
         Assert.True(session.IsOpeningProtected); // 第一幕第一场：开局保护
-        Assert.All(session.Options, o => Assert.Contains(o.Id, new[] { "FuzzyWurmCrawler", "Nibbit", "ShrinkerBeetle", "LeafSlimeM", "LeafSlimeS", "TwigSlimeM", "TwigSlimeS" }));
+        Assert.All(session.MonsterOptions, o => Assert.Contains(o.Id, new[] { "FuzzyWurmCrawler", "Nibbit", "ShrinkerBeetle", "LeafSlimeM", "LeafSlimeS", "TwigSlimeM", "TwigSlimeS" }));
 
         session.Click("Nibbit");
         Assert.True(session.Quote.Ok, string.Join(",", session.Quote.Violations)); // 开局保护标准开销 3，小啃兽 2
@@ -111,17 +111,19 @@ public class SummonPhaseTests
     }
 
     [Fact]
-    public async Task TimeoutUsesVanillaAndChargesStandardCost()
+    public async Task NoTimeLimitByDefaultAndVanillaChargesStandardCost()
     {
         var queue = Init();
         queue.RequestEnqueue(MoveTo(MapPointType.Monster));
         var session = Shown.Single().Session;
-        session.Tick(10);
+        Assert.True(session.Unlimited);
+        session.Tick(1000); // 不限时：多久都不会自动结束
+        Assert.False(session.Done);
         Assert.Empty(queue.Queued);
-        session.Tick(25); // 默认 30 秒
+        session.UseVanilla();
         Assert.IsType<MoveToMapCoordAction>(Assert.Single(queue.Queued)); // 没有清单，只放行移动
         Assert.Equal(7, MasterLedger.Wallet!.Points); // 开局保护标准开销 3
-        Assert.IsNotType<CultistsNormal>(await RunQueueAndEnter(queue, RoomType.Monster)); // 没有混搭（同进程里测试 1a 可能把原版遭遇换掉，所以不断言具体是哪个）
+        Assert.IsNotType<CultistsNormal>(await RunQueueAndEnter(queue, RoomType.Monster)); // 没有混搭（同进程里测试 1a 可能换掉原版遭遇）
     }
 
     [Fact]
@@ -140,32 +142,37 @@ public class SummonPhaseTests
     }
 
     [Fact]
-    public async Task EliteAndBossRoomsSwapEncounter()
+    public async Task EliteRoomMixesAnyMonstersAtDiscountAndBossTakesExtras()
     {
         var queue = Init();
         queue.RequestEnqueue(MoveTo(MapPointType.Elite));
         var session = Shown.Single().Session;
-        Assert.Equal("BygoneEffigyElite", session.Encounter); // 默认最便宜的
-        session.Click("ByrdonisElite");
+        Assert.Empty(session.EncounterOptions);                       // 精英房不再选遭遇
+        Assert.Equal(7, session.MonsterOptions.Single(o => o.Id == "Byrdonis").Price); // 七折
+        session.Click("Byrdonis");
         Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
-        Assert.Equal(1, MasterLedger.Wallet!.Points); // 10 − 9
-        Assert.IsType<ByrdonisElite>(await RunQueueAndEnter(queue, RoomType.Elite));
+        Assert.Equal(3, MasterLedger.Wallet!.Points); // 10 − 7
+        var elite = await RunQueueAndEnter(queue, RoomType.Elite);
+        Assert.IsType<BygoneEffigyElite>(elite);      // 精英载体：无专用场景的精英遭遇，房间类型、奖励仍是精英
+        Assert.Equal(new[] { "Byrdonis" }, Names(elite));
 
         queue.Queued.Clear();
         Shown.Clear();
         queue.RequestEnqueue(MoveTo(MapPointType.Boss));
         session = Shown.Single().Session;
-        Assert.Equal("VantomBoss", session.Options[0].Id); // 候选第一个是游戏本来的 Boss
-        Assert.Equal(0, session.Room.StandardCostOverride); // Boss 免费，没有标准开销
-        Assert.Equal(2, session.Options.Count);
+        Assert.Equal("VantomBoss", session.EncounterOptions[0].Id); // 候选第一个是游戏本来的 Boss
+        Assert.Equal(2, session.EncounterOptions.Count);
+        Assert.Equal(0, session.Room.StandardCostOverride);         // Boss 免费，没有标准开销
         Assert.Equal("Vantom", session.LeadMonsterOf("VantomBoss"));
         Assert.Equal("KinPriest", session.LeadMonsterOf("TheKinBoss")); // 画同族神官，不是信徒
-        var other = session.Options[1].Id;
+        var other = session.EncounterOptions[1].Id;
         session.Click(other);
-        Assert.True(session.Confirm());
-        Assert.Equal(1, MasterLedger.Wallet!.Points); // Boss 免费
+        session.Click("LeafSlimeS"); // 另加：1 点 + 税 1
+        Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
+        Assert.Equal(1, MasterLedger.Wallet!.Points);
         var boss = await RunQueueAndEnter(queue, RoomType.Boss);
         Assert.Equal(other, boss.GetType().Name);
+        Assert.Equal(new[] { "Mawler", "LeafSlimeS" }, Names(boss)); // Boss 本体（假游戏里是蛮兽）+ 另加的怪
     }
 
     [Fact]
@@ -203,7 +210,7 @@ public class SummonPhaseTests
         Init();
         Assert.True(SummonPhase.MonsterFilter("Overgrowth", "Mawler"));   // MawlerNormal：无场景、无槽位
         Assert.False(SummonPhase.MonsterFilter("Overgrowth", "Inklet"));  // InkletsNormal 有命名槽位
-        Assert.False(SummonPhase.MonsterFilter("Overgrowth", "Byrdonis")); // 只看普通房遭遇，精英的怪不算
+        Assert.True(SummonPhase.MonsterFilter("Overgrowth", "Byrdonis")); // 精英遭遇无场景：精英也能召唤
     }
 
     [Fact]
@@ -231,16 +238,40 @@ public class SummonPhaseTests
     }
 
     [Fact]
-    public async Task SameEliteAsOriginalIsNotReplaced()
+    public async Task SameBossAsOriginalIsNotReplaced()
     {
         var queue = Init();
-        queue.RequestEnqueue(MoveTo(MapPointType.Elite));
+        queue.RequestEnqueue(MoveTo(MapPointType.Boss));
         var session = Shown.Single().Session;
-        Assert.Equal("BygoneEffigyElite", session.Encounter); // 正好是假游戏的原版精英
-        Assert.True(session.Confirm());
-        var original = ModelDb.Encounter<BygoneEffigyElite>();
+        Assert.True(session.Confirm()); // 默认就是原版 Boss，不另加
+        var original = ModelDb.Encounter<VantomBoss>();
         foreach (var action in queue.Queued.ToList()) await action.Execute();
-        Assert.Same(original, new Overgrowth().PullNextEncounter(RoomType.Elite)); // 原样返回，没有换成另一个对象
+        Assert.Same(original, new Overgrowth().PullNextEncounter(RoomType.Boss)); // 原样返回
         Assert.Contains("不替换", File.ReadAllText(Path.Combine(Log.ModDir, "TowerMaster.log")));
     }
+
+    [Fact]
+    public async Task LaterActMonsterArrivesWithLessHp()
+    {
+        var queue = Init();
+        var run = (RunState)RunManager.Instance.State;
+        MasterLedger.For(run.Rng.Seed, 1);
+        for (int i = 0; i < 3; i++) MasterLedger.CountBattle(); // 过了开局保护
+        queue.RequestEnqueue(MoveTo(MapPointType.Monster));
+        var session = Shown.Single().Session;
+        var chomper = session.MonsterOptions.Single(o => o.Id == "Chomper"); // 第二幕的怪
+        Assert.Equal(2, chomper.HomeAct);
+        Assert.Equal(0.8, chomper.HpFactor, 6);
+        session.Click("Chomper");
+        Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
+        var encounter = await RunQueueAndEnter(queue, RoomType.Monster);
+
+        var state = new CombatState(encounter, run);
+        // 同进程里测试 2 的人数改写可能挂着也可能没挂，所以和同样血量的「不是召唤来的」怪比
+        var normal = state.CreateCreature(new MegaCrit.Sts2.Core.Models.Monsters.Mawler(), 50);
+        var creature = state.CreateCreature(encounter.MonstersWithSlots.Single().Monster, 50);
+        Assert.Equal((int)Math.Round(normal.MaxHp * 0.8), creature.MaxHp);
+        Assert.Equal(creature.MaxHp, creature.CurrentHp);
+    }
+
 }

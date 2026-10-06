@@ -15,6 +15,14 @@ public sealed class PriceBook
 {
     [JsonPropertyName("version")] public string Version { get; set; } = "";
     [JsonPropertyName("acts")] public Dictionary<string, ActPrices> Acts { get; set; } = new();
+    [JsonPropertyName("act_coefficient")] public Dictionary<string, double> ActCoefficient { get; set; } = new();
+    [JsonPropertyName("elite_multiplier")] public double EliteMultiplier { get; set; } = 1;
+    /// <summary>所有普通、精英怪的战力组成（召唤阶段任何幕的怪都能召唤，价格现算）。</summary>
+    [JsonPropertyName("all_monsters")] public Dictionary<string, MonsterStats> AllMonsters { get; set; } = new();
+
+    /// <summary>幕系数；超出范围取最后一幕。</summary>
+    public double Coefficient(int actNo) =>
+        ActCoefficient.TryGetValue(actNo.ToString(), out var k) ? k : ActCoefficient.OrderBy(p => p.Key).Last().Value;
 
     public static PriceBook FromJson(string json)
     {
@@ -88,4 +96,17 @@ public sealed class Lineup
 {
     [JsonPropertyName("p")] public double P { get; set; }
     [JsonPropertyName("monsters")] public List<string> Monsters { get; set; } = new();
+}
+
+public sealed class MonsterStats
+{
+    [JsonPropertyName("name_zh")] public string NameZh { get; set; } = "";
+    [JsonPropertyName("role")] public MonsterRole Role { get; set; }
+    /// <summary>最早出现在第几幕（密林、暗港都算第一幕）。</summary>
+    [JsonPropertyName("home_act")] public int HomeAct { get; set; }
+    /// <summary>有效血量（平均最大生命 + 复活、分裂等换算的额外血量）。</summary>
+    [JsonPropertyName("ehp")] public double EffectiveHp { get; set; }
+    /// <summary>前 3 回合意图伤害合计。</summary>
+    [JsonPropertyName("damage")] public double Damage { get; set; }
+    [JsonPropertyName("mechanics")] public double Mechanics { get; set; }
 }

@@ -29,8 +29,10 @@ internal sealed class SummonPanel : ISummonUi
 
     private readonly SummonSession _session;
     private G.CanvasLayer? _layer;
-    private G.Label _timer = null!, _status = null!, _emptyHint = null!;
-    private G.ProgressBar _timerBar = null!, _capBar = null!;
+    private G.Label? _timer;
+    private G.Label _status = null!, _emptyHint = null!;
+    private G.ProgressBar? _timerBar;
+    private G.ProgressBar _capBar = null!;
     private G.HFlowContainer? _chosen;
     private G.VBoxContainer _problems = null!;
     private G.Button _confirm = null!;
@@ -63,14 +65,22 @@ internal sealed class SummonPanel : ISummonUi
         panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 3, 14, 28, shadow: 24));
         center.AddChild(panel);
 
-        var box = new G.VBoxContainer();
-        box.AddThemeConstantOverride("separation", 16);
-        panel.AddChild(box);
+        // 内容放进滚动区：高度跟内容走，最多到窗口高度减边距（Boss 房内容多时可以滚动，内容少时不留空白）
+        var outer = new G.ScrollContainer { HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled };
+        panel.AddChild(outer);
+        var box = new G.VBoxContainer { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
+        box.AddThemeConstantOverride("separation", 14);
+        outer.AddChild(box);
+        box.Resized += () =>
+        {
+            float maxHeight = Tree.Root.GetVisibleRect().Size.Y - 140;
+            outer.CustomMinimumSize = new G.Vector2(0, Math.Min(box.Size.Y, maxHeight));
+        };
 
         BuildHeader(box);
         box.AddChild(Divider());
         BuildOptions(box);
-        if (_session.Room.Room == RoomKind.Monster) BuildChosenTray(box);
+        BuildChosenTray(box);
         BuildSummary(box);
         BuildButtons(box);
 
@@ -109,21 +119,24 @@ internal sealed class SummonPanel : ISummonUi
         titles.AddChild(Text("召唤阶段", 40, Gold));
         titles.AddChild(Text(room.Room switch
         {
-            RoomKind.Monster => "挑选这场战斗的怪物",
-            RoomKind.Elite => "挑选一个精英遭遇",
-            _ => "从候选中挑选这一幕的 Boss",
+            RoomKind.Monster => "挑选这场战斗的怪物（任何一幕的怪都可以）",
+            RoomKind.Elite => "精英房是优惠房：所有怪打折，最多一只精英",
+            _ => "选一个 Boss（免费），还可以另加怪物",
         }, 20, TextDim));
         top.AddChild(titles);
         top.AddChild(Spacer());
 
-        var timerBox = new G.VBoxContainer { CustomMinimumSize = new G.Vector2(170, 0) };
-        timerBox.AddThemeConstantOverride("separation", 4);
-        _timer = Text("30", 40, TextMain);
-        _timer.HorizontalAlignment = G.HorizontalAlignment.Right;
-        timerBox.AddChild(_timer);
-        _timerBar = Bar(_totalSeconds, _totalSeconds, Gold, 8);
-        timerBox.AddChild(_timerBar);
-        top.AddChild(timerBox);
+        if (!_session.Unlimited) // 默认不限时（用户要求去掉倒计时）；配置里设了秒数才显示
+        {
+            var timerBox = new G.VBoxContainer { CustomMinimumSize = new G.Vector2(170, 0) };
+            timerBox.AddThemeConstantOverride("separation", 4);
+            _timer = Text("", 40, TextMain);
+            _timer.HorizontalAlignment = G.HorizontalAlignment.Right;
+            timerBox.AddChild(_timer);
+            _timerBar = Bar(_totalSeconds, _totalSeconds, Gold, 8);
+            timerBox.AddChild(_timerBar);
+            top.AddChild(timerBox);
+        }
         box.AddChild(top);
 
         var chips = new G.HFlowContainer();
@@ -133,69 +146,98 @@ internal sealed class SummonPanel : ISummonUi
         chips.AddChild(Chip($"召唤点 {room.Savings}", new G.Color(0.20f, 0.17f, 0.09f), Gold, GoldDim));
         if (room.Room != RoomKind.Boss)
             chips.AddChild(Chip($"标准开销 {room.StandardCostOverride ?? 0}", CardBg, TextMain, CardBorder));
+        if (room.Room == RoomKind.Elite)
+            chips.AddChild(Chip("全场七折", new G.Color(0.30f, 0.14f, 0.10f), new G.Color(1f, 0.75f, 0.55f), new G.Color(0.6f, 0.35f, 0.25f)));
         if (_session.IsOpeningProtected)
-            chips.AddChild(Chip("开局保护：只能用简单怪，不超过标准开销", new G.Color(0.12f, 0.24f, 0.18f), Good, new G.Color(0.25f, 0.45f, 0.30f)));
+            chips.AddChild(Chip("开局保护：只能用本幕简单怪，不超过标准开销", new G.Color(0.12f, 0.24f, 0.18f), Good, new G.Color(0.25f, 0.45f, 0.30f)));
         box.AddChild(chips);
     }
 
     private void BuildOptions(G.VBoxContainer box)
     {
         var room = _session.Room.Room;
-        var scroll = new G.ScrollContainer
+        if (room == RoomKind.Boss)
         {
-            CustomMinimumSize = new G.Vector2(0, room == RoomKind.Monster ? 470 : 250),
-            HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled,
-        };
-        var grid = new G.GridContainer { Columns = room == RoomKind.Monster ? 5 : 3, SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
+            box.AddChild(Text("选择 Boss（免费）", 21, Gold));
+            box.AddChild(OptionGrid(_session.EncounterOptions, 3, new G.Vector2(400, 130), 0));
+            box.AddChild(Text("另加怪物（可选；有专用场景的 Boss 不能另加）", 21, Gold));
+        }
+        box.AddChild(OptionGrid(_session.MonsterOptions, 5, new G.Vector2(230, 130), room == RoomKind.Boss ? 260 : 460));
+    }
+
+    /// <summary>一组卡片：滚动区 + 网格。height 为 0 时不滚动、按内容高度。</summary>
+    private G.Control OptionGrid(IReadOnlyList<SummonOption> options, int columns, G.Vector2 portraitSize, float height)
+    {
+        var grid = new G.GridContainer { Columns = columns, SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
         grid.AddThemeConstantOverride("h_separation", 12);
         grid.AddThemeConstantOverride("v_separation", 12);
-        scroll.AddChild(grid);
-        box.AddChild(scroll);
-
-        var portraitSize = room == RoomKind.Monster ? new G.Vector2(230, 150) : new G.Vector2(400, 170);
-        foreach (var option in _session.Options)
+        foreach (var option in options) grid.AddChild(OptionCard(option, portraitSize));
+        if (height <= 0) return grid;
+        var scroll = new G.ScrollContainer
         {
-            var card = new G.Button
-            {
-                FocusMode = G.Control.FocusModeEnum.None,
-                CustomMinimumSize = new G.Vector2(portraitSize.X + 24, portraitSize.Y + 70),
-                SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill,
-            };
-            StyleCard(card, selected: false);
+            CustomMinimumSize = new G.Vector2(0, height),
+            HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled,
+        };
+        scroll.AddChild(grid);
+        return scroll;
+    }
 
-            var margin = new G.MarginContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-            margin.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
-            foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" }) margin.AddThemeConstantOverride(side, 10);
-            var column = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-            column.AddThemeConstantOverride("separation", 6);
+    private G.Button OptionCard(SummonOption option, G.Vector2 portraitSize)
+    {
+        bool isEncounter = _session.EncounterOptions.Contains(option);
+        var card = new G.Button
+        {
+            FocusMode = G.Control.FocusModeEnum.None,
+            CustomMinimumSize = new G.Vector2(portraitSize.X + 24, portraitSize.Y + 104),
+            SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill,
+        };
+        StyleCard(card, selected: false);
 
-            // 怪物形象：遭遇就画它的第一只怪（Boss、精英本体）
-            var monsterId = room == RoomKind.Monster ? option.Id : _session.LeadMonsterOf(option.Id);
-            var portrait = monsterId == null ? null : Portrait(monsterId, portraitSize);
-            if (portrait != null) column.AddChild(portrait);
+        var margin = new G.MarginContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        margin.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
+        foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" }) margin.AddThemeConstantOverride(side, 10);
+        var column = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        column.AddThemeConstantOverride("separation", 6);
 
-            var row = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-            row.AddThemeConstantOverride("separation", 8);
-            var name = Text(option.Name, 22, TextMain);
-            name.SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill;
-            name.VerticalAlignment = G.VerticalAlignment.Center;
-            name.ClipText = true;
-            name.MouseFilter = G.Control.MouseFilterEnum.Ignore;
-            row.AddChild(name);
-            var count = Text("", 20, Gold);
-            count.VerticalAlignment = G.VerticalAlignment.Center;
-            count.MouseFilter = G.Control.MouseFilterEnum.Ignore;
-            row.AddChild(count);
-            row.AddChild(Chip(room == RoomKind.Boss ? "免费" : $"{option.Price} 点", new G.Color(0.20f, 0.17f, 0.09f), Gold, GoldDim));
-            column.AddChild(row);
-            margin.AddChild(column);
-            card.AddChild(margin);
+        // 怪物形象：Boss 画本体
+        var monsterId = isEncounter ? _session.LeadMonsterOf(option.Id) : option.Id;
+        var portrait = monsterId == null ? null : Portrait(monsterId, portraitSize);
+        if (portrait != null) column.AddChild(portrait);
 
-            var id = option.Id;
-            card.Pressed += () => { _session.Click(id); Render(); };
-            _cards[id] = (card, count);
-            grid.AddChild(card);
+        var row = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 8);
+        var name = Text(option.Name, 21, TextMain);
+        name.SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill;
+        name.VerticalAlignment = G.VerticalAlignment.Center;
+        name.ClipText = true;
+        name.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        row.AddChild(name);
+        var count = Text("", 20, Gold);
+        count.VerticalAlignment = G.VerticalAlignment.Center;
+        count.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        row.AddChild(count);
+        row.AddChild(Chip(isEncounter ? "免费" : $"{option.Price} 点", new G.Color(0.20f, 0.17f, 0.09f), Gold, GoldDim));
+        column.AddChild(row);
+
+        // 标签：精英、跨幕（带「水土不服」血量）
+        if (!isEncounter)
+        {
+            var tags = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            tags.AddThemeConstantOverride("separation", 6);
+            if (option.IsElite) tags.AddChild(Chip("精英", new G.Color(0.30f, 0.14f, 0.10f), new G.Color(1f, 0.75f, 0.55f)));
+            if (option.HpFactor < 1) // 后面幕的怪：水土不服，血量打折
+                tags.AddChild(Chip($"第{option.HomeAct}幕 · 生命{option.HpFactor * 100:0}%", new G.Color(0.10f, 0.18f, 0.28f), new G.Color(0.65f, 0.80f, 1f)));
+            else if (option.HomeAct != _session.ActNo)
+                tags.AddChild(Chip($"第{option.HomeAct}幕", CardBg, TextDim));
+            column.AddChild(tags);
         }
+
+        margin.AddChild(column);
+        card.AddChild(margin);
+        var id = option.Id;
+        card.Pressed += () => { _session.Click(id); Render(); };
+        _cards[id] = (card, count);
+        return card;
     }
 
     /// <summary>
@@ -274,12 +316,12 @@ internal sealed class SummonPanel : ISummonUi
         tray.AddThemeStyleboxOverride("panel", Box(new G.Color(0.05f, 0.06f, 0.09f), CardBorder, 1, 10, 14));
         var inner = new G.VBoxContainer();
         inner.AddThemeConstantOverride("separation", 8);
-        inner.AddChild(Text("本场阵容（点击移除）", 19, TextDim));
+        inner.AddChild(Text(_session.Room.Room == RoomKind.Boss ? "另加的怪（点击移除）" : "本场阵容（点击移除）", 19, TextDim));
         _chosen = new G.HFlowContainer { CustomMinimumSize = new G.Vector2(0, 44) };
         _chosen.AddThemeConstantOverride("h_separation", 10);
         _chosen.AddThemeConstantOverride("v_separation", 8);
         inner.AddChild(_chosen);
-        _emptyHint = Text("还没有选择怪物——点击上面的怪物加入", 20, TextDim);
+        _emptyHint = Text(_session.Room.Room == RoomKind.Boss ? "不另加怪物也可以" : "还没有选择怪物——点击上面的怪物加入", 20, TextDim);
         inner.AddChild(_emptyHint);
         tray.AddChild(inner);
         box.AddChild(tray);
@@ -287,7 +329,6 @@ internal sealed class SummonPanel : ISummonUi
 
     private void BuildSummary(G.VBoxContainer box)
     {
-        if (_session.Room.Room != RoomKind.Boss)
         {
             var stats = new G.HBoxContainer();
             stats.AddThemeConstantOverride("separation", 12);
@@ -336,7 +377,7 @@ internal sealed class SummonPanel : ISummonUi
         var now = G.Time.GetTicksMsec();
         _session.Tick((now - _lastTicks) / 1000.0);
         _lastTicks = now;
-        if (_session.Done) return;
+        if (_session.Done || _timer == null || _timerBar == null) return;
         var left = _session.SecondsLeft;
         _timer.Text = $"{Math.Ceiling(left)}";
         _timerBar.Value = left;
@@ -353,12 +394,13 @@ internal sealed class SummonPanel : ISummonUi
 
         foreach (var (id, (card, count)) in _cards)
         {
-            int n = room == RoomKind.Monster ? _session.Monsters.Count(m => m == id) : (_session.Encounter == id ? 1 : 0);
-            count.Text = room == RoomKind.Monster && n > 0 ? $"×{n}" : "";
+            bool isEncounter = _session.EncounterOptions.Any(o => o.Id == id);
+            int n = isEncounter ? (_session.Encounter == id ? 1 : 0) : _session.Monsters.Count(m => m == id);
+            count.Text = !isEncounter && n > 0 ? $"×{n}" : "";
             StyleCard(card, n > 0);
         }
 
-        if (_chosen != null)
+        if (_chosen != null && _emptyHint != null)
         {
             foreach (var child in _chosen.GetChildren()) child.QueueFree();
             for (int i = 0; i < _session.Monsters.Count; i++)
@@ -372,7 +414,6 @@ internal sealed class SummonPanel : ISummonUi
             _emptyHint.Visible = _session.Monsters.Count == 0;
         }
 
-        if (room != RoomKind.Boss)
         {
             int left = _session.Room.Savings - quote.Total;
             _stats["price"].Text = $"{quote.MonsterPrice}";
@@ -389,9 +430,19 @@ internal sealed class SummonPanel : ISummonUi
 
         foreach (var child in _problems.GetChildren()) child.QueueFree();
         bool emptyOnly = quote.Violations.Count == 1 && quote.Violations[0] == SummonViolation.EmptyRoom;
-        if (quote.Ok)
+        if (quote.Ok && _session.ExtraProblems.Count > 0)
         {
-            _status.Text = room == RoomKind.Boss ? "✓ Boss 免费出场，可以召唤" : "✓ 符合规则，可以召唤";
+            _status.Text = "";
+            foreach (var problem in _session.ExtraProblems)
+            {
+                var line = Text("✗ " + problem, 20, Bad);
+                ApplyGameFont(line);
+                _problems.AddChild(line);
+            }
+        }
+        else if (quote.Ok)
+        {
+            _status.Text = room == RoomKind.Boss ? "✓ 可以召唤（Boss 免费，另加的怪照价）" : "✓ 符合规则，可以召唤";
             _status.AddThemeColorOverride("font_color", Good);
         }
         else if (emptyOnly)
@@ -409,7 +460,7 @@ internal sealed class SummonPanel : ISummonUi
                 _problems.AddChild(line);
             }
         }
-        _confirm.Disabled = !quote.Ok;
+        _confirm.Disabled = !_session.CanConfirm;
     }
 
     // ---------------------------------------------------------------- 样式工具

@@ -22,8 +22,8 @@ public sealed record RoomContext(
     int? StandardCostOverride = null);
 
 /// <summary>塔主提交的召唤方案。</summary>
-/// <param name="Encounter">精英房、Boss 房选的原版遭遇类名；普通房必须为 null。</param>
-/// <param name="Monsters">普通房的全部怪物；精英房、Boss 房另加的小怪。</param>
+/// <param name="Encounter">Boss 房选的 Boss 遭遇类名；普通房、精英房必须为 null。</param>
+/// <param name="Monsters">普通房、精英房的全部怪物；Boss 房另加的怪。可以是任何幕的普通、精英怪。</param>
 /// <param name="Traps">盖几张陷阱。</param>
 public sealed record SummonPlan(string? Encounter, IReadOnlyList<string> Monsters, int Traps = 0);
 
@@ -45,6 +45,7 @@ public enum SummonViolation
     TooManyTraps,
     OverSpendCap,
     OverEliteExtraCap,
+    TooManyElites,
     OverBossExtraCap,
     NotEnoughPoints,
 }
@@ -137,6 +138,36 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
         return new SummonQuote([], paid, 0, 0, std, std, room.OriginalLineup);
     }
 
+    // ---------------------------------------------------------------- 召唤价（任何幕的怪都能召唤）
+
+    /// <summary>怪物比当前幕「超前」几幕（第一幕的怪在第三幕为 0，不打折也不加价）。</summary>
+    public int ActsAhead(string monster, int actNo) =>
+        Prices.AllMonsters.TryGetValue(monster, out var m) ? Math.Max(0, m.HomeAct - actNo) : 0;
+
+    /// <summary>「水土不服」：每超前一幕，血量 × (1 − 配置的降幅)，最低 10%。</summary>
+    public double HpFactor(string monster, int actNo) =>
+        Math.Max(0.1, 1 - Config.CrossActHpCut * ActsAhead(monster, actNo));
+
+    /// <summary>
+    /// 召唤价 = 战力（按降过的血量算）× 本幕系数 ×（精英 × 精英系数）×（1 + 每超前一幕的加价）×（精英房折扣），四舍五入，至少 1。
+    /// 战力 = 有效血量 / 10 + 前 3 回合伤害 / 6 + 机制分（设计文档「数值」）。
+    /// </summary>
+    public int SummonPrice(string monster, int actNo, RoomKind room)
+    {
+        var m = Prices.AllMonsters[monster];
+        int ahead = ActsAhead(monster, actNo);
+        double power = m.EffectiveHp * HpFactor(monster, actNo) / 10 + m.Damage / 6.0 + m.Mechanics;
+        double price = power * Prices.Coefficient(actNo)
+                       * (m.Role == MonsterRole.Elite ? Prices.EliteMultiplier : 1)
+                       * (1 + Config.CrossActPricePremium * ahead)
+                       * (room == RoomKind.Elite ? Config.EliteRoomDiscount : 1);
+        return Math.Max(1, (int)Math.Round(price, MidpointRounding.AwayFromZero));
+    }
+
+    /// <summary>能单独召唤的怪：任何幕的普通怪、精英怪（Boss 只能在 Boss 房当遭遇选；怪物召唤出的小怪不单卖）。</summary>
+    public bool IsSummonable(string monster) =>
+        Prices.AllMonsters.TryGetValue(monster, out var m) && m.Role is MonsterRole.Normal or MonsterRole.Elite;
+
     public SummonQuote Quote(RoomContext room, SummonPlan plan)
     {
         var act = Prices.Act(room.ActId);
@@ -144,87 +175,58 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
         int std = StandardCostOf(room);
         bool opening = IsOpeningProtected(room);
 
-        // 怪物本身是否可召唤：只能用本幕的普通怪（精英、Boss 只能通过遭遇出场；怪物召唤出的小怪不单卖）。
-        int price = 0;
+        // 怪物本身：任何幕的普通、精英怪；开局保护时只能用本幕简单遭遇的怪
+        int price = 0, elites = 0;
         foreach (var m in plan.Monsters)
         {
-            if (!act.Monsters.TryGetValue(m, out var info)) { errors.Add(SummonViolation.UnknownMonster); continue; }
-            if (info.Role != MonsterRole.Normal) errors.Add(SummonViolation.MonsterNotSummonable);
-            else if (opening && !info.WeakPool) errors.Add(SummonViolation.OpeningProtectionMonster);
-            price += info.Price;
+            if (!Prices.AllMonsters.TryGetValue(m, out var info)) { errors.Add(SummonViolation.UnknownMonster); continue; }
+            if (!IsSummonable(m)) { errors.Add(SummonViolation.MonsterNotSummonable); continue; }
+            if (opening && !(act.Monsters.TryGetValue(m, out var local) && local.WeakPool)) errors.Add(SummonViolation.OpeningProtectionMonster);
+            if (info.Role == MonsterRole.Elite) elites++;
+            price += SummonPrice(m, act.ActNo, room.Room);
         }
+        if (elites > Config.MaxEliteMonstersPerRoom) errors.Add(SummonViolation.TooManyElites);
 
-        // 精英、Boss 房的遭遇本体。
+        // Boss 房：必须选一个候选 Boss（免费），另加的怪随意；普通房、精英房不选遭遇
         List<string> encounterMonsters = [];
-        int encounterPrice = 0;
-        if (room.Room == RoomKind.Monster)
+        if (room.Room != RoomKind.Boss)
         {
             if (plan.Encounter != null) errors.Add(SummonViolation.EncounterNotAllowed);
             if (plan.Monsters.Count == 0) errors.Add(SummonViolation.EmptyRoom);
         }
-        else if (plan.Encounter == null)
-        {
-            errors.Add(SummonViolation.EncounterRequired);
-        }
-        else if (!act.Encounters.TryGetValue(plan.Encounter, out var enc))
-        {
-            errors.Add(SummonViolation.UnknownEncounter);
-        }
-        else if (enc.Room != room.Room)
-        {
-            errors.Add(SummonViolation.WrongEncounterRoom);
-        }
-        else if (room.Room == RoomKind.Boss && room.BossCandidates != null && !room.BossCandidates.Contains(plan.Encounter))
-        {
-            errors.Add(SummonViolation.BossNotCandidate);
-        }
-        else
-        {
-            // 随机组合的遭遇按最大的那组算数量（实际组合由游戏生成，价格按期望标准开销向上取整）。
-            encounterMonsters = enc.Lineups.OrderByDescending(l => l.Monsters.Count).First().Monsters;
-            if (room.Room == RoomKind.Elite) encounterPrice = (int)Math.Ceiling(enc.StandardCost - 1e-9);
-        }
+        else if (plan.Encounter == null) errors.Add(SummonViolation.EncounterRequired);
+        else if (!act.Encounters.TryGetValue(plan.Encounter, out var enc)) errors.Add(SummonViolation.UnknownEncounter);
+        else if (enc.Room != RoomKind.Boss) errors.Add(SummonViolation.WrongEncounterRoom);
+        else if (room.BossCandidates != null && !room.BossCandidates.Contains(plan.Encounter)) errors.Add(SummonViolation.BossNotCandidate);
+        else encounterMonsters = enc.Lineups.OrderByDescending(l => l.Monsters.Count).First().Monsters;
 
-        // 群体税：普通房按怪物只数；精英、Boss 房把遭遇本体算 1 个单位，另加的小怪从 +1 起收。
-        int tax = room.Room == RoomKind.Monster
-            ? CrowdTax(plan.Monsters.Count)
-            : CrowdTax(1 + plan.Monsters.Count);
-        int extraSpend = price + tax;
-        int monsterPrice = price + encounterPrice;
+        // 群体税：Boss 房把 Boss 遭遇算 1 个单位，另加的怪从 +1 起收
+        int tax = room.Room == RoomKind.Boss ? CrowdTax(1 + plan.Monsters.Count) : CrowdTax(plan.Monsters.Count);
 
-        // 数量限制。
+        // 数量限制
         var lineup = encounterMonsters.Concat(plan.Monsters).ToList();
         if (plan.Monsters.Count > 0 && lineup.Count > MaxMonsters(room.Climbers)) errors.Add(SummonViolation.TooManyMonsters);
         if (lineup.GroupBy(m => m).Any(g => g.Count() > Config.MaxSameMonster)) errors.Add(SummonViolation.TooManySameMonster);
 
-        // 陷阱。
+        // 陷阱
         if (plan.Traps > Config.MaxTrapsPerBattle) errors.Add(SummonViolation.TooManyTraps);
         if (opening && plan.Traps > 0) errors.Add(SummonViolation.OpeningProtectionTraps);
         int trapCost = Math.Max(0, plan.Traps) * Config.TrapPlaceCost;
 
-        // 花费上限。
-        double cap;
-        switch (room.Room)
+        // 花费上限
+        double cap = room.Room switch
         {
-            case RoomKind.Monster:
-                cap = opening ? std : std * Config.NormalSpendCapMultiplier;
-                if (monsterPrice + tax > cap + 1e-9)
-                    errors.Add(opening ? SummonViolation.OpeningProtectionCost : SummonViolation.OverSpendCap);
-                break;
-            case RoomKind.Elite:
-                cap = std * Config.EliteSpendCapMultiplier;
-                if (extraSpend > Config.EliteExtraSpendCap) errors.Add(SummonViolation.OverEliteExtraCap);
-                if (monsterPrice + tax > cap + 1e-9) errors.Add(SummonViolation.OverSpendCap);
-                break;
-            default:
-                cap = act.AverageNormalStandardCost * Config.BossExtraSpendCapMultiplier;
-                if (extraSpend > cap + 1e-9) errors.Add(SummonViolation.OverBossExtraCap);
-                break;
-        }
+            RoomKind.Monster => opening ? std : std * Config.NormalSpendCapMultiplier,
+            RoomKind.Elite => std * Config.EliteSpendCapMultiplier,
+            _ => act.AverageNormalStandardCost * Config.BossExtraSpendCapMultiplier,
+        };
+        if (price + tax > cap + 1e-9)
+            errors.Add(room.Room == RoomKind.Boss ? SummonViolation.OverBossExtraCap
+                : opening ? SummonViolation.OpeningProtectionCost : SummonViolation.OverSpendCap);
 
-        int total = monsterPrice + tax + trapCost;
+        int total = price + tax + trapCost;
         if (total > room.Savings) errors.Add(SummonViolation.NotEnoughPoints);
 
-        return new SummonQuote(errors.Distinct().ToList(), monsterPrice, tax, trapCost, std, cap, lineup);
+        return new SummonQuote(errors.Distinct().ToList(), price, tax, trapCost, std, cap, lineup);
     }
 }

@@ -1,4 +1,21 @@
-## 第 2 步：召唤阶段第一版（2026-10-06，0.0.13，待实测）
+## 召唤规则大改（2026-10-06，0.0.15，待实测）
+
+用户要求：
+- 每个房间都能召唤任何幕的怪（Boss 除外）；
+- 精英房做成优惠房；
+- Boss 房可另加怪；
+- 去掉倒计时。
+
+规则写进设计文档「召唤规则变更」。
+
+实现要点：
+- **价格表**多导出 `all_monsters`（每只普通、精英怪的有效血量、伤害、机制分、首次出现的幕）。规则库 `SummonRules.SummonPrice` 现算价格，`HpFactor` 算「水土不服」。
+- **精英房载体**：`Test1bMixedEncounter.EliteHolder`，即任何幕里按名字排第一个、无专用场景的精英遭遇。房间类型跟着遭遇走（`EncounterModel.RoomType`），所以不能用普通载体。
+- **生成后改列表**：不再挂载体的 `GenerateMonsters`。改在 `GenerateMonstersWithSlots` 之后改写 `_monstersWithSlots`：载体整表替换，Boss 追加。
+- **降血**：在 `CombatState.CreateCreature` 之后直接写 `_maxHp`、`_currentHp`。
+- 测试共 75 个。
+
+## 第 2 步：召唤阶段第一版（2026-10-06，0.0.13）
 
 **0.0.12 实测**：
 - 外骨骼混搭后开战卡死：它靠槽位名决定行动。

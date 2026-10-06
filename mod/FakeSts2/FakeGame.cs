@@ -91,6 +91,11 @@ namespace MegaCrit.Sts2.Core.Models.Encounters
         protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [];
     }
 
+    public sealed class ChompersNormal : EncounterModel
+    {
+        protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.Chomper().ToMutable(), null)];
+    }
+
     public sealed class BygoneEffigyElite : EncounterModel
     {
         protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.BygoneEffigy().ToMutable(), null)];
@@ -200,6 +205,9 @@ namespace MegaCrit.Sts2.Core.Models.Monsters
     public sealed class CalcifiedCultist : MonsterModel { }
     public sealed class DampCultist : MonsterModel { }
     public sealed class Seapunk : MonsterModel { }
+    public sealed class Byrdonis : MonsterModel { }
+    public sealed class LeafSlimeS : MonsterModel { }
+    public sealed class Chomper : MonsterModel { }
 }
 namespace MegaCrit.Sts2.Core.Models.Encounters
 {

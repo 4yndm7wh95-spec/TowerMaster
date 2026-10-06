@@ -1981,5 +1981,599 @@
     }
    }
   }
+ },
+ "all_monsters": {
+  "AssassinRubyRaider": {
+   "name_zh": "劫掠者刺客",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 20.5,
+   "damage": 30,
+   "mechanics": 0
+  },
+  "AxeRubyRaider": {
+   "name_zh": "劫掠者斧手",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 26.0,
+   "damage": 22,
+   "mechanics": 0
+  },
+  "Axebot": {
+   "name_zh": "巨斧机器人",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 252.0,
+   "damage": 48,
+   "mechanics": 3
+  },
+  "BowlbugEgg": {
+   "name_zh": "盛碗虫（卵）",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 28.5,
+   "damage": 21,
+   "mechanics": 0
+  },
+  "BowlbugNectar": {
+   "name_zh": "盛碗虫（蜜）",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 36.5,
+   "damage": 21,
+   "mechanics": 3
+  },
+  "BowlbugRock": {
+   "name_zh": "盛碗虫（石）",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 46.5,
+   "damage": 45,
+   "mechanics": 0
+  },
+  "BowlbugSilk": {
+   "name_zh": "盛碗虫（丝）",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 41.5,
+   "damage": 8,
+   "mechanics": 1
+  },
+  "BruteRubyRaider": {
+   "name_zh": "劫掠者暴徒",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 31.5,
+   "damage": 17,
+   "mechanics": 2
+  },
+  "BygoneEffigy": {
+   "name_zh": "旧日雕像",
+   "role": "Elite",
+   "home_act": 1,
+   "ehp": 97.0,
+   "damage": 23,
+   "mechanics": 3
+  },
+  "Byrdonis": {
+   "name_zh": "多尼斯异鸟",
+   "role": "Elite",
+   "home_act": 1,
+   "ehp": 82.5,
+   "damage": 48,
+   "mechanics": 2
+  },
+  "CalcifiedCultist": {
+   "name_zh": "钙化邪教徒",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 39.5,
+   "damage": 20,
+   "mechanics": 3
+  },
+  "Chomper": {
+   "name_zh": "啃咬机",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 62.0,
+   "damage": 24,
+   "mechanics": 4
+  },
+  "CorpseSlug": {
+   "name_zh": "噬尸蛞蝓",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 26.0,
+   "damage": 14,
+   "mechanics": 2
+  },
+  "CrossbowRubyRaider": {
+   "name_zh": "劫掠者弩手",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 19.5,
+   "damage": 14,
+   "mechanics": 0
+  },
+  "CubexConstruct": {
+   "name_zh": "方柱构装体",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 78.0,
+   "damage": 20,
+   "mechanics": 4
+  },
+  "DampCultist": {
+   "name_zh": "潮湿邪教徒",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 52.0,
+   "damage": 7,
+   "mechanics": 3
+  },
+  "DecimillipedeSegment": {
+   "name_zh": "残杀千足虫",
+   "role": "Elite",
+   "home_act": 2,
+   "ehp": 60.0,
+   "damage": 26,
+   "mechanics": 2
+  },
+  "DevotedSculptor": {
+   "name_zh": "虔诚雕刻师",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 162.0,
+   "damage": 33,
+   "mechanics": 3
+  },
+  "Entomancer": {
+   "name_zh": "蜂群术士",
+   "role": "Elite",
+   "home_act": 2,
+   "ehp": 145.0,
+   "damage": 39,
+   "mechanics": 3
+  },
+  "Exoskeleton": {
+   "name_zh": "外骨骼虫",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 34.0,
+   "damage": 14,
+   "mechanics": 1
+  },
+  "Fabricator": {
+   "name_zh": "组装师",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 150.0,
+   "damage": 27,
+   "mechanics": 3
+  },
+  "FlailKnight": {
+   "name_zh": "连枷骑士",
+   "role": "Elite",
+   "home_act": 3,
+   "ehp": 101.0,
+   "damage": 39,
+   "mechanics": 1
+  },
+  "Flyconid": {
+   "name_zh": "飞蝇菌子",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 48.0,
+   "damage": 16,
+   "mechanics": 2
+  },
+  "Fogmog": {
+   "name_zh": "雾菇",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 74.0,
+   "damage": 21,
+   "mechanics": 3
+  },
+  "FossilStalker": {
+   "name_zh": "化石追踪者",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 52.0,
+   "damage": 40,
+   "mechanics": 4
+  },
+  "FrogKnight": {
+   "name_zh": "青蛙骑士",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 233.0,
+   "damage": 34,
+   "mechanics": 3
+  },
+  "FuzzyWurmCrawler": {
+   "name_zh": "毛绒伏地虫",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 56.0,
+   "damage": 15,
+   "mechanics": 3
+  },
+  "GlobeHead": {
+   "name_zh": "电球头",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 148.0,
+   "damage": 47,
+   "mechanics": 3
+  },
+  "GremlinMerc": {
+   "name_zh": "地精佣兵",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 60.0,
+   "damage": 34,
+   "mechanics": 4
+  },
+  "HauntedShip": {
+   "name_zh": "幽灵船",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 63.0,
+   "damage": 25,
+   "mechanics": 4
+  },
+  "HunterKiller": {
+   "name_zh": "猎人杀手",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 121.0,
+   "damage": 39,
+   "mechanics": 2
+  },
+  "InfestedPrism": {
+   "name_zh": "感染棱柱",
+   "role": "Elite",
+   "home_act": 2,
+   "ehp": 172.0,
+   "damage": 41,
+   "mechanics": 2
+  },
+  "Inklet": {
+   "name_zh": "墨宝",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 19.0,
+   "damage": 15,
+   "mechanics": 0
+  },
+  "LeafSlimeM": {
+   "name_zh": "树叶史莱姆（中）",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 33.5,
+   "damage": 8,
+   "mechanics": 2
+  },
+  "LeafSlimeS": {
+   "name_zh": "树叶史莱姆（小）",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 13.0,
+   "damage": 5,
+   "mechanics": 1
+  },
+  "LivingFog": {
+   "name_zh": "活雾",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 80.0,
+   "damage": 21,
+   "mechanics": 4
+  },
+  "LivingShield": {
+   "name_zh": "活体盾",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 105.0,
+   "damage": 18,
+   "mechanics": 2
+  },
+  "LouseProgenitor": {
+   "name_zh": "虱虫之祖",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 163.0,
+   "damage": 28,
+   "mechanics": 3
+  },
+  "MagiKnight": {
+   "name_zh": "魔法骑士",
+   "role": "Elite",
+   "home_act": 3,
+   "ehp": 87.0,
+   "damage": 16,
+   "mechanics": 2
+  },
+  "Mawler": {
+   "name_zh": "蛮兽",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 72.0,
+   "damage": 23,
+   "mechanics": 2
+  },
+  "MechaKnight": {
+   "name_zh": "机甲骑士",
+   "role": "Elite",
+   "home_act": 3,
+   "ehp": 315.0,
+   "damage": 33,
+   "mechanics": 7
+  },
+  "Myte": {
+   "name_zh": "异螨",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 64.0,
+   "damage": 18,
+   "mechanics": 3
+  },
+  "Nibbit": {
+   "name_zh": "小啃兽",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 44.0,
+   "damage": 20,
+   "mechanics": 1
+  },
+  "Ovicopter": {
+   "name_zh": "直飞产卵虫",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 127.0,
+   "damage": 23,
+   "mechanics": 4
+  },
+  "OwlMagistrate": {
+   "name_zh": "猫头鹰法官",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 256.0,
+   "damage": 40,
+   "mechanics": 1
+  },
+  "PhantasmalGardener": {
+   "name_zh": "花园幽灵鳗",
+   "role": "Elite",
+   "home_act": 1,
+   "ehp": 40.5,
+   "damage": 13,
+   "mechanics": 1
+  },
+  "PhrogParasite": {
+   "name_zh": "异蛙寄生虫",
+   "role": "Elite",
+   "home_act": 1,
+   "ehp": 138.5,
+   "damage": 16,
+   "mechanics": 4
+  },
+  "PunchConstruct": {
+   "name_zh": "拳击构装体",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 65.0,
+   "damage": 24,
+   "mechanics": 2
+  },
+  "ScrollOfBiting": {
+   "name_zh": "咬人卷轴",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 33.5,
+   "damage": 28,
+   "mechanics": 3
+  },
+  "Seapunk": {
+   "name_zh": "海洋混混",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 52.0,
+   "damage": 19,
+   "mechanics": 1
+  },
+  "SewerClam": {
+   "name_zh": "下水道蚌",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 77.0,
+   "damage": 24,
+   "mechanics": 2
+  },
+  "ShrinkerBeetle": {
+   "name_zh": "缩小甲虫",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 39.0,
+   "damage": 20,
+   "mechanics": 3
+  },
+  "SkulkingColony": {
+   "name_zh": "鬼祟珊瑚群",
+   "role": "Elite",
+   "home_act": 1,
+   "ehp": 112.0,
+   "damage": 37,
+   "mechanics": 1
+  },
+  "SlimedBerserker": {
+   "name_zh": "史莱姆狂战士",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 261.0,
+   "damage": 16,
+   "mechanics": 5
+  },
+  "SlitheringStrangler": {
+   "name_zh": "蛇行扼杀者",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 54.0,
+   "damage": 10,
+   "mechanics": 2
+  },
+  "SludgeSpinner": {
+   "name_zh": "淤泥旋螺",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 38.0,
+   "damage": 27,
+   "mechanics": 2
+  },
+  "SlumberingBeetle": {
+   "name_zh": "熟睡甲虫",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 101.0,
+   "damage": 16,
+   "mechanics": 2
+  },
+  "SnappingJaxfruit": {
+   "name_zh": "闪光贾克斯果",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 32.0,
+   "damage": 15,
+   "mechanics": 2
+  },
+  "SoulNexus": {
+   "name_zh": "灵魂枢纽",
+   "role": "Elite",
+   "home_act": 3,
+   "ehp": 234.0,
+   "damage": 75,
+   "mechanics": 2
+  },
+  "SpectralKnight": {
+   "name_zh": "幽灵骑士",
+   "role": "Elite",
+   "home_act": 3,
+   "ehp": 93.0,
+   "damage": 27,
+   "mechanics": 2
+  },
+  "SpinyToad": {
+   "name_zh": "棘刺蟾蜍",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 117.5,
+   "damage": 40,
+   "mechanics": 1
+  },
+  "TerrorEel": {
+   "name_zh": "骇鳗",
+   "role": "Elite",
+   "home_act": 1,
+   "ehp": 140.0,
+   "damage": 47,
+   "mechanics": 3
+  },
+  "TheForgotten": {
+   "name_zh": "遗忘之物",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 122.0,
+   "damage": 15,
+   "mechanics": 2
+  },
+  "TheLost": {
+   "name_zh": "失落之物",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 93.0,
+   "damage": 12,
+   "mechanics": 3
+  },
+  "TheObscura": {
+   "name_zh": "胧光怪",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 123.0,
+   "damage": 12,
+   "mechanics": 4
+  },
+  "ThievingHopper": {
+   "name_zh": "偷窃草蜢",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 99.0,
+   "damage": 38,
+   "mechanics": 2
+  },
+  "Toadpole": {
+   "name_zh": "蟾蜍蝌蚪",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 23.0,
+   "damage": 16,
+   "mechanics": 1
+  },
+  "TrackerRubyRaider": {
+   "name_zh": "劫掠者追踪手",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 23.0,
+   "damage": 16,
+   "mechanics": 1
+  },
+  "Tunneler": {
+   "name_zh": "地道虫",
+   "role": "Normal",
+   "home_act": 2,
+   "ehp": 119.0,
+   "damage": 36,
+   "mechanics": 0
+  },
+  "TurretOperator": {
+   "name_zh": "高塔炮手",
+   "role": "Normal",
+   "home_act": 3,
+   "ehp": 41.0,
+   "damage": 30,
+   "mechanics": 0
+  },
+  "TwigSlimeM": {
+   "name_zh": "树枝史莱姆（中）",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 27.0,
+   "damage": 17,
+   "mechanics": 1
+  },
+  "TwigSlimeS": {
+   "name_zh": "树枝史莱姆（小）",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 9.0,
+   "damage": 12,
+   "mechanics": 0
+  },
+  "TwoTailedRat": {
+   "name_zh": "双尾鼠",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 19.0,
+   "damage": 12,
+   "mechanics": 3
+  },
+  "VineShambler": {
+   "name_zh": "藤蔓蹒跚者",
+   "role": "Normal",
+   "home_act": 1,
+   "ehp": 61.0,
+   "damage": 36,
+   "mechanics": 2
+  }
  }
 }

@@ -287,6 +287,16 @@ def write_price_book(k, acts_of, weak_of):
                                "lineups": [{"p": round(p, 6), "monsters": lu} for p, lu in lineups(enc)],
                                "standard_cost": round(encounter_cost(enc, k[n])[0], 2)}
         book["acts"][act] = {"act_no": n, "name_zh": ACT_ZH[act], "monsters": monsters, "encounters": encounters}
+    # 召唤阶段：任何房间都能召唤任何幕的普通、精英怪，价格按战力现算（跨幕怪还有血量折扣），所以导出战力的组成
+    all_monsters = {}
+    for cls, c in M.items():
+        if c["role"] not in ("普通", "精英"):
+            continue
+        all_monsters[cls] = {"name_zh": MON[cls]["name_zh"], "role": ROLE_EN[c["role"]],
+                             "home_act": min(ACT_NO[a] for a in acts_of[cls]),
+                             "ehp": round(hp_avg(cls) + c["ehp"], 2), "damage": sum(c["dmg"]),
+                             "mechanics": sum(c["mech"].values())}
+    book["all_monsters"] = dict(sorted(all_monsters.items()))
     (ROOT / "data" / "price_book.json").write_text(
         json.dumps(book, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 

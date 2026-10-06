@@ -27,12 +27,18 @@ internal sealed record SummonPlan(int Version, int Sequence, ulong Seed, string 
 /// </summary>
 internal static class Test1bMixedEncounter
 {
+    /// <summary>普通房混搭的载体：无专用场景、无槽位的普通遭遇。</summary>
     private const string Holder = "CultistsNormal";
     private static TestSettings _settings = new();
     private static PriceBook _prices = null!;
+    private static SummonRules _rules = null!;
     private static int _sent;
     private static SummonPlan? _pending, _selected;
+    private static string? _selectedType;
+    private static string? _eliteHolder;
     private static readonly ConditionalWeakTable<object, SummonPlan> Plans = new();
+    /// <summary>召唤出来的怪物模型 → 「水土不服」血量倍数；创建生物时按它降血。</summary>
+    private static readonly ConditionalWeakTable<object, StrongBox<double>> Weakened = new();
     internal static object Run => RuntimeNetAction.Required("RunManager").GetProperty("Instance", GameReflection.All)!.GetValue(null)!;
     private static object State => GameReflection.Get(Run, "State") ?? throw new InvalidOperationException("没有进行中的对局");
     private static ulong Seed(object state) => Convert.ToUInt64(GameReflection.Get(GameReflection.Get(state, "Rng")!, "Seed"));
@@ -42,9 +48,12 @@ internal static class Test1bMixedEncounter
     internal static void Configure(TestSettings settings, PriceBook prices)
     {
         _settings = settings; _prices = prices;
+        _rules = new SummonRules(new TowerMasterConfig(), prices);
         _sent = 0;
         _pending = _selected = null;
+        _selectedType = _eliteHolder = null;
         Plans.Clear();
+        Weakened.Clear();
     }
 
     private static bool _patched;
@@ -58,9 +67,9 @@ internal static class Test1bMixedEncounter
         Patch(harmony, "RequestEnqueue", "ActionQueueSynchronizer", nameof(BeforeEnqueue), true);
         Patch(harmony, "PullNextEncounter", "ActModel", nameof(SelectEncounter), false);
         Patch(harmony, "ToMutable", "EncounterModel", nameof(BindMutable), false);
-        Patch(harmony, "GenerateMonsters", Holder, nameof(MixMonsters), false);
         Patch(harmony, "GenerateMonstersWithSlots", "EncounterModel", nameof(BeforeGenerate), true);
         Patch(harmony, "GenerateMonstersWithSlots", "EncounterModel", nameof(AfterGenerate), false);
+        Patch(harmony, "CreateCreature", "CombatState", nameof(AfterCreateCreature), false);
         Log.Info("测试1b：房主清单动作 → 地图移动动作 → 通用场景混搭；仅测试第一幕两种怪物");
     }
 
@@ -135,19 +144,22 @@ internal static class Test1bMixedEncounter
         if (plan.Version == 2)
         {
             // 数量、花费等规则由房主的召唤面板校验；这里只拦明显不合法的内容
-            if (plan.Encounter == null && (plan.Monsters.Length is 0 or > 6))
+            if (plan.Monsters.Length > 6 || plan.Encounter == null && plan.Monsters.Length == 0)
                 throw new InvalidDataException("召唤清单怪物数量不对");
-            if (plan.Encounter != null && (plan.Monsters.Length > 0
-                || !_prices.Acts.TryGetValue(plan.Act, out var a) || !a.Encounters.TryGetValue(plan.Encounter, out var enc) || enc.Room == RoomKind.Monster))
-                throw new InvalidDataException($"清单遭遇不是本幕的精英或 Boss：{plan.Encounter}");
+            if (plan.Encounter != null
+                && (!_prices.Acts.TryGetValue(plan.Act, out var a) || !a.Encounters.TryGetValue(plan.Encounter, out var enc) || enc.Room != RoomKind.Boss))
+                throw new InvalidDataException($"清单遭遇不是本幕的 Boss：{plan.Encounter}");
         }
         var monsterBase = RuntimeNetAction.Required("MonsterModel");
         foreach (var name in plan.Monsters)
         {
             var type = GameReflection.TypeNamed(name);
-            if (type == null || !monsterBase.IsAssignableFrom(type) || type.IsAbstract
-                || !_prices.Acts.TryGetValue(plan.Act, out var act) || !act.Monsters.ContainsKey(name))
-                throw new InvalidDataException($"清单怪物不属于本幕或不存在：{name}");
+            // 版本 1（测试 1b）只能用本幕的怪；版本 2（召唤阶段）任何幕的普通、精英怪都行
+            bool known = plan.Version == 1
+                ? _prices.Acts.TryGetValue(plan.Act, out var act) && act.Monsters.ContainsKey(name)
+                : _rules.IsSummonable(name);
+            if (type == null || !monsterBase.IsAssignableFrom(type) || type.IsAbstract || !known)
+                throw new InvalidDataException($"清单怪物不能召唤或不存在：{name}");
         }
     }
 
@@ -157,11 +169,24 @@ internal static class Test1bMixedEncounter
         catch (Exception e) { Log.Error("测试1b：替换遭遇失败，这一场按原版遭遇", e); }
     }
 
+    /// <summary>原版遭遇的房间类型（按价格表查；查不到按名字猜）。</summary>
+    private static RoomKind RoomOf(string encounter) =>
+        _prices.Acts.Values.Select(a => a.Encounters.GetValueOrDefault(encounter)).FirstOrDefault(e => e != null)?.Room
+        ?? (encounter.EndsWith("Boss") ? RoomKind.Boss : encounter.EndsWith("Elite") ? RoomKind.Elite : RoomKind.Monster);
+
+    /// <summary>
+    /// 精英房混搭的载体：任何一幕里第一个（按名字排序）无专用场景、无槽位的精英遭遇。
+    /// 用精英遭遇当载体，房间类型、奖励（遗物、金币）就还是精英的；各端按同样的数据选出同一个。
+    /// </summary>
+    private static string? EliteHolder => _eliteHolder ??= _prices.Acts.Values
+        .SelectMany(a => a.Encounters).Where(e => e.Value.Room == RoomKind.Elite).Select(e => e.Key)
+        .Distinct().Order(StringComparer.Ordinal).FirstOrDefault(SummonPhase.IsSceneless);
+
     private static void SelectEncounterCore(object __instance, ref object __result)
     {
         var name = __result.GetType().Name;
-        bool normal = name.EndsWith("Normal") || name.EndsWith("Weak");
-        if (normal && !SummonPhase.Enabled && !_settings.MixedMonsters.ContainsKey(__instance.GetType().Name)) return;
+        var room = RoomOf(name);
+        if (room == RoomKind.Monster && !SummonPhase.Enabled && !_settings.MixedMonsters.ContainsKey(__instance.GetType().Name)) return;
 
         var plan = _pending;
         _pending = null;
@@ -174,28 +199,32 @@ internal static class Test1bMixedEncounter
         }
         if (plan == null)
         {
-            if (!normal) return;
-            if (SummonPhase.Enabled) Log.Info($"测试1b：这一场没有召唤清单（塔主按原版出场、超时或「?」房间），按原版遭遇 {name}");
+            if (room != RoomKind.Monster) return;
+            if (SummonPhase.Enabled) Log.Info($"测试1b：这一场没有召唤清单（塔主按原版出场或「?」房间），按原版遭遇 {name}");
             else Log.Warn($"测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 {name}");
             return;
         }
         Validate(plan, State, false, checkFloor: !restored);
         if (restored) Log.Info($"测试1b #{plan.Sequence}：重连或读档，按坐标 {plan.Coord} 找回召唤清单");
 
-        if (!normal)
+        if (room == RoomKind.Boss)
         {
-            ReplaceEliteOrBoss(name, plan, restored, ref __result);
+            ReplaceBoss(name, plan, restored, ref __result);
             return;
         }
-        if (plan.Encounter != null) { Log.Warn($"测试1b #{plan.Sequence}：清单是精英或 Boss，但这是普通房 {name}，按原版"); return; }
-        var holder = Model("Encounter", Holder);
+        if (plan.Encounter != null) { Log.Warn($"测试1b #{plan.Sequence}：清单是 Boss，但这是{room}房 {name}，按原版"); return; }
+
+        var holderName = room == RoomKind.Elite ? EliteHolder : Holder;
+        if (holderName == null) { Log.Error($"测试1b #{plan.Sequence}：找不到无专用场景的精英遭遇当载体，这一场按原版 {name}"); return; }
+        var holder = Model("Encounter", holderName);
         if (GameReflection.Get(holder, "HasScene") is not false
             || ((IEnumerable)GameReflection.Get(holder, "Slots")!).Cast<object>().Any())
-            throw new InvalidOperationException("混搭载体必须使用无槽位的通用场景");
+            throw new InvalidOperationException($"混搭载体 {holderName} 必须使用无槽位的通用场景");
         __result = holder;
         _selected = plan;
+        _selectedType = holderName;
         if (!restored) PlanStore.Save(plan);
-        Log.Info($"测试1b #{plan.Sequence}：已替换 {name} → {Holder}，清单=[{string.Join(", ", plan.Monsters)}]");
+        Log.Info($"测试1b #{plan.Sequence}：已替换 {name} → {holderName}，清单=[{string.Join(", ", plan.Monsters)}]");
     }
 
     private static SummonPlan? RestoreByCoord()
@@ -206,39 +235,39 @@ internal static class Test1bMixedEncounter
     }
 
     /// <summary>
-    /// 精英、Boss 房：清单里的遭遇和原版不同就整个换掉（游戏随后自己创建可变副本、生成怪物）；
-    /// 和原版相同就不动，完全走原版流程（Boss 场景、召唤物槽位等都由原版处理）。
+    /// Boss 房：塔主选的 Boss 和原版不同就换掉（游戏随后自己创建可变副本、生成怪物），相同就不动；
+    /// 清单里另加的怪在生成后追加到 Boss 后面（<see cref="AfterGenerate"/>）。
     /// </summary>
-    private static void ReplaceEliteOrBoss(string name, SummonPlan plan, bool restored, ref object __result)
+    private static void ReplaceBoss(string name, SummonPlan plan, bool restored, ref object __result)
     {
         if (plan.Encounter == null) return;
-        var room = _prices.Acts[plan.Act].Encounters[plan.Encounter].Room;
-        var originalRoom = _prices.Acts.Values.Select(a => a.Encounters.GetValueOrDefault(name)).FirstOrDefault(e => e != null)?.Room;
-        if (originalRoom != null && originalRoom != room)
-        {
-            Log.Warn($"召唤清单 #{plan.Sequence}：清单是 {room}，房间是 {originalRoom}（{name}），按原版");
-            return;
-        }
         if (!restored) PlanStore.Save(plan);
-        if (plan.Encounter == name)
+        if (plan.Encounter == name) Log.Info($"召唤清单 #{plan.Sequence}：塔主选的就是原版 {name}，不替换");
+        else
         {
-            Log.Info($"召唤清单 #{plan.Sequence}：塔主选的就是原版 {name}，不替换");
-            return;
+            __result = Model("Encounter", plan.Encounter);
+            Log.Info($"召唤清单 #{plan.Sequence}：已替换 {name} → {plan.Encounter}");
         }
-        __result = Model("Encounter", plan.Encounter);
-        Log.Info($"召唤清单 #{plan.Sequence}：已替换 {name} → {plan.Encounter}");
+        if (plan.Monsters.Length > 0)
+        {
+            _selected = plan;
+            _selectedType = plan.Encounter;
+        }
     }
 
     private static void BindMutable(object __instance, object __result)
     {
         try
         {
-            if (__instance.GetType().Name != Holder || _selected == null) return;
+            if (_selected == null || __instance.GetType().Name != _selectedType) return;
             Plans.AddOrUpdate(__result, _selected);
             _selected = null;
+            _selectedType = null;
         }
         catch (Exception e) { Log.Error("测试1b：关联召唤清单失败", e); }
     }
+
+    private static bool IsHolder(object encounter) => encounter.GetType().Name is var n && (n == Holder || n == EliteHolder);
 
     private static void BeforeGenerate(object __instance, object __0)
     {
@@ -247,7 +276,7 @@ internal static class Test1bMixedEncounter
             if (!Plans.TryGetValue(__instance, out var plan))
             {
                 // 读档或重开战斗时没有经过选遭遇：按种子和楼层从本地文件找回清单。
-                if (__instance.GetType().Name != Holder) return;
+                if (!IsHolder(__instance)) return;
                 plan = PlanStore.Find(Seed(__0), Floor(__0));
                 if (plan == null) return;
                 Plans.AddOrUpdate(__instance, plan);
@@ -263,35 +292,65 @@ internal static class Test1bMixedEncounter
         }
     }
 
-    private static void MixMonsters(object __instance, ref object __result)
-    {
-        try { MixMonstersCore(__instance, ref __result); }
-        catch (Exception e) { Log.Error("测试1b：混搭怪物失败，这一场按载体遭遇原本的怪物", e); }
-    }
-
-    private static void MixMonstersCore(object __instance, ref object __result)
-    {
-        if (!Plans.TryGetValue(__instance, out var plan)) return;
-        var monsterType = RuntimeNetAction.Required("MonsterModel");
-        var tuple = typeof(ValueTuple<,>).MakeGenericType(monsterType, typeof(string));
-        var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(tuple))!;
-        foreach (var name in plan.Monsters)
-        {
-            var mutable = RuntimeNetAction.Call(Model("Monster", name), "ToMutable");
-            list.Add(Activator.CreateInstance(tuple, mutable, null));
-        }
-        __result = list;
-    }
-
+    /// <summary>
+    /// 生成之后改怪物列表：载体（普通、精英房）整个换成清单里的怪；Boss 房在 Boss 后面追加。
+    /// 每只召唤的怪记下「水土不服」血量倍数，创建生物时降血（<see cref="AfterCreateCreature"/>）。
+    /// </summary>
     private static void AfterGenerate(object __instance)
     {
         try
         {
             if (!Plans.TryGetValue(__instance, out var plan)) return;
-            Log.Info($"测试1b #{plan.Sequence}：生成 {GameReflection.Dump(GameReflection.Get(__instance, "MonstersWithSlots"))}");
             Plans.Remove(__instance);
+            var monsterType = RuntimeNetAction.Required("MonsterModel");
+            var tuple = typeof(ValueTuple<,>).MakeGenericType(monsterType, typeof(string));
+            var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(tuple))!;
+            if (!IsHolder(__instance) && GameReflection.Get(__instance, "MonstersWithSlots") is IEnumerable existing)
+                foreach (var item in existing) list.Add(item); // Boss 本体保留
+
+            int actNo = _prices.Act(plan.Act).ActNo;
+            foreach (var name in plan.Monsters)
+            {
+                var mutable = RuntimeNetAction.Call(Model("Monster", name), "ToMutable");
+                double factor = plan.Version == 2 ? _rules.HpFactor(name, actNo) : 1;
+                if (factor < 1) Weakened.AddOrUpdate(mutable, new StrongBox<double>(factor));
+                list.Add(Activator.CreateInstance(tuple, mutable, null));
+            }
+            SetMonstersWithSlots(__instance, list);
+            Log.Info($"测试1b #{plan.Sequence}：生成 {GameReflection.Dump(GameReflection.Get(__instance, "MonstersWithSlots"))}");
         }
-        catch (Exception e) { Log.Error("测试1b：记录生成结果失败", e); }
+        catch (Exception e) { Log.Error("测试1b：改写怪物列表失败，这一场按遭遇原本的怪物", e); }
+    }
+
+    /// <summary>写回遭遇的怪物列表：游戏里是私有字段 _monstersWithSlots，假游戏里是私有 setter。</summary>
+    private static void SetMonstersWithSlots(object encounter, object list)
+    {
+        for (var t = encounter.GetType(); t != null; t = t.BaseType)
+        {
+            var prop = t.GetProperty("MonstersWithSlots", GameReflection.All | BindingFlags.DeclaredOnly);
+            if (prop?.SetMethod != null) { prop.SetValue(encounter, list); return; }
+            foreach (var field in new[] { "_monstersWithSlots", "<MonstersWithSlots>k__BackingField" })
+            {
+                var f = t.GetField(field, GameReflection.All | BindingFlags.DeclaredOnly);
+                if (f != null) { f.SetValue(encounter, list); return; }
+            }
+        }
+        throw new MissingFieldException("EncounterModel", "_monstersWithSlots");
+    }
+
+    /// <summary>「水土不服」：跨幕召唤的怪创建成生物后，最大生命和当前生命乘倍数（各端用同一个清单算出同一个数）。</summary>
+    private static void AfterCreateCreature(object[] __args, object? __result)
+    {
+        try
+        {
+            if (__result == null || __args.Length == 0 || __args[0] == null || !Weakened.TryGetValue(__args[0], out var box)) return;
+            int max = Convert.ToInt32(GameReflection.Get(__result, "MaxHp"));
+            int weakened = Math.Max(1, (int)Math.Round(max * box.Value, MidpointRounding.AwayFromZero));
+            foreach (var field in new[] { "_maxHp", "<MaxHp>k__BackingField" }) if (GameReflection.SetField(__result, field, weakened)) break;
+            foreach (var field in new[] { "_currentHp", "<CurrentHp>k__BackingField" }) if (GameReflection.SetField(__result, field, weakened)) break;
+            Log.Info($"召唤：{__args[0].GetType().Name} 水土不服，生命 {max} → {weakened}");
+        }
+        catch (Exception e) { Log.Error("召唤：调整跨幕怪物生命失败（这只怪满血出场）", e); }
     }
 
     internal static object Model(string getter, string typeName) => RuntimeNetAction.Required("ModelDb")

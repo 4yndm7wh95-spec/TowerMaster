@@ -37,34 +37,43 @@ internal static class SummonPhase
     public static bool Enabled { get; private set; }
     public static SummonSession? Current { get; private set; }
 
-    private static readonly Dictionary<string, HashSet<string>> Mixable = new();
+    private static HashSet<string>? _mixable;
+
+    /// <summary>遭遇没有专用场景、也没有命名槽位（怪可以随便摆）。</summary>
+    internal static bool IsSceneless(string encounterId)
+    {
+        if (GameReflection.TypeNamed(encounterId) == null) return false;
+        var model = Test1bMixedEncounter.Model("Encounter", encounterId);
+        return GameReflection.Get(model, "HasScene") is false
+               && GameReflection.Get(model, "Slots") is IEnumerable slots && !slots.Cast<object>().Any();
+    }
 
     /// <summary>
-    /// 普通房能召唤哪些怪：只要在本幕某个「没有专用场景、没有命名槽位」的原版遭遇里出现过的怪。
+    /// 能召唤哪些怪：在任何一幕的某个「没有专用场景、没有命名槽位」的原版普通或精英遭遇里出现过的怪。
     /// 有的怪靠槽位名决定行动（例如外骨骼要 first~fourth），混搭进通用场景后没有槽位，开战就卡死（0.0.12 实测）。
-    /// 测试里替换。
+    /// 测试里替换。第一个参数（幕）保留给以后按幕区分用。
     /// </summary>
-    internal static Func<string, string, bool> MonsterFilter = (actId, monster) =>
+    internal static Func<string, string, bool> MonsterFilter = (_, monster) =>
     {
-        if (!Mixable.TryGetValue(actId, out var set))
+        if (_mixable == null)
         {
-            set = new HashSet<string>();
-            foreach (var (id, enc) in _rules.Prices.Act(actId).Encounters.Where(e => e.Value.Room == RoomKind.Monster))
+            _mixable = new HashSet<string>();
+            foreach (var act in _rules.Prices.Acts.Values)
+            foreach (var (id, enc) in act.Encounters.Where(e => e.Value.Room is RoomKind.Monster or RoomKind.Elite))
             {
-                try
-                {
-                    if (GameReflection.TypeNamed(id) == null) continue;
-                    var model = Test1bMixedEncounter.Model("Encounter", id);
-                    bool sceneless = GameReflection.Get(model, "HasScene") is false
-                                     && GameReflection.Get(model, "Slots") is IEnumerable slots && !slots.Cast<object>().Any();
-                    if (sceneless) set.UnionWith(enc.Lineups.SelectMany(l => l.Monsters));
-                }
+                try { if (IsSceneless(id)) _mixable.UnionWith(enc.Lineups.SelectMany(l => l.Monsters)); }
                 catch (Exception e) { Log.Warn($"召唤阶段：检查遭遇 {id} 的场景失败，它的怪不放进可召唤列表：{e.Message}"); }
             }
-            Mixable[actId] = set;
-            Log.Info($"召唤阶段：{actId} 可混搭的怪 {set.Count} 种：{string.Join(", ", set.Order())}");
+            Log.Info($"召唤阶段：可混搭的怪 {_mixable.Count} 种：{string.Join(", ", _mixable.Order())}");
         }
-        return set.Contains(monster);
+        return _mixable.Contains(monster);
+    };
+
+    /// <summary>Boss 能不能另加怪：只有没有专用场景、命名槽位的 Boss 能（例如墨影幻灵的召唤物要专用槽位，不能）。测试里替换。</summary>
+    internal static Func<string, bool> BossAllowsExtras = encounter =>
+    {
+        try { return IsSceneless(encounter); }
+        catch (Exception e) { Log.Warn($"召唤阶段：检查 Boss {encounter} 的场景失败，不允许另加怪：{e.Message}"); return false; }
     };
 
     /// <summary>界面工厂；测试里替换。</summary>
@@ -84,7 +93,7 @@ internal static class SummonPhase
         StartHp.Clear();
         KnockedDown.Clear();
         _subscribedManager = null;
-        Mixable.Clear();
+        _mixable = null;
     }
 
     internal static void Apply(Harmony harmony, TowerMasterConfig config, PriceBook prices)
@@ -142,7 +151,7 @@ internal static class SummonPhase
         context = context with { StandardCostOverride = room == RoomKind.Boss ? 0 : _rules.AverageStandardCost(actId, room.Value, weak: opening) };
         var candidates = room == RoomKind.Boss ? BossCandidates(state, actId, act.ActNo) : [];
 
-        var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds, m => MonsterFilter(actId, m));
+        var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds, m => MonsterFilter(actId, m), BossAllowsExtras);
         _heldMove = move;
         _queue = queue;
         Current = session;
@@ -217,8 +226,8 @@ internal static class SummonPhase
         var state = State;
         var owner = Convert.ToUInt64(GameReflection.Get(_heldMove!, "OwnerId"));
         var plan = new SummonPlan(2, ++_sent, Seed(state), ActId(state), Convert.ToInt32(GameReflection.Get(state, "TotalFloor")),
-            session.Room.Room == RoomKind.Monster ? session.Monsters.ToArray() : [],
-            session.Room.Room == RoomKind.Monster ? null : session.Encounter,
+            session.Monsters.ToArray(),
+            session.Room.Room == RoomKind.Boss ? session.Encounter : null,
             Test1bMixedEncounter.CoordKey(GameReflection.Get(_heldMove!, "_destination")));
         var payload = JsonSerializer.Serialize(plan);
         Log.Info($"召唤阶段 #{plan.Sequence}：房主发送 {payload}");

@@ -88,12 +88,13 @@ public class SummonRulesTests
     }
 
     [Fact]
-    public void NormalRoomRejectsElitesAndSummonsAndEncounters()
+    public void NormalRoomTakesAnyActNormalOrEliteButNotBossOrSummons()
     {
         var rules = Fixture.Rules();
-        Assert.Contains(SummonViolation.MonsterNotSummonable, rules.Quote(Normal(), new SummonPlan(null, ["Byrdonis"])).Violations);
-        Assert.Contains(SummonViolation.MonsterNotSummonable, rules.Quote(Normal(), new SummonPlan(null, ["Wriggler"])).Violations);
-        Assert.Contains(SummonViolation.UnknownMonster, rules.Quote(Normal(), new SummonPlan(null, ["Chomper"])).Violations);
+        Assert.True(rules.Quote(Normal(), new SummonPlan(null, ["Chomper"])).Ok);     // 第二幕的怪，第一幕也能召唤
+        Assert.Contains(SummonViolation.OverSpendCap, rules.Quote(Normal(), new SummonPlan(null, ["Byrdonis"])).Violations); // 精英可以选，但 9 点超过上限 8
+        Assert.Contains(SummonViolation.UnknownMonster, rules.Quote(Normal(), new SummonPlan(null, ["KinPriest"])).Violations); // Boss 不在可召唤表里
+        Assert.Contains(SummonViolation.UnknownMonster, rules.Quote(Normal(), new SummonPlan(null, ["Wriggler"])).Violations);       // 召唤物
         Assert.Contains(SummonViolation.EncounterNotAllowed, rules.Quote(Normal(), new SummonPlan("MawlerNormal", ["Mawler"])).Violations);
         Assert.Contains(SummonViolation.EmptyRoom, rules.Quote(Normal(), new SummonPlan(null, [])).Violations);
     }
@@ -141,27 +142,40 @@ public class SummonRulesTests
     }
 
     [Fact]
-    public void EliteRoom()
+    public void EliteRoomIsADiscountRoomWithOneElite()
     {
         var rules = Fixture.Rules();
-        var room = new RoomContext("Overgrowth", RoomKind.Elite, 1, 10, ["BygoneEffigy"], 30); // 标准开销 8，上限 12
+        var room = new RoomContext("Overgrowth", RoomKind.Elite, 2, 10, ["BygoneEffigy"], 30); // 标准开销 8，上限 12
 
-        var plain = rules.Quote(room, new SummonPlan("ByrdonisElite", []));
-        Assert.True(plain.Ok);
-        Assert.Equal(9, plain.Total);
+        Assert.Equal(9, rules.SummonPrice("Byrdonis", 1, RoomKind.Monster));
+        Assert.Equal(7, rules.SummonPrice("Byrdonis", 1, RoomKind.Elite)); // 打七折：9.6 × 0.7 ≈ 6.7 → 7
+        var plan = rules.Quote(room, new SummonPlan(null, ["Byrdonis", "Mawler"])); // 7 + 2 + 税 1 = 10
+        Assert.True(plan.Ok, string.Join(",", plan.Violations));
+        Assert.Equal(10, plan.Total);
 
-        // 另加一只 3 点小怪：3 + 税1 = 4，刚好到精英房小怪上限；合计 13 > 12 超单场上限。
-        var extra = rules.Quote(room, new SummonPlan("ByrdonisElite", ["Mawler"]));
-        Assert.Equal(4, extra.MonsterSpend - 9);
-        Assert.DoesNotContain(SummonViolation.OverEliteExtraCap, extra.Violations);
-        Assert.Contains(SummonViolation.OverSpendCap, extra.Violations);
+        Assert.Contains(SummonViolation.TooManyElites, rules.Quote(room, new SummonPlan(null, ["Byrdonis", "BygoneEffigy"])).Violations);
+        Assert.Contains(SummonViolation.EncounterNotAllowed, rules.Quote(room, new SummonPlan("ByrdonisElite", [])).Violations);
+        Assert.Contains(SummonViolation.EmptyRoom, rules.Quote(room, new SummonPlan(null, [])).Violations);
+    }
 
-        Assert.True(rules.Quote(room, new SummonPlan("BygoneEffigyElite", ["Mawler"])).Ok);
-        Assert.Contains(SummonViolation.OverEliteExtraCap,
-            rules.Quote(room, new SummonPlan("BygoneEffigyElite", ["Mawler", "Nibbit"])).Violations);
-        Assert.Contains(SummonViolation.EncounterRequired, rules.Quote(room, new SummonPlan(null, ["Mawler"])).Violations);
-        Assert.Contains(SummonViolation.WrongEncounterRoom, rules.Quote(room, new SummonPlan("MawlerNormal", [])).Violations);
-        Assert.Contains(SummonViolation.UnknownEncounter, rules.Quote(room, new SummonPlan("TerrorEelElite", [])).Violations);
+    [Fact]
+    public void HomeActPricesMatchThePriceTable()
+    {
+        var rules = Fixture.Rules();
+        foreach (var act in Fixture.Prices.Acts.Values)
+        foreach (var (id, m) in act.Monsters.Where(m => m.Value.Role is MonsterRole.Normal or MonsterRole.Elite))
+            if (rules.ActsAhead(id, act.ActNo) == 0)
+                Assert.Equal(m.Price, rules.SummonPrice(id, act.ActNo, RoomKind.Monster));
+    }
+
+    [Fact]
+    public void LaterActMonstersAreWeakerButPricier()
+    {
+        var rules = Fixture.Rules();
+        Assert.Equal(1.0, rules.HpFactor("Mawler", 3));        // 早期的怪放到后面：不变
+        Assert.Equal(0.8, rules.HpFactor("Chomper", 1), 6);    // 第二幕的怪在第一幕：血量 −20%
+        Assert.Equal(0.6, rules.HpFactor("FrogKnight", 1), 6); // 第三幕的怪在第一幕：−40%
+        Assert.True(rules.SummonPrice("Chomper", 1, RoomKind.Monster) > rules.SummonPrice("Chomper", 2, RoomKind.Monster));
     }
 
     [Fact]

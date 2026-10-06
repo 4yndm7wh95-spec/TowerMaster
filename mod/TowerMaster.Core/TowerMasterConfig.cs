@@ -56,6 +56,21 @@ public sealed class TowerMasterConfig
     /// <summary>同名怪最多几只。</summary>
     public int MaxSameMonster { get; set; } = 3;
 
+    /// <summary>
+    /// 跨幕「水土不服」：怪物每比当前幕超前一幕，血量降这么多（0.2 = −20%）。
+    /// 只降血量、伤害不变，所以同时加价（<see cref="CrossActPricePremium"/>）。
+    /// </summary>
+    public double CrossActHpCut { get; set; } = 0.2;
+
+    /// <summary>怪物每比当前幕超前一幕，召唤价加这么多（1.0 = +100%）。</summary>
+    public double CrossActPricePremium { get; set; } = 1.0;
+
+    /// <summary>精英房是「优惠房」：所有怪的召唤价乘这个折扣。</summary>
+    public double EliteRoomDiscount { get; set; } = 0.7;
+
+    /// <summary>每个房间最多几只精英类怪物（防止精英房折扣叠精英）。</summary>
+    public int MaxEliteMonstersPerRoom { get; set; } = 1;
+
     /// <summary>开局保护：第一幕前几场战斗只能用简单遭遇的怪物、花费不超过标准开销、不能盖陷阱。</summary>
     public int OpeningProtectionBattles { get; set; } = 3;
 
@@ -69,7 +84,8 @@ public sealed class TowerMasterConfig
     public int DodgeRewardGold { get; set; } = 15;
 
     // ---------------------------------------------------------------- 计时
-    public int SummonPhaseSeconds { get; set; } = 30;
+    /// <summary>召唤阶段限时（秒）；0 = 不限时（用户要求去掉倒计时）。</summary>
+    public int SummonPhaseSeconds { get; set; } = 0;
     public int MasterTurnSeconds { get; set; } = 20;
 
     // ---------------------------------------------------------------- 威胁点
