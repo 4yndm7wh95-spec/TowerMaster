@@ -64,6 +64,26 @@ namespace MegaCrit.Sts2.Core.Models.Encounters
         protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.Nibbit().ToMutable(), "front"), (new MegaCrit.Sts2.Core.Models.Monsters.Nibbit().ToMutable(), "back")];
     }
 
+    public sealed class ByrdonisElite : EncounterModel
+    {
+        protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.BygoneEffigy().ToMutable(), null)];
+    }
+
+    public sealed class VantomBoss : EncounterModel
+    {
+        protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.Mawler().ToMutable(), null)];
+    }
+
+    public sealed class CeremonialBeastBoss : EncounterModel
+    {
+        protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.Mawler().ToMutable(), null)];
+    }
+
+    public sealed class TheKinBoss : EncounterModel
+    {
+        protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.Mawler().ToMutable(), null)];
+    }
+
     public sealed class BygoneEffigyElite : EncounterModel
     {
         protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.BygoneEffigy().ToMutable(), null)];
@@ -75,7 +95,15 @@ namespace MegaCrit.Sts2.Core.Models
     public class ActModel(EncounterModel next)
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public EncounterModel PullNextEncounter(MegaCrit.Sts2.Core.Rooms.RoomType roomType) => next;
+        public EncounterModel PullNextEncounter(MegaCrit.Sts2.Core.Rooms.RoomType roomType) => roomType switch
+        {
+            MegaCrit.Sts2.Core.Rooms.RoomType.Elite => ModelDb.Encounter<BygoneEffigyElite>(),
+            MegaCrit.Sts2.Core.Rooms.RoomType.Boss => BossEncounter,
+            _ => next,
+        };
+
+        /// <summary>游戏为本幕选好的 Boss。</summary>
+        public EncounterModel BossEncounter => ModelDb.Encounter<VantomBoss>();
     }
 }
 
@@ -88,6 +116,7 @@ namespace MegaCrit.Sts2.Core.Runs
         public ActModel Act { get; set; } = new MegaCrit.Sts2.Core.Models.Acts.Overgrowth();
         public RunRng Rng { get; } = new();
         public List<MegaCrit.Sts2.Core.Entities.Players.Player> Players { get; } = new();
+        public MegaCrit.Sts2.Core.Map.ActMap Map { get; set; } = new();
     }
     public sealed class RunRng { public ulong Seed { get; set; } = 123; }
 }
@@ -119,6 +148,9 @@ namespace MegaCrit.Sts2.Core.Combat
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public void SetUpCombat(CombatState state) => State = state;
+
+        public event Action<MegaCrit.Sts2.Core.Rooms.CombatRoom>? CombatWon;
+        public void Win(MegaCrit.Sts2.Core.Rooms.CombatRoom room) => CombatWon?.Invoke(room);
     }
 }
 
@@ -183,6 +215,8 @@ namespace MegaCrit.Sts2.Core.Entities.Creatures
         public int MaxHp { get; } = maxHp;
         public int CurrentHp { get; private set; } = maxHp;
         public bool IsDead => CurrentHp <= 0;
+        public void Damage(int amount) => CurrentHp = Math.Max(0, CurrentHp - amount);
+        public void Revive() { if (IsDead) CurrentHp = 1; }
         public MegaCrit.Sts2.Core.Entities.Players.Player? Player { get; init; }
         public MonsterModel? Monster { get; init; }
 

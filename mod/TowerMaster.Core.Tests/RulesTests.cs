@@ -199,6 +199,23 @@ public class SummonRulesTests
     }
 
     [Fact]
+    public void StandardCostOverrideAndActAverages()
+    {
+        var rules = Fixture.Rules();
+        Assert.Equal(5, rules.AverageStandardCost("Overgrowth", RoomKind.Monster));       // 4.96
+        Assert.Equal(3, rules.AverageStandardCost("Overgrowth", RoomKind.Monster, weak: true));
+        Assert.Equal(9, rules.AverageStandardCost("Overgrowth", RoomKind.Elite));         // 9.33
+
+        // 进房前不知道原版遭遇：用平均值当标准开销，上限 = 5 × 1.6 = 8
+        var room = new RoomContext("Overgrowth", RoomKind.Monster, 1, 5, [], 30, StandardCostOverride: 5);
+        var quote = rules.Quote(room, new SummonPlan(null, ["Mawler", "Nibbit"]));
+        Assert.Equal(5, quote.StandardCost);
+        Assert.True(quote.Ok);
+        Assert.Contains(SummonViolation.OverSpendCap, rules.Quote(room, new SummonPlan(null, ["Mawler", "Fogmog", "Nibbit"])).Violations);
+        Assert.Equal(5, rules.Fallback(room).Total);
+    }
+
+    [Fact]
     public void FallbackPaysStandardCostOrWhatIsLeft()
     {
         var rules = Fixture.Rules();
@@ -257,6 +274,18 @@ public class EconomyTests
         Assert.Equal(new[] { 1UL, 2UL }, first);
         Assert.Empty(second);
         Assert.Equal(new[] { 1UL }, fourth);
+    }
+
+    [Fact]
+    public void RestoreFromSave()
+    {
+        var w = new SummonWallet(Fixture.Config());
+        w.Restore(22, 2, [5UL]);
+        Assert.Equal((22, 2), (w.Points, w.ActNo));
+        w.SettleBattle(Battle(down: [5]), 2, out var rewarded);
+        Assert.Empty(rewarded); // 存档前那场被击倒的人，连续第二场不给奖励
+        w.Restore(999, 1, []);
+        Assert.Equal(30, w.Points); // 截到上限
     }
 
     [Fact]

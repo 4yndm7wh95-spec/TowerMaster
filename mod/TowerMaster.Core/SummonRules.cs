@@ -8,6 +8,9 @@ namespace TowerMaster.Core;
 /// <param name="OriginalLineup">本房间原版生成的怪物组合（游戏用种子算出的那一组）。</param>
 /// <param name="Savings">塔主当前召唤点。</param>
 /// <param name="BossCandidates">本幕开头公开的候选 Boss 遭遇（见 <see cref="SummonRules.PickBossCandidates"/>）；null 表示不限制。</param>
+/// <param name="StandardCostOverride">
+/// 直接指定标准开销。进房前拿不到原版遭遇（提前抽会改变随机序列），召唤阶段用本幕同类房间的平均标准开销。
+/// </param>
 public sealed record RoomContext(
     string ActId,
     RoomKind Room,
@@ -15,7 +18,8 @@ public sealed record RoomContext(
     int BattlesBeforeInRun,
     IReadOnlyList<string> OriginalLineup,
     int Savings,
-    IReadOnlyList<string>? BossCandidates = null);
+    IReadOnlyList<string>? BossCandidates = null,
+    int? StandardCostOverride = null);
 
 /// <summary>塔主提交的召唤方案。</summary>
 /// <param name="Encounter">精英房、Boss 房选的原版遭遇类名；普通房必须为 null。</param>
@@ -83,6 +87,20 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
         return room == RoomKind.Monster ? sum + CrowdTax(lineup.Count) : sum;
     }
 
+    public int StandardCostOf(RoomContext room) =>
+        room.Room == RoomKind.Boss ? 0 : room.StandardCostOverride ?? StandardCost(room.ActId, room.Room, room.OriginalLineup);
+
+    /// <summary>
+    /// 本幕同类房间的平均标准开销，四舍五入：普通房取非简单遭遇的平均（开局保护时取简单遭遇的平均），精英房取精英遭遇的平均。
+    /// </summary>
+    public int AverageStandardCost(string actId, RoomKind room, bool weak = false)
+    {
+        var costs = Prices.Act(actId).Encounters.Values
+            .Where(e => e.Room == room && (room != RoomKind.Monster || e.Weak == weak))
+            .Select(e => e.StandardCost).ToList();
+        return costs.Count == 0 ? 0 : (int)Math.Round(costs.Average(), MidpointRounding.AwayFromZero);
+    }
+
     /// <summary>场上同时最多几只怪：基础值 + 爬塔人数。</summary>
     public int MaxMonsters(int climbers) => Config.MaxMonstersBase + climbers;
 
@@ -114,7 +132,7 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
     /// <summary>超时未确认：按原版组合出场，花费按标准开销（不够就扣到 0）。</summary>
     public SummonQuote Fallback(RoomContext room)
     {
-        int std = StandardCost(room.ActId, room.Room, room.OriginalLineup);
+        int std = StandardCostOf(room);
         int paid = Math.Min(std, Math.Max(0, room.Savings));
         return new SummonQuote([], paid, 0, 0, std, std, room.OriginalLineup);
     }
@@ -123,7 +141,7 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
     {
         var act = Prices.Act(room.ActId);
         var errors = new List<SummonViolation>();
-        int std = StandardCost(room.ActId, room.Room, room.OriginalLineup);
+        int std = StandardCostOf(room);
         bool opening = IsOpeningProtected(room);
 
         // 怪物本身是否可召唤：只能用本幕的普通怪（精英、Boss 只能通过遭遇出场；怪物召唤出的小怪不单卖）。

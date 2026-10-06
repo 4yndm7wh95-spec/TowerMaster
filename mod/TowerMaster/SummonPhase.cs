@@ -1,0 +1,284 @@
+using System.Collections;
+using System.Reflection;
+using System.Text.Json;
+using HarmonyLib;
+using TowerMaster.Core;
+
+namespace TowerMaster;
+
+/// <summary>召唤面板的界面接口；游戏里是 Godot 面板，测试里换成假的。</summary>
+internal interface ISummonUi
+{
+    void Show();
+    void Close();
+}
+
+/// <summary>
+/// 召唤阶段（开发顺序第 2 步）。塔主 = 房主，只在房主这台电脑上运行：
+/// 1. 地图投票到齐、房主要入队「移动」动作时（<see cref="Test1bMixedEncounter.BeforeEnqueue"/>），
+///    如果目的地是普通、精英或 Boss 房，先扣住移动，打开召唤面板（限时 30 秒）。
+/// 2. 确认或超时后：扣召唤点、记下本场花费，确认时广播召唤清单（复用测试 1b 的联机动作），再放行移动。
+///    各客户端在进房时按清单换遭遇，和测试 1b 一样。
+/// 3. 战斗胜利后结算收入（<see cref="AfterCombatWon"/>）。
+/// 「?」房间进房后才知道是不是战斗，第一版不召唤，按原版出场、不扣点。
+/// </summary>
+internal static class SummonPhase
+{
+    private static TowerMasterConfig _config = new();
+    private static SummonRules _rules = null!;
+    private static object? _heldMove, _queue;
+    private static bool _releasing;
+    private static int _sent;
+    private static readonly Dictionary<ulong, int> StartHp = new();
+    private static readonly HashSet<ulong> KnockedDown = new();
+    private static object? _subscribedManager;
+    private static bool _patched;
+
+    public static bool Enabled { get; private set; }
+    public static SummonSession? Current { get; private set; }
+
+    /// <summary>界面工厂；测试里替换。</summary>
+    internal static Func<SummonSession, ISummonUi> UiFactory = session => new SummonPanel(session);
+
+    /// <summary>结算提示（收入等）；游戏里显示在屏幕上，测试里只记日志。</summary>
+    internal static Action<string> Toast = text => SummonPanel.ShowToast(text);
+
+    internal static void Configure(TowerMasterConfig config, PriceBook prices)
+    {
+        _config = config;
+        _rules = new SummonRules(config, prices);
+        MasterLedger.Configure(config);
+        _heldMove = _queue = null;
+        _releasing = false;
+        Current = null;
+        StartHp.Clear();
+        KnockedDown.Clear();
+        _subscribedManager = null;
+    }
+
+    internal static void Apply(Harmony harmony, TowerMasterConfig config, PriceBook prices)
+    {
+        Configure(config, prices);
+        Enabled = true;
+        if (_patched) return;
+        _patched = true;
+        Patch(harmony, "SetUpCombat", "CombatManager", nameof(AfterSetUp), prefix: false);
+        Patch(harmony, "ReviveBeforeCombatEnd", "Player", nameof(BeforeRevive), prefix: true);
+        Log.Info("召唤阶段：已启用（塔主 = 房主）");
+    }
+
+    internal static void Disable() => Enabled = false;
+
+    private static void Patch(Harmony harmony, string method, string type, string callback, bool prefix)
+    {
+        var target = GameReflection.FindMethod(method, type);
+        if (target == null) { Log.Warn($"召唤阶段：找不到 {type}.{method}"); return; }
+        var patch = new HarmonyMethod(typeof(SummonPhase).GetMethod(callback, GameReflection.All)!);
+        harmony.Patch(target, prefix: prefix ? patch : null, postfix: prefix ? null : patch);
+        Log.Info($"召唤阶段：已挂到 {GameReflection.Describe(target)}");
+    }
+
+    private static object State => GameReflection.Get(Test1bMixedEncounter.Run, "State") ?? throw new InvalidOperationException("没有进行中的对局");
+    private static ulong Seed(object state) => Convert.ToUInt64(GameReflection.Get(GameReflection.Get(state, "Rng")!, "Seed"));
+    private static string ActId(object state) => GameReflection.Get(state, "Act")!.GetType().Name;
+
+    private static int Climbers(object state) =>
+        (GameReflection.Get(state, "Players") as IEnumerable)?.Cast<object>().Count(p => Test2MasterOffField.NetIdOf(p) != Test2MasterOffField.MasterId) ?? 1;
+
+    // ---------------------------------------------------------------- 1. 扣住移动、打开面板
+
+    /// <summary>
+    /// 房主入队「移动」动作前调用。返回 true 放行；返回 false 扣住（面板关闭后由本类重新入队）。
+    /// </summary>
+    internal static bool OnMoveRequested(object queue, object move)
+    {
+        if (_releasing) { _releasing = false; return true; } // 召唤结束后本类自己重新入队
+        if (!Test3MasterAutoPilot.LocalIsMaster) return true;
+        if (Current != null) { Log.Warn("召唤阶段：上一个召唤还没结束，又收到移动，扣住"); return false; }
+
+        var state = State;
+        var room = RoomKindAt(state, move);
+        if (room == null) return true;
+
+        var actId = ActId(state);
+        var prices = _rules.Prices;
+        if (!prices.Acts.TryGetValue(actId, out var act)) { Log.Warn($"召唤阶段：价格表里没有幕 {actId}，按原版"); return true; }
+        var wallet = MasterLedger.For(Seed(state), act.ActNo);
+
+        var context = new RoomContext(actId, room.Value, Climbers(state), MasterLedger.BattlesFought, [], wallet.Points);
+        bool opening = _rules.IsOpeningProtected(context);
+        context = context with { StandardCostOverride = _rules.AverageStandardCost(actId, room.Value, weak: opening) };
+        var candidates = room == RoomKind.Boss ? BossCandidates(state, actId, act.ActNo) : [];
+
+        var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds);
+        _heldMove = move;
+        _queue = queue;
+        Current = session;
+        session.Finished += OnFinished;
+        Log.Info($"召唤阶段：{room} 房，幕 {actId}，召唤点 {wallet.Points}，标准开销 {context.StandardCostOverride}{(opening ? "（开局保护）" : "")}，扣住移动");
+        try
+        {
+            UiFactory(session).Show();
+        }
+        catch (Exception e)
+        {
+            Log.Error("召唤阶段：打开面板失败，按原版出场", e);
+            session.UseVanilla();
+        }
+        return false;
+    }
+
+    private static RoomKind? RoomKindAt(object state, object move)
+    {
+        var coord = GameReflection.Get(move, "_destination") ?? throw new InvalidOperationException("移动动作上没有 _destination");
+        var map = GameReflection.Get(state, "Map") ?? throw new InvalidOperationException("没有地图");
+        var point = map.GetType().GetMethods(GameReflection.All)
+            .First(m => m.Name == "GetPoint" && m.GetParameters().Length == 1).Invoke(map, [coord]);
+        return GameReflection.Get(point!, "PointType")?.ToString() switch
+        {
+            "Monster" => RoomKind.Monster,
+            "Elite" => RoomKind.Elite,
+            "Boss" => RoomKind.Boss,
+            _ => null,
+        };
+    }
+
+    /// <summary>候选 Boss：游戏本来为本幕选的 Boss 在前，再按种子抽一个本幕其他 Boss（只在房主算，结果随清单广播）。</summary>
+    private static IReadOnlyList<string> BossCandidates(object state, string actId, int actNo)
+    {
+        var original = GameReflection.Get(GameReflection.Get(state, "Act")!, "BossEncounter")?.GetType().Name;
+        if (original == null) return [];
+        var rng = new Random(unchecked((int)(Seed(state) ^ (ulong)(actNo * 7919))));
+        return _rules.PickBossCandidates(actId, original, n => rng.Next(n));
+    }
+
+    // ---------------------------------------------------------------- 2. 确认或超时
+
+    private static void OnFinished(SummonSession session)
+    {
+        try
+        {
+            var wallet = MasterLedger.Wallet!;
+            var (total, spend) = session.Charge;
+            total = Math.Min(total, wallet.Points);
+            wallet.Spend(total);
+            MasterLedger.Pending = new PendingBattle(session.Room.Room, session.Room.StandardCostOverride ?? 0, spend);
+            MasterLedger.Save();
+
+            if (session.Confirmed) SendPlan(session);
+            Log.Info(session.Confirmed
+                ? $"召唤阶段：确认 {(session.Encounter ?? string.Join("+", session.Monsters))}，花费 {total}，剩余 {wallet.Points}"
+                : $"召唤阶段：{(session.SecondsLeft <= 0 ? "超时" : "放弃")}，按原版出场，花费 {total}，剩余 {wallet.Points}");
+        }
+        catch (Exception e)
+        {
+            Log.Error("召唤阶段：结算召唤失败，按原版出场", e);
+        }
+        finally
+        {
+            Release();
+        }
+    }
+
+    private static void SendPlan(SummonSession session)
+    {
+        var state = State;
+        var owner = Convert.ToUInt64(GameReflection.Get(_heldMove!, "OwnerId"));
+        var plan = new SummonPlan(2, ++_sent, Seed(state), ActId(state), Convert.ToInt32(GameReflection.Get(state, "TotalFloor")),
+            session.Room.Room == RoomKind.Monster ? session.Monsters.ToArray() : [],
+            session.Room.Room == RoomKind.Monster ? null : session.Encounter);
+        var payload = JsonSerializer.Serialize(plan);
+        Log.Info($"召唤阶段 #{plan.Sequence}：房主发送 {payload}");
+        RuntimeNetAction.Call(_queue!, "RequestEnqueue", RuntimeNetAction.Create(owner, payload));
+    }
+
+    /// <summary>放行扣住的移动。清单动作已先入队，同一个玩家队列保证它先执行。</summary>
+    private static void Release()
+    {
+        var move = _heldMove;
+        var queue = _queue;
+        _heldMove = _queue = null;
+        Current = null;
+        if (move == null || queue == null) return;
+        _releasing = true;
+        try { RuntimeNetAction.Call(queue, "RequestEnqueue", move); }
+        catch (Exception e) { Log.Error("召唤阶段：放行移动失败（大家会停在地图上）", e); }
+        finally { _releasing = false; }
+    }
+
+    // ---------------------------------------------------------------- 3. 战斗结算
+
+    private static void AfterSetUp(object? __instance, object[] __args)
+    {
+        try
+        {
+            if (!Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
+            StartHp.Clear();
+            KnockedDown.Clear();
+            foreach (var p in ClimberPlayers())
+                StartHp[Test2MasterOffField.NetIdOf(p)!.Value] = Convert.ToInt32(GameReflection.Get(GameReflection.Get(p, "Creature")!, "CurrentHp"));
+            if (__instance != null && !ReferenceEquals(__instance, _subscribedManager)) Subscribe(__instance);
+        }
+        catch (Exception e) { Log.Error("召唤阶段：记录开局血量失败", e); }
+    }
+
+    /// <summary>订阅 CombatManager.CombatWon（Action&lt;CombatRoom&gt;）。</summary>
+    private static void Subscribe(object manager)
+    {
+        var ev = manager.GetType().GetEvent("CombatWon", GameReflection.All);
+        if (ev?.EventHandlerType == null) { Log.Warn("召唤阶段：找不到 CombatWon 事件，不结算收入"); return; }
+        var handler = Delegate.CreateDelegate(ev.EventHandlerType, typeof(SummonPhase).GetMethod(nameof(AfterCombatWon), GameReflection.All)!);
+        ev.AddEventHandler(manager, handler);
+        _subscribedManager = manager;
+        Log.Info("召唤阶段：已订阅战斗胜利事件");
+    }
+
+    /// <summary>原版战斗结束前复活倒下的玩家：在这里记下谁被击倒了。</summary>
+    private static void BeforeRevive(object __instance)
+    {
+        try
+        {
+            if (!Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
+            var id = Test2MasterOffField.NetIdOf(__instance);
+            if (id == null || id == Test2MasterOffField.MasterId) return;
+            if (GameReflection.Get(GameReflection.Get(__instance, "Creature")!, "IsDead") is true) KnockedDown.Add(id.Value);
+        }
+        catch (Exception e) { Log.Error("召唤阶段：记录击倒失败", e); }
+    }
+
+    internal static void AfterCombatWon(object room)
+    {
+        try
+        {
+            if (!Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
+            var state = State;
+            var act = _rules.Prices.Acts.GetValueOrDefault(ActId(state));
+            var wallet = MasterLedger.For(Seed(state), act?.ActNo ?? MasterLedger.Wallet?.ActNo ?? 1);
+            var pending = MasterLedger.Pending ?? new PendingBattle(RoomKind.Monster, 0, 0); // 「?」战斗等：没有召唤记录
+            MasterLedger.Pending = null;
+
+            int damage = 0;
+            foreach (var p in ClimberPlayers())
+            {
+                var id = Test2MasterOffField.NetIdOf(p)!.Value;
+                int end = KnockedDown.Contains(id) ? 0 : Convert.ToInt32(GameReflection.Get(GameReflection.Get(p, "Creature")!, "CurrentHp"));
+                damage += Math.Max(0, StartHp.GetValueOrDefault(id, end) - end);
+            }
+
+            var income = wallet.SettleBattle(new BattleResult(pending.Room, pending.StandardCost, pending.MonsterSpend, damage, KnockedDown.ToList()),
+                Climbers(state), out var rewarded);
+            MasterLedger.CountBattle();
+            MasterLedger.Save();
+            var text = $"战斗收入 +{income.Credited}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +
+                       (income.Knockdown > 0 ? $"，击倒 {income.Knockdown}" : "") + (income.Wasted > 0 ? $"，超上限作废 {income.Wasted}" : "") +
+                       $"），召唤点 {wallet.Points}/{wallet.Cap}";
+            Log.Info($"召唤阶段：{text}；玩家掉血 {damage}，击倒 [{string.Join(",", KnockedDown)}]，有奖励 [{string.Join(",", rewarded)}]");
+            Toast(text);
+        }
+        catch (Exception e) { Log.Error("召唤阶段：结算收入失败", e); }
+    }
+
+    private static IEnumerable<object> ClimberPlayers() =>
+        (GameReflection.Get(State, "Players") as IEnumerable)?.Cast<object>()
+            .Where(p => Test2MasterOffField.NetIdOf(p) != Test2MasterOffField.MasterId) ?? [];
+}

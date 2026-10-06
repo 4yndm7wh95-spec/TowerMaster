@@ -19,6 +19,7 @@
     <ModsDir Condition="'$(ModsDir)' == ''">$(GameDir)\mods</ModsDir>
     <HasGame Condition="'$(GameDir)' != '' And Exists('$(GameData)\sts2.dll')">true</HasGame>
     <HasGameHarmony Condition="'$(HasGame)' == 'true' And Exists('$(GameData)\0Harmony.dll')">true</HasGameHarmony>
+    <HasGameGodot Condition="'$(HasGame)' == 'true' And Exists('$(GameData)\GodotSharp.dll')">true</HasGameGodot>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(HasGame)' == 'true'">
@@ -27,7 +28,13 @@
 
   <ItemGroup Condition="'$(HasGame)' == 'true'">
     <Reference Include="sts2" HintPath="$(GameData)\sts2.dll" Private="false" />
-    <Reference Include="GodotSharp" HintPath="$(GameData)\GodotSharp.dll" Private="false" Condition="Exists('$(GameData)\GodotSharp.dll')" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HasGameGodot)' == 'true'">
+    <Reference Include="GodotSharp" HintPath="$(GameData)\GodotSharp.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HasGameGodot)' != 'true'">
+    <!-- 没有游戏时（云端）只用来编译召唤面板；运行时用游戏自带的 GodotSharp（Godot 4.5.1） -->
+    <PackageReference Include="GodotSharp" Version="4.5.1" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup Condition="'$(HasGameHarmony)' == 'true'">
     <Reference Include="0Harmony" HintPath="$(GameData)\0Harmony.dll" Private="false" />

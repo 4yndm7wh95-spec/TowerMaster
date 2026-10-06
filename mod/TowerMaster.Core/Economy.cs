@@ -37,6 +37,18 @@ public sealed class SummonWallet
     }
 
     public int Points { get; private set; }
+
+    /// <summary>上一场被击倒的玩家（连续击倒规则用），存档恢复时一起保存。</summary>
+    public IReadOnlyCollection<ulong> KnockedDownLastBattle => _knockedDownLastBattle;
+
+    /// <summary>从存档恢复。</summary>
+    public void Restore(int points, int actNo, IEnumerable<ulong> knockedDownLastBattle)
+    {
+        ActNo = actNo;
+        Points = Math.Clamp(points, 0, Cap);
+        _knockedDownLastBattle.Clear();
+        _knockedDownLastBattle.UnionWith(knockedDownLastBattle);
+    }
     public int ActNo { get; private set; }
     public int Cap => TowerMasterConfig.ByAct(_config.SavingsCap, ActNo);
 

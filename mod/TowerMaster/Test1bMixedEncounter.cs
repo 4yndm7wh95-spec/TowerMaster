@@ -7,12 +7,16 @@ using TowerMaster.Core;
 
 namespace TowerMaster;
 
-internal sealed record SummonPlan(int Version, int Sequence, ulong Seed, string Act, int SourceFloor, string[] Monsters)
+/// <summary>
+/// 房主广播的召唤清单。版本 1：测试 1b 的固定两种怪物；版本 2：召唤阶段，普通房是怪物列表，
+/// 精英、Boss 房是 <see cref="Encounter"/>（遭遇类名，怪物列表为空）。
+/// </summary>
+internal sealed record SummonPlan(int Version, int Sequence, ulong Seed, string Act, int SourceFloor, string[] Monsters, string? Encounter = null)
 {
     /// <summary>内容相同（数组逐项比较；记录类型默认按引用比较数组）。</summary>
     public bool SameAs(SummonPlan? other) =>
         other != null && Version == other.Version && Sequence == other.Sequence && Seed == other.Seed
-        && Act == other.Act && SourceFloor == other.SourceFloor && Monsters.SequenceEqual(other.Monsters);
+        && Act == other.Act && SourceFloor == other.SourceFloor && Monsters.SequenceEqual(other.Monsters) && Encounter == other.Encounter;
 }
 
 /// <summary>
@@ -42,9 +46,13 @@ internal static class Test1bMixedEncounter
         Plans.Clear();
     }
 
+    private static bool _patched;
+
     internal static void Apply(Harmony harmony, TestSettings settings, PriceBook prices)
     {
         Configure(settings, prices);
+        if (_patched) return; // 只挂一次：重复挂会让清单发两遍
+        _patched = true;
         RuntimeNetAction.Register(harmony);
         Patch(harmony, "RequestEnqueue", "ActionQueueSynchronizer", nameof(BeforeEnqueue), true);
         Patch(harmony, "PullNextEncounter", "ActModel", nameof(SelectEncounter), false);
@@ -63,10 +71,17 @@ internal static class Test1bMixedEncounter
         Log.Info($"测试1b：已挂到 {GameReflection.Describe(target)}");
     }
 
-    internal static void BeforeEnqueue(object __instance, object __0)
+    /// <summary>入队前：召唤阶段开着时交给它决定是否扣住移动；否则按测试 1b 的固定清单发送。返回 false 表示扣住。</summary>
+    internal static bool BeforeEnqueue(object __instance, object __0)
     {
-        try { SendPlan(__instance, __0); }
+        try
+        {
+            if (__0.GetType().Name == "MoveToMapCoordAction" && SummonPhase.Enabled)
+                return SummonPhase.OnMoveRequested(__instance, __0);
+            SendPlan(__instance, __0);
+        }
         catch (Exception e) { Log.Error("测试1b：发送召唤清单失败，这一场按原版遭遇", e); }
+        return true;
     }
 
     private static void SendPlan(object __instance, object __0)
@@ -104,11 +119,22 @@ internal static class Test1bMixedEncounter
 
     internal static void Validate(SummonPlan plan, object state, bool entered)
     {
-        if (plan.Version != 1 || plan.Sequence <= 0 || plan.Seed != Seed(state) || plan.Act != Act(state)
+        if (plan.Version is not (1 or 2) || plan.Sequence <= 0 || plan.Seed != Seed(state) || plan.Act != Act(state)
             || Floor(state) != plan.SourceFloor + (entered ? 1 : 0))
             throw new InvalidDataException("召唤清单版本、对局、幕或楼层不匹配");
-        if (plan.Monsters == null || plan.Monsters.Length != 2 || plan.Monsters.Distinct().Count() != 2)
+        if (plan.Monsters == null)
+            throw new InvalidDataException("清单没有怪物列表");
+        if (plan.Version == 1 && (plan.Monsters.Length != 2 || plan.Monsters.Distinct().Count() != 2))
             throw new InvalidDataException("测试1b必须混搭两种不同怪物");
+        if (plan.Version == 2)
+        {
+            // 数量、花费等规则由房主的召唤面板校验；这里只拦明显不合法的内容
+            if (plan.Encounter == null && (plan.Monsters.Length is 0 or > 6))
+                throw new InvalidDataException("召唤清单怪物数量不对");
+            if (plan.Encounter != null && (plan.Monsters.Length > 0
+                || !_prices.Acts.TryGetValue(plan.Act, out var a) || !a.Encounters.TryGetValue(plan.Encounter, out var enc) || enc.Room == RoomKind.Monster))
+                throw new InvalidDataException($"清单遭遇不是本幕的精英或 Boss：{plan.Encounter}");
+        }
         var monsterBase = RuntimeNetAction.Required("MonsterModel");
         foreach (var name in plan.Monsters)
         {
@@ -128,12 +154,17 @@ internal static class Test1bMixedEncounter
     private static void SelectEncounterCore(object __instance, ref object __result)
     {
         var name = __result.GetType().Name;
-        if (!(name.EndsWith("Normal") || name.EndsWith("Weak"))) { _pending = null; return; }
-        if (!_settings.MixedMonsters.ContainsKey(__instance.GetType().Name)) return;
+        if (!(name.EndsWith("Normal") || name.EndsWith("Weak")))
+        {
+            ReplaceEliteOrBoss(name, ref __result);
+            return;
+        }
+        if (!SummonPhase.Enabled && !_settings.MixedMonsters.ContainsKey(__instance.GetType().Name)) return;
         if (_pending == null) { Log.Warn($"测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 {name}"); return; }
         var plan = _pending;
         _pending = null;
         Validate(plan, State, false);
+        if (plan.Encounter != null) { Log.Warn($"测试1b #{plan.Sequence}：清单是精英或 Boss，但这是普通房 {name}，按原版"); return; }
         var holder = Model("Encounter", Holder);
         if (GameReflection.Get(holder, "HasScene") is not false
             || ((IEnumerable)GameReflection.Get(holder, "Slots")!).Cast<object>().Any())
@@ -142,6 +173,24 @@ internal static class Test1bMixedEncounter
         _selected = plan;
         PlanStore.Save(plan);
         Log.Info($"测试1b #{plan.Sequence}：已替换 {name} → {Holder}，清单=[{string.Join(", ", plan.Monsters)}]");
+    }
+
+    /// <summary>精英、Boss 房：清单里有遭遇就整个换掉（游戏随后自己创建可变副本、生成怪物）。</summary>
+    private static void ReplaceEliteOrBoss(string name, ref object __result)
+    {
+        var plan = _pending;
+        _pending = null;
+        if (plan?.Encounter == null) return;
+        Validate(plan, State, false);
+        var room = _prices.Acts[plan.Act].Encounters[plan.Encounter].Room;
+        var originalRoom = _prices.Acts.Values.Select(a => a.Encounters.GetValueOrDefault(name)).FirstOrDefault(e => e != null)?.Room;
+        if (originalRoom != null && originalRoom != room)
+        {
+            Log.Warn($"召唤清单 #{plan.Sequence}：清单是 {room}，房间是 {originalRoom}（{name}），按原版");
+            return;
+        }
+        __result = Model("Encounter", plan.Encounter);
+        Log.Info($"召唤清单 #{plan.Sequence}：已替换 {name} → {plan.Encounter}");
     }
 
     private static void BindMutable(object __instance, object __result)

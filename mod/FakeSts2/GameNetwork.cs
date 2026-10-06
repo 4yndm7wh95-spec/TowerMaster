@@ -11,6 +11,8 @@ namespace MegaCrit.Sts2.Core.Entities.Players
 {
     public sealed class Player
     {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void ReviveBeforeCombatEnd() => Creature.Revive();
         public Player(ulong id) { NetId = id; Creature = new MegaCrit.Sts2.Core.Entities.Creatures.Creature(80) { Player = this }; }
         public ulong NetId { get; }
         public MegaCrit.Sts2.Core.Entities.Creatures.Creature Creature { get; }
@@ -53,8 +55,10 @@ namespace MegaCrit.Sts2.Core.GameActions
         public abstract INetAction ToNetAction();
         public Task Execute() => ExecuteAction();
     }
-    public sealed class MoveToMapCoordAction(ulong owner) : GameAction
+    public sealed class MoveToMapCoordAction(ulong owner, MegaCrit.Sts2.Core.Map.MapCoord destination = default) : GameAction
     {
+        private readonly MegaCrit.Sts2.Core.Map.MapCoord _destination = destination;
+        public MegaCrit.Sts2.Core.Map.MapCoord Destination => _destination;
         public override ulong OwnerId => owner;
         public override MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType ActionType => MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType.NonCombat;
         protected override Task ExecuteAction() => Task.CompletedTask;
@@ -110,6 +114,14 @@ namespace MegaCrit.Sts2.Core.Modding
 namespace MegaCrit.Sts2.Core.Map
 {
     public sealed record MapLocation(int Row, int Col);
+    public readonly record struct MapCoord(int col, int row);
+    public enum MapPointType { Unassigned, Unknown, Shop, Treasure, RestSite, Monster, Elite, Boss, Ancient }
+    public sealed class MapPoint(MapPointType type) { public MapPointType PointType { get; set; } = type; }
+    public sealed class ActMap
+    {
+        public Dictionary<MapCoord, MapPoint> Points { get; } = new();
+        public MapPoint GetPoint(MapCoord coord) => Points.TryGetValue(coord, out var p) ? p : new MapPoint(MapPointType.Monster);
+    }
     public readonly record struct MapVote(int Row, int Col);
 }
 namespace MegaCrit.Sts2.Core.GameActions

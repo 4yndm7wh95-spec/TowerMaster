@@ -39,6 +39,7 @@ public class Test1bMixedEncounterTests
         }
         Test1bMixedEncounter.Configure(Settings(), Prices());
         PlanStore.Clear();
+        SummonPhase.Disable(); // 召唤阶段的测试会打开它；这里测的是固定清单
     }
     private static SummonPlan Plan() => new(1, 1, 123, "Overgrowth", 0, ["Mawler", "Flyconid"]);
     private static EncounterModel Generate()

@@ -19,6 +19,9 @@ internal sealed class TestSettings
     [JsonPropertyName("test3_master_autopilot")] public bool Test3MasterAutoPilot { get; set; }
 
     /// <summary>测试 3：塔主不能领奖励、买东西、删牌、拿宝箱遗物（设计文档：不给塔主发奖励）。</summary>
+    /// <summary>召唤阶段（开发第 2 步）：进普通、精英、Boss 房前塔主用召唤点选怪。开着时测试 1b 的固定混搭不再发送。</summary>
+    [JsonPropertyName("summon_phase")] public bool SummonPhase { get; set; }
+
     [JsonPropertyName("test3_block_master_items")] public bool Test3BlockMasterItems { get; set; } = true;
 
     /// <summary>

@@ -39,6 +39,9 @@ public static class ModEntry
         else Test1FixedEncounter.Apply(harmony, settings, prices);
         if (settings.Test2MasterOffField) Test2MasterOffField.Apply(harmony, settings);
         if (settings.Test3MasterAutoPilot) Test3MasterAutoPilot.Apply(harmony, settings);
+        // 召唤阶段要用测试 1b 的清单通道（上面已经挂好），塔主身份沿用测试 2
+        if (settings.SummonPhase && settings.Test1bMixedEncounter) SummonPhase.Apply(harmony, new TowerMasterConfig(), prices);
+        else if (settings.SummonPhase) Log.Warn("召唤阶段需要 test1b_mixed_encounter 开着（复用它的清单通道），没有启用");
     }
 
     private static Assembly? ResolveFromModDir(object? sender, ResolveEventArgs args)
