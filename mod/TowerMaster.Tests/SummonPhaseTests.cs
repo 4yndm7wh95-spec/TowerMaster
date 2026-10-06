@@ -158,6 +158,8 @@ public class SummonPhaseTests
         Assert.Equal("VantomBoss", session.Options[0].Id); // 候选第一个是游戏本来的 Boss
         Assert.Equal(0, session.Room.StandardCostOverride); // Boss 免费，没有标准开销
         Assert.Equal(2, session.Options.Count);
+        Assert.Equal("Vantom", session.LeadMonsterOf("VantomBoss"));
+        Assert.Equal("KinPriest", session.LeadMonsterOf("TheKinBoss")); // 画同族神官，不是信徒
         var other = session.Options[1].Id;
         session.Click(other);
         Assert.True(session.Confirm());
@@ -193,5 +195,52 @@ public class SummonPhaseTests
         var wallet = MasterLedger.For(run.Rng.Seed, 1);
         Assert.Equal(14, wallet.Points);
         Assert.Equal(1, MasterLedger.BattlesFought);
+    }
+
+    [Fact]
+    public void MonstersFromSlottedEncountersAreNotOffered()
+    {
+        Init();
+        Assert.True(SummonPhase.MonsterFilter("Overgrowth", "Mawler"));   // MawlerNormal：无场景、无槽位
+        Assert.False(SummonPhase.MonsterFilter("Overgrowth", "Inklet"));  // InkletsNormal 有命名槽位
+        Assert.False(SummonPhase.MonsterFilter("Overgrowth", "Byrdonis")); // 只看普通房遭遇，精英的怪不算
+    }
+
+    [Fact]
+    public async Task ReconnectRebuildRecoversPlanByCoordinate()
+    {
+        var queue = Init();
+        var move = MoveTo(MapPointType.Monster);
+        queue.RequestEnqueue(move);
+        var session = Shown.Single().Session;
+        session.Click("Nibbit");
+        Assert.True(session.Confirm());
+        await RunQueueAndEnter(queue, RoomType.Monster);
+
+        // 重连：房间重建，没有清单动作；当前坐标就是这个房间
+        var state = (RunState)RunManager.Instance.State;
+        state.CurrentMapCoord = move.Destination;
+        var rebuilt = new Overgrowth().PullNextEncounter(RoomType.Monster).ToMutable();
+        new CombatRoom(rebuilt, state).StartCombat();
+        Assert.IsType<CultistsNormal>(rebuilt);
+        Assert.Equal(new[] { "Nibbit" }, Names(rebuilt));
+
+        // 别的坐标没有清单：按原版
+        state.CurrentMapCoord = new MapCoord(0, 9);
+        Assert.IsNotType<CultistsNormal>(new Overgrowth().PullNextEncounter(RoomType.Monster));
+    }
+
+    [Fact]
+    public async Task SameEliteAsOriginalIsNotReplaced()
+    {
+        var queue = Init();
+        queue.RequestEnqueue(MoveTo(MapPointType.Elite));
+        var session = Shown.Single().Session;
+        Assert.Equal("BygoneEffigyElite", session.Encounter); // 正好是假游戏的原版精英
+        Assert.True(session.Confirm());
+        var original = ModelDb.Encounter<BygoneEffigyElite>();
+        foreach (var action in queue.Queued.ToList()) await action.Execute();
+        Assert.Same(original, new Overgrowth().PullNextEncounter(RoomType.Elite)); // 原样返回，没有换成另一个对象
+        Assert.Contains("不替换", File.ReadAllText(Path.Combine(Log.ModDir, "TowerMaster.log")));
     }
 }

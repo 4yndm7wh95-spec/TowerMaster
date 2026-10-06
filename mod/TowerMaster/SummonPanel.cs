@@ -59,7 +59,7 @@ internal sealed class SummonPanel : ISummonUi
         center.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
         _layer.AddChild(center);
 
-        var panel = new G.PanelContainer { CustomMinimumSize = new G.Vector2(1180, 0) };
+        var panel = new G.PanelContainer { CustomMinimumSize = new G.Vector2(1400, 0) };
         panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 3, 14, 28, shadow: 24));
         center.AddChild(panel);
 
@@ -143,47 +143,109 @@ internal sealed class SummonPanel : ISummonUi
         var room = _session.Room.Room;
         var scroll = new G.ScrollContainer
         {
-            CustomMinimumSize = new G.Vector2(0, room == RoomKind.Monster ? 250 : 170),
+            CustomMinimumSize = new G.Vector2(0, room == RoomKind.Monster ? 470 : 250),
             HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled,
         };
-        var grid = new G.GridContainer { Columns = room == RoomKind.Monster ? 4 : 3, SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
+        var grid = new G.GridContainer { Columns = room == RoomKind.Monster ? 5 : 3, SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
         grid.AddThemeConstantOverride("h_separation", 12);
         grid.AddThemeConstantOverride("v_separation", 12);
         scroll.AddChild(grid);
         box.AddChild(scroll);
 
+        var portraitSize = room == RoomKind.Monster ? new G.Vector2(230, 150) : new G.Vector2(400, 170);
         foreach (var option in _session.Options)
         {
             var card = new G.Button
             {
                 FocusMode = G.Control.FocusModeEnum.None,
-                CustomMinimumSize = new G.Vector2(room == RoomKind.Monster ? 265 : 360, 72),
+                CustomMinimumSize = new G.Vector2(portraitSize.X + 24, portraitSize.Y + 70),
                 SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill,
             };
             StyleCard(card, selected: false);
 
             var margin = new G.MarginContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
             margin.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
-            foreach (var side in new[] { "margin_left", "margin_right" }) margin.AddThemeConstantOverride(side, 16);
+            foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" }) margin.AddThemeConstantOverride(side, 10);
+            var column = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            column.AddThemeConstantOverride("separation", 6);
+
+            // 怪物形象：遭遇就画它的第一只怪（Boss、精英本体）
+            var monsterId = room == RoomKind.Monster ? option.Id : _session.LeadMonsterOf(option.Id);
+            var portrait = monsterId == null ? null : Portrait(monsterId, portraitSize);
+            if (portrait != null) column.AddChild(portrait);
+
             var row = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-            row.AddThemeConstantOverride("separation", 10);
-            var name = Text(option.Name, 23, TextMain);
+            row.AddThemeConstantOverride("separation", 8);
+            var name = Text(option.Name, 22, TextMain);
             name.SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill;
             name.VerticalAlignment = G.VerticalAlignment.Center;
             name.ClipText = true;
+            name.MouseFilter = G.Control.MouseFilterEnum.Ignore;
             row.AddChild(name);
             var count = Text("", 20, Gold);
             count.VerticalAlignment = G.VerticalAlignment.Center;
+            count.MouseFilter = G.Control.MouseFilterEnum.Ignore;
             row.AddChild(count);
             row.AddChild(Chip(room == RoomKind.Boss ? "免费" : $"{option.Price} 点", new G.Color(0.20f, 0.17f, 0.09f), Gold, GoldDim));
-            margin.AddChild(row);
+            column.AddChild(row);
+            margin.AddChild(column);
             card.AddChild(margin);
-            foreach (var n in new G.Control[] { row, name, count }) n.MouseFilter = G.Control.MouseFilterEnum.Ignore;
 
             var id = option.Id;
             card.Pressed += () => { _session.Click(id); Render(); };
             _cards[id] = (card, count);
             grid.AddChild(card);
+        }
+    }
+
+    /// <summary>
+    /// 怪物形象：游戏没有现成的怪物头像图（图鉴也是现场摆出战斗模型），所以把战斗模型（MonsterModel.CreateVisuals）
+    /// 放进一个小视口里画，按模型的 Bounds 缩放、居中。失败就返回 null，卡片只显示文字。
+    /// </summary>
+    private static G.Control? Portrait(string monsterId, G.Vector2 size)
+    {
+        try
+        {
+            var model = Test1bMixedEncounter.Model("Monster", monsterId);
+            var create = model.GetType().GetMethod("CreateVisuals", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance, Type.EmptyTypes);
+            if (create?.Invoke(model, null) is not G.Node2D visuals) return null;
+
+            var viewport = new G.SubViewport
+            {
+                TransparentBg = true,
+                Disable3D = true,
+                Size = new G.Vector2I((int)size.X, (int)size.Y),
+                RenderTargetUpdateMode = G.SubViewport.UpdateMode.Always,
+            };
+            viewport.AddChild(visuals);
+
+            // 按 Bounds（模型的点击框）缩放到视口的 85%，再把 Bounds 中心放到视口中心
+            if (GameReflection.Get(visuals, "Bounds") is G.Control bounds && bounds.Size.X > 1 && bounds.Size.Y > 1)
+            {
+                float scale = Math.Min(size.X * 0.85f / bounds.Size.X, size.Y * 0.85f / bounds.Size.Y);
+                visuals.Scale = new G.Vector2(scale, scale);
+                var center = bounds.Position + bounds.Size / 2;
+                visuals.Position = size / 2 - center * scale;
+            }
+            else
+            {
+                visuals.Scale = new G.Vector2(0.5f, 0.5f);
+                visuals.Position = new G.Vector2(size.X / 2, size.Y * 0.9f);
+            }
+
+            var container = new G.SubViewportContainer
+            {
+                Stretch = true,
+                CustomMinimumSize = size,
+                MouseFilter = G.Control.MouseFilterEnum.Ignore,
+            };
+            container.AddChild(viewport);
+            return container;
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"召唤面板：画不出 {monsterId} 的形象，只显示名字：{e.InnerException?.Message ?? e.Message}");
+            return null;
         }
     }
 

@@ -11,12 +11,13 @@ namespace TowerMaster;
 /// 房主广播的召唤清单。版本 1：测试 1b 的固定两种怪物；版本 2：召唤阶段，普通房是怪物列表，
 /// 精英、Boss 房是 <see cref="Encounter"/>（遭遇类名，怪物列表为空）。
 /// </summary>
-internal sealed record SummonPlan(int Version, int Sequence, ulong Seed, string Act, int SourceFloor, string[] Monsters, string? Encounter = null)
+internal sealed record SummonPlan(int Version, int Sequence, ulong Seed, string Act, int SourceFloor, string[] Monsters, string? Encounter = null, string? Coord = null)
 {
     /// <summary>内容相同（数组逐项比较；记录类型默认按引用比较数组）。</summary>
     public bool SameAs(SummonPlan? other) =>
         other != null && Version == other.Version && Sequence == other.Sequence && Seed == other.Seed
-        && Act == other.Act && SourceFloor == other.SourceFloor && Monsters.SequenceEqual(other.Monsters) && Encounter == other.Encounter;
+        && Act == other.Act && SourceFloor == other.SourceFloor && Monsters.SequenceEqual(other.Monsters) && Encounter == other.Encounter
+        && Coord == other.Coord;
 }
 
 /// <summary>
@@ -93,7 +94,7 @@ internal static class Test1bMixedEncounter
         var act = Act(state);
         if (!_settings.MixedMonsters.TryGetValue(act, out var monsters)) return;
         var owner = Convert.ToUInt64(GameReflection.Get(__0, "OwnerId"));
-        var plan = new SummonPlan(1, ++_sent, Seed(state), act, Floor(state), monsters.ToArray());
+        var plan = new SummonPlan(1, ++_sent, Seed(state), act, Floor(state), monsters.ToArray(), Coord: CoordKey(GameReflection.Get(__0, "_destination")));
         Validate(plan, state, false);
         var payload = JsonSerializer.Serialize(plan);
         Log.Info($"测试1b #{plan.Sequence}：房主发送 {payload}");
@@ -117,10 +118,15 @@ internal static class Test1bMixedEncounter
         Log.Info($"测试1b #{plan.Sequence}：收到清单 {payload}");
     }
 
-    internal static void Validate(SummonPlan plan, object state, bool entered)
+    /// <summary>地图坐标写成 "列,行"；拿不到时为 null。</summary>
+    internal static string? CoordKey(object? coord) =>
+        coord == null || GameReflection.Get(coord, "col") is not { } col || GameReflection.Get(coord, "row") is not { } row ? null : $"{col},{row}";
+
+    /// <param name="checkFloor">重连恢复时按坐标找回的清单，楼层可能已经变了，不查楼层。</param>
+    internal static void Validate(SummonPlan plan, object state, bool entered, bool checkFloor = true)
     {
         if (plan.Version is not (1 or 2) || plan.Sequence <= 0 || plan.Seed != Seed(state) || plan.Act != Act(state)
-            || Floor(state) != plan.SourceFloor + (entered ? 1 : 0))
+            || checkFloor && Floor(state) != plan.SourceFloor + (entered ? 1 : 0))
             throw new InvalidDataException("召唤清单版本、对局、幕或楼层不匹配");
         if (plan.Monsters == null)
             throw new InvalidDataException("清单没有怪物列表");
@@ -154,16 +160,33 @@ internal static class Test1bMixedEncounter
     private static void SelectEncounterCore(object __instance, ref object __result)
     {
         var name = __result.GetType().Name;
-        if (!(name.EndsWith("Normal") || name.EndsWith("Weak")))
-        {
-            ReplaceEliteOrBoss(name, ref __result);
-            return;
-        }
-        if (!SummonPhase.Enabled && !_settings.MixedMonsters.ContainsKey(__instance.GetType().Name)) return;
-        if (_pending == null) { Log.Warn($"测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 {name}"); return; }
+        bool normal = name.EndsWith("Normal") || name.EndsWith("Weak");
+        if (normal && !SummonPhase.Enabled && !_settings.MixedMonsters.ContainsKey(__instance.GetType().Name)) return;
+
         var plan = _pending;
         _pending = null;
-        Validate(plan, State, false);
+        bool restored = false;
+        if (plan == null)
+        {
+            // 重连或读档重建房间：没有经过清单动作，按「种子 + 幕 + 地图坐标」从本地文件找回
+            plan = RestoreByCoord();
+            restored = plan != null;
+        }
+        if (plan == null)
+        {
+            if (!normal) return;
+            if (SummonPhase.Enabled) Log.Info($"测试1b：这一场没有召唤清单（塔主按原版出场、超时或「?」房间），按原版遭遇 {name}");
+            else Log.Warn($"测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 {name}");
+            return;
+        }
+        Validate(plan, State, false, checkFloor: !restored);
+        if (restored) Log.Info($"测试1b #{plan.Sequence}：重连或读档，按坐标 {plan.Coord} 找回召唤清单");
+
+        if (!normal)
+        {
+            ReplaceEliteOrBoss(name, plan, restored, ref __result);
+            return;
+        }
         if (plan.Encounter != null) { Log.Warn($"测试1b #{plan.Sequence}：清单是精英或 Boss，但这是普通房 {name}，按原版"); return; }
         var holder = Model("Encounter", Holder);
         if (GameReflection.Get(holder, "HasScene") is not false
@@ -171,22 +194,35 @@ internal static class Test1bMixedEncounter
             throw new InvalidOperationException("混搭载体必须使用无槽位的通用场景");
         __result = holder;
         _selected = plan;
-        PlanStore.Save(plan);
+        if (!restored) PlanStore.Save(plan);
         Log.Info($"测试1b #{plan.Sequence}：已替换 {name} → {Holder}，清单=[{string.Join(", ", plan.Monsters)}]");
     }
 
-    /// <summary>精英、Boss 房：清单里有遭遇就整个换掉（游戏随后自己创建可变副本、生成怪物）。</summary>
-    private static void ReplaceEliteOrBoss(string name, ref object __result)
+    private static SummonPlan? RestoreByCoord()
     {
-        var plan = _pending;
-        _pending = null;
-        if (plan?.Encounter == null) return;
-        Validate(plan, State, false);
+        var state = State;
+        var coord = CoordKey(GameReflection.Get(state, "CurrentMapCoord"));
+        return coord == null ? null : PlanStore.FindByCoord(Seed(state), Act(state), coord);
+    }
+
+    /// <summary>
+    /// 精英、Boss 房：清单里的遭遇和原版不同就整个换掉（游戏随后自己创建可变副本、生成怪物）；
+    /// 和原版相同就不动，完全走原版流程（Boss 场景、召唤物槽位等都由原版处理）。
+    /// </summary>
+    private static void ReplaceEliteOrBoss(string name, SummonPlan plan, bool restored, ref object __result)
+    {
+        if (plan.Encounter == null) return;
         var room = _prices.Acts[plan.Act].Encounters[plan.Encounter].Room;
         var originalRoom = _prices.Acts.Values.Select(a => a.Encounters.GetValueOrDefault(name)).FirstOrDefault(e => e != null)?.Room;
         if (originalRoom != null && originalRoom != room)
         {
             Log.Warn($"召唤清单 #{plan.Sequence}：清单是 {room}，房间是 {originalRoom}（{name}），按原版");
+            return;
+        }
+        if (!restored) PlanStore.Save(plan);
+        if (plan.Encounter == name)
+        {
+            Log.Info($"召唤清单 #{plan.Sequence}：塔主选的就是原版 {name}，不替换");
             return;
         }
         __result = Model("Encounter", plan.Encounter);
@@ -258,7 +294,7 @@ internal static class Test1bMixedEncounter
         catch (Exception e) { Log.Error("测试1b：记录生成结果失败", e); }
     }
 
-    private static object Model(string getter, string typeName) => RuntimeNetAction.Required("ModelDb")
+    internal static object Model(string getter, string typeName) => RuntimeNetAction.Required("ModelDb")
         .GetMethods(BindingFlags.Public | BindingFlags.Static).Single(m => m.Name == getter && m.IsGenericMethodDefinition && m.GetParameters().Length == 0)
         .MakeGenericMethod(RuntimeNetAction.Required(typeName)).Invoke(null, null)!;
 }

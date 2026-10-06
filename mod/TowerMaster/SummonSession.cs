@@ -14,7 +14,9 @@ internal sealed class SummonSession
     private readonly SummonRules _rules;
     private readonly List<string> _monsters = new();
 
-    public SummonSession(SummonRules rules, RoomContext room, IReadOnlyList<string> bossCandidates, double seconds)
+    /// <param name="allowMonster">普通房里哪些怪能选（排除依赖专用场景、槽位的怪）；null 表示不限制。</param>
+    public SummonSession(SummonRules rules, RoomContext room, IReadOnlyList<string> bossCandidates, double seconds,
+        Func<string, bool>? allowMonster = null)
     {
         _rules = rules;
         Room = room;
@@ -25,7 +27,7 @@ internal sealed class SummonSession
         Options = room.Room switch
         {
             RoomKind.Monster => act.Monsters
-                .Where(m => m.Value.Role == MonsterRole.Normal && (!opening || m.Value.WeakPool))
+                .Where(m => m.Value.Role == MonsterRole.Normal && (!opening || m.Value.WeakPool) && (allowMonster?.Invoke(m.Key) ?? true))
                 .OrderBy(m => m.Value.Price).ThenBy(m => m.Key, StringComparer.Ordinal)
                 .Select(m => new SummonOption(m.Key, m.Value.NameZh, m.Value.Price)).ToList(),
             RoomKind.Elite => act.Encounters.Where(e => e.Value.Room == RoomKind.Elite)
@@ -50,6 +52,15 @@ internal sealed class SummonSession
     public event Action<SummonSession>? Finished;
 
     public bool IsOpeningProtected => _rules.IsOpeningProtected(Room);
+    /// <summary>遭遇的代表怪物（第一种组合里召唤价最高的那只，即精英、Boss 本体），面板画形象用。</summary>
+    public string? LeadMonsterOf(string encounterId)
+    {
+        var act = _rules.Prices.Act(Room.ActId);
+        return act.Encounters.TryGetValue(encounterId, out var enc)
+            ? enc.Lineups.FirstOrDefault()?.Monsters.OrderByDescending(m => act.TryPrice(m, out var p) ? p : 0).FirstOrDefault()
+            : null;
+    }
+
     public string NameOf(string id) => Options.FirstOrDefault(o => o.Id == id)?.Name ?? id;
 
     public SummonQuote Quote => _rules.Quote(Room, new Core.SummonPlan(Room.Room == RoomKind.Monster ? null : Encounter, _monsters));

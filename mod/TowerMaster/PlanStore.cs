@@ -17,6 +17,7 @@ internal static class PlanStore
         : Path.Combine(Log.ModDir, "towermaster.plans.json");
 
     private static string Key(ulong seed, int floor) => $"{seed}:{floor}";
+    private static string CoordKey(ulong seed, string act, string coord) => $"{seed}:{act}:{coord}";
 
     public static void Save(SummonPlan plan)
     {
@@ -26,6 +27,7 @@ internal static class PlanStore
             {
                 var plans = Read().Where(p => p.Value.Seed == plan.Seed).ToDictionary();
                 plans[Key(plan.Seed, plan.SourceFloor + 1)] = plan;
+                if (plan.Coord != null) plans[CoordKey(plan.Seed, plan.Act, plan.Coord)] = plan;
                 var temp = FilePath + ".tmp";
                 File.WriteAllText(temp, JsonSerializer.Serialize(plans));
                 File.Move(temp, FilePath, overwrite: true);
@@ -43,6 +45,15 @@ internal static class PlanStore
         lock (Lock)
         {
             return Read().GetValueOrDefault(Key(seed, enteredFloor));
+        }
+    }
+
+    /// <summary>按地图坐标找清单（重连、读档重建房间时用）。</summary>
+    public static SummonPlan? FindByCoord(ulong seed, string act, string coord)
+    {
+        lock (Lock)
+        {
+            return Read().GetValueOrDefault(CoordKey(seed, act, coord));
         }
     }
 

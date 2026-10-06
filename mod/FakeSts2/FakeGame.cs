@@ -84,6 +84,13 @@ namespace MegaCrit.Sts2.Core.Models.Encounters
         protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.Mawler().ToMutable(), null)];
     }
 
+    /// <summary>仿造有命名槽位的遭遇（墨宝靠槽位排位）：它的怪不能混搭。</summary>
+    public sealed class InkletsNormal : EncounterModel
+    {
+        public override IReadOnlyList<string> Slots => ["front", "middle", "back"];
+        protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [];
+    }
+
     public sealed class BygoneEffigyElite : EncounterModel
     {
         protected override IReadOnlyList<(MonsterModel, string?)> GenerateMonsters() => [(new MegaCrit.Sts2.Core.Models.Monsters.BygoneEffigy().ToMutable(), null)];
@@ -117,6 +124,7 @@ namespace MegaCrit.Sts2.Core.Runs
         public RunRng Rng { get; } = new();
         public List<MegaCrit.Sts2.Core.Entities.Players.Player> Players { get; } = new();
         public MegaCrit.Sts2.Core.Map.ActMap Map { get; set; } = new();
+        public MegaCrit.Sts2.Core.Map.MapCoord? CurrentMapCoord { get; set; }
     }
     public sealed class RunRng { public ulong Seed { get; set; } = 123; }
 }
