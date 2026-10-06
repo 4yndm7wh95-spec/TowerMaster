@@ -4,3 +4,6 @@ tools/
 __pycache__/
 bin/
 obj/
+
+# 本机双实例测试的运行日志，仅供实测对照
+scripts/local-test/*.log

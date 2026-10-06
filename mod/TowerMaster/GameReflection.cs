@@ -125,6 +125,9 @@ internal static class GameReflection
             return "(" + string.Join(", ", type.GetFields().Select(f => Dump(f.GetValue(value), depth + 1))) + ")";
         if (value is System.Collections.IEnumerable list)
             return "[" + string.Join(", ", list.Cast<object?>().Select(v => Dump(v, depth + 1))) + "]";
+        // 游戏模型的 ToString 含进程内对象哈希，联机对照只记录稳定的模型 ID。
+        var id = Get(value, "Id");
+        if (id != null) return $"{type.Name}:{id}";
         var text = value.ToString();
         return text == type.FullName ? type.Name : $"{type.Name}:{text}";
     }

@@ -3,13 +3,13 @@ using System.Runtime.CompilerServices;
 using HarmonyLib;
 using TowerMaster.Core;
 #if GAME
-using MegaCrit.Sts2.Core.Modding; // 猜测：ModInitializer 特性所在命名空间，编译报错就看探针日志里 ModInitializerAttribute 的全名
+using MegaCrit.Sts2.Core.Modding; // 游戏入口特性，仅此处引用游戏命名空间
 #endif
 
 namespace TowerMaster;
 
 #if GAME
-[ModInitializer(nameof(Init))] // 猜测的写法，对照反编译代码里的 ModInitializerAttribute 和 ModManager 修正
+[ModInitializer(nameof(Init))] // ModManager 按类上的特性调用静态无参入口
 #endif
 public static class ModEntry
 {
@@ -29,7 +29,7 @@ public static class ModEntry
     {
         Log.Info($"TowerMaster {typeof(ModEntry).Assembly.GetName().Version} 加载，目录 {Log.ModDir}");
         var settings = TestSettings.Load();
-        var prices = PriceBook.Load(Path.Combine(Log.ModDir, "price_book.json"));
+        var prices = PriceBook.Load(Path.Combine(Log.ModDir, "price_book.data"));
         Log.Info($"价格表 {prices.Version}，{prices.Acts.Count} 幕");
 
         if (settings.Probe) GameProbe.Run();

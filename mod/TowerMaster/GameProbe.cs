@@ -9,17 +9,18 @@ internal static class GameProbe
     /// <summary>（成员名, 用途）。成员在哪个类里由探针自己找。</summary>
     private static readonly (string Member, string Purpose)[] Members =
     [
-        ("StartCombat", "测试1：战斗开始，替换遭遇"),
+        ("StartCombat", "测试1：战斗开始"),
         ("GenerateMonstersWithSlots", "测试1：按种子生成怪物组合"),
         ("MonstersWithSlots", "测试1：生成好的怪物组合"),
-        ("PullNextEncounter", "选出下一个遭遇"),
+        ("PullNextEncounter", "测试1：选出下一个遭遇，生成前替换"),
         ("CreateCreature", "生成怪物"),
         ("SetUpCombat", "战斗初始化"),
         ("StartTurn", "回合开始：塔主回合插入点"),
         ("RunAutoPrePlayPhase", "回合开始：塔主回合插入点"),
         ("SetReadyToEndTurn", "准备结束回合"),
         ("ExecuteEnemyTurn", "敌方回合"),
-        ("ScaleHpForMultiplayer", "测试2：怪物血量人数缩放"),
+        ("ScaleHpForMultiplayer", "测试2：怪物血量人数缩放公式"),
+        ("ScaleMonsterHpForMultiplayer", "测试2：应用怪物血量人数缩放"),
         ("ModifyBlockMultiplicative", "测试2：怪物格挡人数缩放"),
         ("GetScaledAmountForMultiplayer", "测试2：能力层数人数缩放"),
         ("ReviveBeforeCombatEnd", "测试2：战斗结束复活"),
@@ -36,6 +37,7 @@ internal static class GameProbe
         ("ModelDb", "取怪物、遭遇模型"),
         ("INetAction", "自定义联机动作（广播召唤清单、塔主操作）"),
         ("INetMessage", "自定义联机消息"),
+        ("IPacketSerializable", "测试1b：联机动作的序列化接口"),
         ("ChecksumTracker", "不同步检测"),
         ("ActionQueueSynchronizer", "动作队列同步"),
         ("ModInitializerAttribute", "mod 入口"),
@@ -43,7 +45,7 @@ internal static class GameProbe
     ];
 
     /// <summary>这些类型把全部成员签名都写出来，后面写补丁要用。</summary>
-    private static readonly string[] DumpAllMembers = ["ModelDb", "INetAction", "INetMessage", "ModInitializerAttribute"];
+    private static readonly string[] DumpAllMembers = ["ModelDb", "INetAction", "INetMessage", "IPacketSerializable", "ModInitializerAttribute"];
 
     public static void Run()
     {

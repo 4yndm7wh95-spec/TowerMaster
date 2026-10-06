@@ -12,7 +12,8 @@ internal static class Log
 
     public static void Init()
     {
-        _path = Path.Combine(ModDir, "TowerMaster.log");
+        // 同机双实例测试可分别指定日志文件，默认仍写到 mod 目录。
+        _path = Environment.GetEnvironmentVariable("TOWERMASTER_LOG_FILE") ?? Path.Combine(ModDir, "TowerMaster.log");
         try { File.WriteAllText(_path, $"TowerMaster 日志 {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n", Encoding.UTF8); }
         catch { _path = null; }
     }

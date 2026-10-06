@@ -1,3 +1,79 @@
+## 测试 1a 实测结果（2026-10-05：单人生成已验证，联机待验证）
+
+### 当前结论
+
+- 已在本机 v0.111.0 中加载 TowerMaster，用户截图确认普通战斗出现两只小啃兽。
+- 真实探针日志全部找到，TowerMaster 日志无 WARN/ERROR。
+- 第 1 场按顺序记录：`原遭遇=NibbitsWeak` → `已替换 NibbitsWeak → NibbitsNormal` → `生成 NibbitsNormal → [(Nibbit:MONSTER.NIBBIT, front), (Nibbit:MONSTER.NIBBIT, back)]`。替换先于生成，挂点有效。
+- 截至已保存的单人日志没有 StateDivergence；这不能证明多人同步。双实例尚未加入大厅，3～5 场联机及跨机器验证都未完成；单场完整战斗结束的稳定性也尚未单独核验。
+- 初次游戏日志有我方两个加载问题：测试配置中的 JSON 注释触发解析异常；价格表的 version 字段使它被误认成缺少 id 的 manifest。两处均已修正，需重启游戏核验不再报错。
+- 初次游戏日志另有其他 mod 的 `Test.Scripts.Entry` 初始化异常，涉及已不存在的 `SavedPropertiesTypeCache`。不能把整个游戏日志判为无异常；目前没有修改该 mod。
+- 用户最新要求先把所有当前改动和详细说明同步到分支；本次提交不是“联机测试通过”的结论。
+
+### 猜测核对和代码依据
+
+反编译路径以下均相对于仓库；decompiled/ 和 tools/ 为本机只读依据，不提交。
+
+1. **入口猜测正确**：命名空间 `MegaCrit.Sts2.Core.Modding`，类上的 `[ModInitializer(nameof(Init))]` 指向静态无参方法。依据 `decompiled/sts2/MegaCrit.Sts2.Core.Modding/ModInitializerAttribute.cs:3、5、10`，`ModManager.cs:787、873–898`。入口之外仍按类型名字反射。
+2. **模型猜测正确**：`ModelDb.Encounter<T>()` 返回规范模型（`MegaCrit.Sts2.Core.Models/ModelDb.cs:505`）；`IsMutable` 位于 `AbstractModel.cs:33`，`EncounterModel.ToMutable()` 位于 `EncounterModel.cs:259–264`。游戏在 `MegaCrit.Sts2.Core.Runs/RunManager.cs:768` 取遭遇后 ToMutable；房间构造在 `MegaCrit.Sts2.Core.Rooms/CombatRoom.cs:55–58` 要求可变模型。找不到可变转换时保留原遭遇，避免规范模型进入战斗。
+3. **生成时机的普通地图前提正确，原存储结构猜测错误**：`CombatRoom.cs:33、35` 的 Encounter 转发到 CombatState，房间本身没有预想的遭遇字段；`MegaCrit.Sts2.Core.Combat/CombatState.cs:27、55–79` 保存遭遇。普通战斗在 `CombatRoom.cs:169–173` 生成；事件有提前生成路径 `MegaCrit.Sts2.Core.Multiplayer.Game/EventCombatSynchronizer.cs:61`。测试 1a 改挂 `ActModel.PullNextEncounter` 后置补丁（`MegaCrit.Sts2.Core.Models/ActModel.cs:341`），返回规范模型，让游戏继续原有创建副本/房间流程。事件战斗不在此次替换范围。FakeSts2 与 3 个补丁测试同步采用该结构和参数。
+4. **manifest 猜测错误**：`dll` 不是加载字段；`ModManifest.cs:30–40` 使用 has_pck、has_dll、affects_gameplay，`ModManager.cs:738–741` 加载 id + .dll，`ModManager.cs:916–925` 和 `MegaCrit.Sts2.Core.Multiplayer/PeerVersionInfo.cs:32` 将影响玩法的 mod 放入握手列表。已参照 IP直连 1.4.0 manifest 修正。
+5. **日志必须稳定**：`MegaCrit.Sts2.Core.Models/AbstractModel.cs:1045–1047` 的 ToString 包含进程内哈希，生成行改用稳定 Id。即便原遭遇已是目标，也记录“已替换”，方便每场三行核对。探针补充血量应用方法与 IPacketSerializable，保留原有缩放公式方法。
+6. **数据不能误触 manifest 扫描**：`ModManager.cs:346–372` 递归扫 JSON，`:388–398` 判断身份字段。测试配置使用标准无注释 JSON；安装价格表改成 price_book.data，安装时只清理我方旧 price_book.json。源数据仍是 data/price_book.json。
+
+### 本机环境、格式和验证
+
+- 游戏实际 TargetFrameworkAttribute 为 `.NETCoreApp,Version=v9.0`（.NET 9.0），反编译工程 `decompiled/sts2/sts2.csproj:5` 同为 net9.0。Core、mod、测试和 FakeSts2 均已改 net9.0。
+- 游戏目录：`C:\Users\kkk\Desktop\slaythespire\Slay the Spire 2`。
+- mod 目录：上述目录的 `mods\TowerMaster`。只安装自己的 mod 文件，未修改游戏本体。
+- 游戏自带 `data_sts2_windows_x86_64\0Harmony.dll`，文件版本 2.4.2.0；实机直接引用。无游戏的测试构建由 NuGet Harmony 2.3.3 升到 2.4.2，修复 net9.0 下 LocalBuilder 抽象类实例化错误。
+- `cd mod && dotnet test`：Core 37 个、补丁测试 3 个全部通过，0 失败、0 跳过。
+- `dotnet build TowerMaster -p:GameDir="C:\Users\kkk\Desktop\slaythespire\Slay the Spire 2" -p:Install=true` 编译安装已成功。游戏运行时锁住 mod DLL，更新前必须退出游戏。
+
+实际 manifest：
+
+```json
+{
+  "id": "TowerMaster",
+  "name": "塔主 TowerMaster",
+  "version": "0.0.1",
+  "author": "brooks",
+  "description": "1 名塔主对抗 1–3 名爬塔玩家（技术验证版）",
+  "dependencies": [],
+  "has_pck": false,
+  "has_dll": true,
+  "affects_gameplay": true
+}
+```
+
+### 同机双实例工具
+
+`scripts/local-test/` 收录两个英文文件名的 cmd/PowerShell 启动脚本及 README。可传 GameDir 或设 STS2_DIR，默认本机游戏路径。英文内部脚本名避免已遇到的中文批处理编码故障；失败时窗口保留报错。
+
+两实例用 `--force-steam off` 和不同 `--clientId` 隔离游戏存档；TowerMaster 用 `TOWERMASTER_LOG_FILE` 分开日志，游戏用 `--log-file` 分开输出。默认运行 mod 时仍在 mod 目录写 TowerMaster.log。IP mod 的配置仍共享，各实例需在个人设置分别设 ID 100001/100002；重启后会读最后保存的配置，不能只改昵称。A 建 IP 大厅，B 连 127.0.0.1:33771。依据：`NGame.cs:1082–1090`、`NullPlatformUtilStrategy.cs:29`、`UserDataPathProvider.cs:30–42`；本机 IP mod 的 `ModConfigManager.cs:106、129–130`、`DirectHost.cs:200`、`JoinServerScreen.cs:216`。
+
+同机测试能检验确定性与锁步同步，不能覆盖跨机器运行环境或真实网络延迟/丢包。下一步先重启确认我方 JSON 加载异常消失，再连打 3～5 场，按消息正文（排除时间戳）对照两端日志。
+
+### 测试 1b 所需签名（摘自本次真实探针日志）
+
+```text
+static T MegaCrit.Sts2.Core.Models.ModelDb.Monster<T>()
+static T MegaCrit.Sts2.Core.Models.ModelDb.Encounter<T>()
+EncounterModel MegaCrit.Sts2.Core.Models.ActModel.PullNextEncounter(RoomType roomType)
+Void MegaCrit.Sts2.Core.Models.EncounterModel.GenerateMonstersWithSlots(IRunState runState)
+property IReadOnlyList<ValueTuple<MonsterModel, String>> MegaCrit.Sts2.Core.Models.EncounterModel.MonstersWithSlots
+Creature MegaCrit.Sts2.Core.Combat.CombatState.CreateCreature(MonsterModel monster, CombatSide side, String slot)
+GameAction MegaCrit.Sts2.Core.GameActions.Multiplayer.INetAction.ToGameAction(Player player)
+Void MegaCrit.Sts2.Core.Multiplayer.Serialization.IPacketSerializable.Serialize(PacketWriter writer)
+Void MegaCrit.Sts2.Core.Multiplayer.Serialization.IPacketSerializable.Deserialize(PacketReader reader)
+```
+
+探针会继续输出 INetMessage 的 ShouldBroadcast、Mode、LogLevel、ShouldBuffer。测试 1b 将用自定义 INetAction 广播召唤清单，再验证跨遭遇混搭的站位和场景；这些仍未实现。需要的其他成员应继续从真实探针提取，不能把云端猜测写作已确认签名。
+
+详细核对：`docs/test1a-local-verification.md`。双实例步骤：`scripts/local-test/README.md`。
+
+---
+
 # 交接记录
 
 ## 第二次会话（2026-10-05，云端环境）：规则核心库

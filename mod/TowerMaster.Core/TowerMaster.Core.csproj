@@ -2,7 +2,7 @@
 
   <!-- 纯规则库：不引用游戏程序集，可在没有游戏的环境里编译和测试。mod 本体再引用它。 -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>TowerMaster.Core</RootNamespace>
