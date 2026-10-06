@@ -143,4 +143,26 @@ public class Test3MasterAutoPilotTests
         new MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NHandImageCollection()._Input(new object()); // 不再抛
         Assert.Contains("默认焦点越界", File.ReadAllText(Path.Combine(Log.ModDir, "TowerMaster.log")));
     }
+
+    [Fact]
+    public void MasterOpensChestAutomaticallyOnceButClientDoesNot()
+    {
+        Init();
+        Test3MasterAutoPilot.DeferTreasureOpen = (_, action) => action();
+        var room = new MegaCrit.Sts2.Core.Nodes.Rooms.NTreasureRoom();
+        room._Ready();
+        Assert.Equal(1, room.Opened);
+        room.ClickChest(); // 塔主之后再点：原版不会再开一次
+        Assert.Equal(1, room.Opened);
+
+        var opened = new MegaCrit.Sts2.Core.Nodes.Rooms.NTreasureRoom();
+        opened.ClickChest();
+        opened._Ready(); // 已经开过：不重复
+        Assert.Equal(1, opened.Opened);
+
+        Init(NetGameType.Client);
+        var client = new MegaCrit.Sts2.Core.Nodes.Rooms.NTreasureRoom();
+        client._Ready();
+        Assert.Equal(0, client.Opened); // 爬塔玩家自己点
+    }
 }

@@ -259,3 +259,21 @@ namespace MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic
         }
     }
 }
+namespace MegaCrit.Sts2.Core.Nodes.Rooms
+{
+    /// <summary>仿造宝箱房间节点：点开宝箱时为所有玩家建额外奖励集合（这里只计数）。</summary>
+    public sealed class NTreasureRoom
+    {
+        private bool _hasChestBeenOpened;
+        public int Opened { get; private set; }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void _Ready() { }
+        private void OnChestButtonReleased(object? _)
+        {
+            if (_hasChestBeenOpened) return;
+            _hasChestBeenOpened = true;
+            Opened++;
+        }
+        public void ClickChest() => OnChestButtonReleased(null);
+    }
+}

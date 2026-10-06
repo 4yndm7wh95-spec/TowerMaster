@@ -52,6 +52,9 @@ internal static class Test3MasterAutoPilot
         Postfix(harmony, "BeginRestSite", "RestSiteSynchronizer", nameof(AfterBeginRestSite));
         Postfix(harmony, "OnPlayerReady", "ActChangeSynchronizer", nameof(AfterActReady));
 
+        // 塔主自动开宝箱：开箱会为所有玩家建立「额外奖励」集合并消耗奖励编号，各端都要开一次才一致（0.0.11 实测不同步）
+        Postfix(harmony, "_Ready", "NTreasureRoom", nameof(AfterTreasureRoomReady));
+
         // 宝箱界面的两个原版异常（测试 3 第二轮实测）：不修会让爬塔玩家卡在宝箱里
         Finalizer(harmony, "get_DefaultFocusedControl", "NTreasureRoomRelicCollection", nameof(TreasureFocusFinalizer));
         Finalizer(harmony, "_Input", "NHandImageCollection", nameof(HandInputFinalizer));
@@ -216,6 +219,43 @@ internal static class Test3MasterAutoPilot
         __result = Task.FromResult(false);
         Log.Info($"测试3 物品：塔主不能 {__originalMethod.DeclaringType?.Name}.{__originalMethod.Name}，已拦下");
         return false;
+    }
+
+    /// <summary>延后执行（游戏里等宝箱房间的开场动画；测试里直接执行）。</summary>
+    internal static Action<object, Action> DeferTreasureOpen = (room, action) =>
+    {
+        if (room is not Godot.Node node || !node.IsInsideTree()) return;
+        node.GetTree().CreateTimer(1.5).Timeout += () =>
+        {
+            if (Godot.GodotObject.IsInstanceValid(node)) action();
+        };
+    };
+
+    /// <summary>
+    /// 宝箱房间：原版每个客户端在「自己点开宝箱」时（NTreasureRoom.OpenChest）给所有玩家各建一个额外奖励集合，
+    /// 每个集合消耗一个奖励编号。塔主不点开的话，房主这边少建两个，奖励编号和爬塔玩家对不上，
+    /// 下一次校验就报 StateDivergence（0.0.11 实测）。所以塔主进宝箱房后自动替他点开：
+    /// 开箱金币已被 <see cref="BlockTreasureGold"/> 跳过，遗物在开始挑选时自动跳过。
+    /// </summary>
+    private static void AfterTreasureRoomReady(object __instance)
+    {
+        try
+        {
+            if (!LocalIsMaster) return;
+            DeferTreasureOpen(__instance, () =>
+            {
+                try
+                {
+                    if (GameReflection.Get(__instance, "_hasChestBeenOpened") is true) return;
+                    var click = __instance.GetType().GetMethod("OnChestButtonReleased", GameReflection.All)
+                                ?? throw new MissingMethodException("NTreasureRoom", "OnChestButtonReleased");
+                    click.Invoke(__instance, [null]);
+                    Log.Info("测试3 宝箱：塔主自动开箱（保证各端奖励编号一致）");
+                }
+                catch (Exception e) { Log.Error("测试3 宝箱：自动开箱失败，塔主需要手动点开宝箱，否则会不同步", e); }
+            });
+        }
+        catch (Exception e) { Log.Error("测试3 宝箱：安排自动开箱失败", e); }
     }
 
     /// <summary>
