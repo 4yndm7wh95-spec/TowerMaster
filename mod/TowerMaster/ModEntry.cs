@@ -38,7 +38,7 @@ public static class ModEntry
         if (settings.Test1bMixedEncounter) Test1bMixedEncounter.Apply(harmony, settings, prices);
         else Test1FixedEncounter.Apply(harmony, settings, prices);
         if (settings.Test2MasterOffField) Test2MasterOffField.Apply(harmony, settings);
-        if (settings.Test3MasterAutoPilot) Test3MasterAutoPilot.Apply(harmony);
+        if (settings.Test3MasterAutoPilot) Test3MasterAutoPilot.Apply(harmony, settings);
     }
 
     private static Assembly? ResolveFromModDir(object? sender, ResolveEventArgs args)

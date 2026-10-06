@@ -17,6 +17,10 @@ namespace TowerMaster;
 /// | 休息处 | BeginRestSite 后 | BeforeLocalRestSiteExited（跳过） |
 /// | 换幕 | 爬塔玩家准备后 | SetLocalPlayerReady |
 ///
+/// 另外拦住塔主的手动操作（塔主的选择只能由上面的自动跟随提交）：
+/// | 手动选路 | NMapScreen.OnMapPointSelectedLocally | 直接忽略（用户要求，测试 3 实测） |
+/// | 领奖励、买东西、删牌、拿宝箱遗物 | SelectLocalReward、OnTryPurchaseWrapper、DoLocalMerchantCardRemoval、PickRelicLocally | 返回失败（设计文档：不给塔主发奖励；开关 test3_block_master_items） |
+///
 /// 多名爬塔玩家时塔主跟随「最近一个投票的爬塔玩家」，会让这名玩家的票多一份权重；技术验证先这样，正式版再定。
 /// 每一步都只记日志不抛异常，失败时退回「需要塔主手动操作」。
 /// </summary>
@@ -26,8 +30,19 @@ internal static class Test3MasterAutoPilot
     private static string? _lastEventVote;
     private static string? _lastActReady;
 
-    internal static void Apply(Harmony harmony)
+    private static bool _blockItems = true;
+
+    internal static void Apply(Harmony harmony, TestSettings settings)
     {
+        _blockItems = settings.Test3BlockMasterItems;
+        Prefix(harmony, "OnMapPointSelectedLocally", "NMapScreen", nameof(BlockManualMapVote));
+        if (_blockItems)
+        {
+            Prefix(harmony, "SelectLocalReward", "RewardsSetSynchronizer", nameof(BlockTask));
+            Prefix(harmony, "OnTryPurchaseWrapper", "MerchantEntry", nameof(BlockTask));
+            Prefix(harmony, "DoLocalMerchantCardRemoval", "OneOffSynchronizer", nameof(BlockTask));
+            Prefix(harmony, "PickRelicLocally", "TreasureRoomRelicSynchronizer", nameof(BlockRelicPick));
+        }
         _lastMapVote = _lastEventVote = _lastActReady = null;
         Postfix(harmony, "PlayerVotedForMapCoord", "MapSelectionSynchronizer", nameof(AfterMapVote));
         Postfix(harmony, "BeginRewardsSet", "RewardsSetSynchronizer", nameof(AfterBeginRewards));
@@ -35,6 +50,18 @@ internal static class Test3MasterAutoPilot
         Postfix(harmony, "PlayerVotedForSharedOptionIndex", "EventSynchronizer", nameof(AfterSharedEventVote));
         Postfix(harmony, "BeginRestSite", "RestSiteSynchronizer", nameof(AfterBeginRestSite));
         Postfix(harmony, "OnPlayerReady", "ActChangeSynchronizer", nameof(AfterActReady));
+    }
+
+    private static void Prefix(Harmony harmony, string method, string type, string callback)
+    {
+        var target = GameReflection.FindMethod(method, type);
+        if (target == null) { Log.Warn($"测试3：找不到 {type}.{method}，塔主仍能手动操作这一项"); return; }
+        try
+        {
+            harmony.Patch(target, prefix: new HarmonyMethod(typeof(Test3MasterAutoPilot).GetMethod(callback, GameReflection.All)!));
+            Log.Info($"测试3：已拦截 {GameReflection.Describe(target)}");
+        }
+        catch (Exception e) { Log.Error($"测试3：拦截 {type}.{method} 失败", e); }
     }
 
     private static void Postfix(Harmony harmony, string method, string type, string callback)
@@ -129,7 +156,40 @@ internal static class Test3MasterAutoPilot
             CallLocal(__instance, "SkipLocalRewardsSet");
             Log.Info("测试3 奖励：塔主跳过本次奖励");
         }
+        catch (TargetInvocationException e) when (e.InnerException is InvalidOperationException inner
+                                                  && inner.Message.Contains("not currently viewing"))
+        {
+            // 一场会建立多个奖励集合，有的建立时还没显示出来，游戏拒绝跳过。实测无害：显示出来的那组已经跳过，
+            // 剩下的离开房间时游戏会自动跳过（RewardsSetSynchronizer.BeforeLeavingRoom）。
+            Log.Info("测试3 奖励：这一组奖励还没显示，不用跳过");
+        }
         catch (Exception e) { Log.Error("测试3 奖励：自动跳过失败，塔主可以手动跳过", e); }
+    }
+
+    // ---------------------------------------------------------------- 拦住塔主的手动操作
+
+    private static bool BlockManualMapVote()
+    {
+        if (!LocalIsMaster) return true;
+        Log.Info("测试3 选路：塔主不能手动选路，已忽略（会自动跟随爬塔玩家）");
+        return false;
+    }
+
+    /// <summary>返回 Task&lt;bool&gt; 的领取、购买、删牌：塔主一律失败。</summary>
+    private static bool BlockTask(MethodBase __originalMethod, ref Task<bool> __result)
+    {
+        if (!LocalIsMaster) return true;
+        __result = Task.FromResult(false);
+        Log.Info($"测试3 物品：塔主不能 {__originalMethod.DeclaringType?.Name}.{__originalMethod.Name}，已拦下");
+        return false;
+    }
+
+    /// <summary>宝箱：塔主只能跳过（index = null），选具体遗物一律拦下；开始选遗物时已经自动跳过了。</summary>
+    private static bool BlockRelicPick(object[] __args)
+    {
+        if (!LocalIsMaster || __args.Length == 0 || __args[0] == null) return true;
+        Log.Info("测试3 宝箱：塔主不能拿遗物，已拦下");
+        return false;
     }
 
     // ---------------------------------------------------------------- 宝箱

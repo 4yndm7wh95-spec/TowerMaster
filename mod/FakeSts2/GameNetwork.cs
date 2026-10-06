@@ -147,9 +147,23 @@ namespace MegaCrit.Sts2.Core.Multiplayer.Game
     public sealed class RewardsSetSynchronizer
     {
         public int Skipped { get; private set; }
+        /// <summary>仿造实测：奖励集合还没显示时，游戏拒绝跳过。</summary>
+        public bool Viewing { get; set; } = true;
         [MethodImpl(MethodImplOptions.NoInlining)]
         public Task BeginRewardsSet(object set) => Task.CompletedTask;
-        public void SkipLocalRewardsSet() => Skipped++;
+        public void SkipLocalRewardsSet()
+        {
+            if (!Viewing) throw new InvalidOperationException("Tried to skip reward set for player 100001, but they are not currently viewing any reward set!");
+            Skipped++;
+        }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public Task<bool> SelectLocalReward(object reward) => Task.FromResult(true);
+    }
+
+    public sealed class OneOffSynchronizer
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public Task<bool> DoLocalMerchantCardRemoval(int goldCost, bool cancelable = true) => Task.FromResult(true);
     }
 
     public sealed class TreasureRoomRelicSynchronizer
@@ -158,6 +172,9 @@ namespace MegaCrit.Sts2.Core.Multiplayer.Game
         [MethodImpl(MethodImplOptions.NoInlining)]
         public void BeginRelicPicking() { }
         public void SkipRelicLocally() => Skipped++;
+        public List<int?> Picks { get; } = new();
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void PickRelicLocally(int? index) => Picks.Add(index);
     }
 
     public sealed class EventSynchronizer
@@ -182,5 +199,23 @@ namespace MegaCrit.Sts2.Core.Multiplayer.Game
         [MethodImpl(MethodImplOptions.NoInlining)]
         public void OnPlayerReady(Player player, int actIndex) { }
         public void SetLocalPlayerReady() => LocalReady++;
+    }
+}
+
+namespace MegaCrit.Sts2.Core.Entities.Merchant
+{
+    public sealed class MerchantEntry
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public Task<bool> OnTryPurchaseWrapper(object? inventory, bool ignoreCost = false) => Task.FromResult(true);
+    }
+}
+namespace MegaCrit.Sts2.Core.Nodes.Screens.Map
+{
+    public sealed class NMapScreen
+    {
+        public int Selected { get; private set; }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void OnMapPointSelectedLocally(object point) => Selected++;
     }
 }

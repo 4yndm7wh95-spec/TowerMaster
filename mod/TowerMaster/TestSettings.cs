@@ -18,6 +18,9 @@ internal sealed class TestSettings
     /// <summary>测试 3：选路、奖励、宝箱、事件、休息处、换幕替塔主自动操作。</summary>
     [JsonPropertyName("test3_master_autopilot")] public bool Test3MasterAutoPilot { get; set; }
 
+    /// <summary>测试 3：塔主不能领奖励、买东西、删牌、拿宝箱遗物（设计文档：不给塔主发奖励）。</summary>
+    [JsonPropertyName("test3_block_master_items")] public bool Test3BlockMasterItems { get; set; } = true;
+
     /// <summary>
     /// 测试 2：哪些方法里的「玩家人数」改成只数爬塔玩家。每项可以是命名空间前缀（MegaCrit 开头）、
     /// 类名、方法名或「类名.方法名」。日志里会列出全部读人数的方法，按需增减。

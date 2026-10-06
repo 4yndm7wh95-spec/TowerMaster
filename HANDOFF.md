@@ -1,3 +1,17 @@
+## 测试 3 第二轮（2026-10-06，0.0.7，待实测）
+
+第一轮实测（`docs/test3-result.md`）：
+- 选路自动跟随 11 次全部正确，休息处、宝箱自动跳过生效。
+- 奖励自动跳过有「not currently viewing any reward set」异常，但实际无害。
+- 共享事件、换幕没覆盖到。
+- 注意：脚本 A/B 和身份反了，以 NetId 为准，塔主 = 100001 = 房主。
+
+第二轮改动：
+- 禁止塔主手动选路（用户要求）：拦 `NMapScreen.OnMapPointSelectedLocally`。
+- 塔主不能领东西（设计文档，开关 `test3_block_master_items`）：拦 `SelectLocalReward`、`MerchantEntry.OnTryPurchaseWrapper`、`DoLocalMerchantCardRemoval`，`PickRelicLocally` 只放行跳过。
+- 奖励「还没显示」的异常改为普通日志。
+- 新增 2 个测试（共 59 个）。测试步骤见 `docs/test3-round2-plan.md`。
+
 ## 测试 3 第一版（2026-10-06，0.0.6，待实测）
 
 测试 2 第二轮实测通过（`docs/test2-round2-result.md`）：动态程序集登记后 ERROR 消失，人数改写 19 个，新增 5 项都带 ★，回归正常。Codex 的只读调研给出了各同步器的等待逻辑和挂点。

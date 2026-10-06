@@ -6,6 +6,8 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using Xunit;
 
 namespace TowerMaster.Tests;
@@ -29,7 +31,7 @@ public class Test3MasterAutoPilotTests
         if (!_patched)
         {
             Log.Init();
-            Test3MasterAutoPilot.Apply(new Harmony("towermaster.test3"));
+            Test3MasterAutoPilot.Apply(new Harmony("towermaster.test3"), new TestSettings());
             _patched = true;
         }
         return queue;
@@ -95,5 +97,38 @@ public class Test3MasterAutoPilotTests
         act.OnPlayerReady(Climber, 0);
         act.OnPlayerReady(Climber, 0);
         Assert.Equal(1, act.LocalReady);
+    }
+
+    [Fact]
+    public async Task MasterCannotVoteManuallyOrTakeItemsButClimberCan()
+    {
+        Init();
+        var map = new NMapScreen();
+        map.OnMapPointSelectedLocally(new object());
+        Assert.Equal(0, map.Selected);
+        Assert.False(await new RewardsSetSynchronizer().SelectLocalReward(new object()));
+        Assert.False(await new MerchantEntry().OnTryPurchaseWrapper(null));
+        Assert.False(await new OneOffSynchronizer().DoLocalMerchantCardRemoval(75));
+        var treasure = new TreasureRoomRelicSynchronizer();
+        treasure.PickRelicLocally(1);
+        treasure.PickRelicLocally(null); // 跳过放行
+        Assert.Equal(new int?[] { null }, treasure.Picks);
+
+        Init(NetGameType.Client); // 爬塔玩家不受影响
+        map.OnMapPointSelectedLocally(new object());
+        Assert.Equal(1, map.Selected);
+        Assert.True(await new RewardsSetSynchronizer().SelectLocalReward(new object()));
+        Assert.True(await new MerchantEntry().OnTryPurchaseWrapper(null));
+    }
+
+    [Fact]
+    public void RewardSetNotShownYetIsNotAnError()
+    {
+        Init();
+        var rewards = new RewardsSetSynchronizer { Viewing = false };
+        rewards.BeginRewardsSet(new object());
+        var log = File.ReadAllText(Path.Combine(Log.ModDir, "TowerMaster.log"));
+        Assert.Contains("这一组奖励还没显示，不用跳过", log);
+        Assert.DoesNotContain("自动跳过失败", log);
     }
 }
