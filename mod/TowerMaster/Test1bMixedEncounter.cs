@@ -7,15 +7,25 @@ using TowerMaster.Core;
 
 namespace TowerMaster;
 
-internal sealed record SummonPlan(int Version, int Sequence, ulong Seed, string Act, int SourceFloor, string[] Monsters);
+internal sealed record SummonPlan(int Version, int Sequence, ulong Seed, string Act, int SourceFloor, string[] Monsters)
+{
+    /// <summary>内容相同（数组逐项比较；记录类型默认按引用比较数组）。</summary>
+    public bool SameAs(SummonPlan? other) =>
+        other != null && Version == other.Version && Sequence == other.Sequence && Seed == other.Seed
+        && Act == other.Act && SourceFloor == other.SourceFloor && Monsters.SequenceEqual(other.Monsters);
+}
 
-/// <summary>测试 1b：房主先广播两种怪物的清单，再沿游戏原有进房、生成、战斗流程执行。</summary>
+/// <summary>
+/// 测试 1b：房主先广播两种怪物的清单，再沿游戏原有进房、生成、战斗流程执行。
+/// 保底：任何一步出错都只写日志、退回原版流程，不让异常打断游戏；
+/// 各客户端拿到的是同一串动作，校验结果相同，所以退回原版时各家也一致。
+/// </summary>
 internal static class Test1bMixedEncounter
 {
     private const string Holder = "CultistsNormal";
     private static TestSettings _settings = new();
     private static PriceBook _prices = null!;
-    private static int _sent, _received;
+    private static int _sent;
     private static SummonPlan? _pending, _selected;
     private static readonly ConditionalWeakTable<object, SummonPlan> Plans = new();
     internal static object Run => RuntimeNetAction.Required("RunManager").GetProperty("Instance", GameReflection.All)!.GetValue(null)!;
@@ -27,7 +37,7 @@ internal static class Test1bMixedEncounter
     internal static void Configure(TestSettings settings, PriceBook prices)
     {
         _settings = settings; _prices = prices;
-        _sent = _received = 0;
+        _sent = 0;
         _pending = _selected = null;
         Plans.Clear();
     }
@@ -55,6 +65,12 @@ internal static class Test1bMixedEncounter
 
     internal static void BeforeEnqueue(object __instance, object __0)
     {
+        try { SendPlan(__instance, __0); }
+        catch (Exception e) { Log.Error("测试1b：发送召唤清单失败，这一场按原版遭遇", e); }
+    }
+
+    private static void SendPlan(object __instance, object __0)
+    {
         if (__0.GetType().Name != "MoveToMapCoordAction") return;
         var service = GameReflection.Get(__instance, "_netService")!;
         if (GameReflection.Get(service, "Type")?.ToString() == "Client") return;
@@ -79,8 +95,9 @@ internal static class Test1bMixedEncounter
             ? GameReflection.Get(service, "HostNetId") : GameReflection.Get(service, "NetId");
         if (expected == null || owner != Convert.ToUInt64(expected)) throw new InvalidDataException("召唤清单必须归属房主");
         Validate(plan, State, false);
-        if (plan.Sequence <= _received) throw new InvalidDataException("重复或过期召唤清单");
-        _received = plan.Sequence;
+        // 序号只用于日志：房主重启游戏后会从 1 重新编号，不能拿来判断新旧。
+        // 过期清单靠种子和楼层校验拦下；同一份清单收到两次没有害处，覆盖即可。
+        if (plan.SameAs(_pending)) Log.Info($"测试1b #{plan.Sequence}：重复清单，忽略");
         _pending = plan;
         Log.Info($"测试1b #{plan.Sequence}：收到清单 {payload}");
     }
@@ -104,10 +121,18 @@ internal static class Test1bMixedEncounter
 
     internal static void SelectEncounter(object __instance, ref object __result)
     {
+        try { SelectEncounterCore(__instance, ref __result); }
+        catch (Exception e) { Log.Error("测试1b：替换遭遇失败，这一场按原版遭遇", e); }
+    }
+
+    private static void SelectEncounterCore(object __instance, ref object __result)
+    {
         var name = __result.GetType().Name;
         if (!(name.EndsWith("Normal") || name.EndsWith("Weak"))) { _pending = null; return; }
         if (!_settings.MixedMonsters.ContainsKey(__instance.GetType().Name)) return;
-        var plan = _pending ?? throw new InvalidOperationException("进普通房前没有收到召唤清单");
+        if (_pending == null) { Log.Warn($"测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 {name}"); return; }
+        var plan = _pending;
+        _pending = null;
         Validate(plan, State, false);
         var holder = Model("Encounter", Holder);
         if (GameReflection.Get(holder, "HasScene") is not false
@@ -115,25 +140,51 @@ internal static class Test1bMixedEncounter
             throw new InvalidOperationException("混搭载体必须使用无槽位的通用场景");
         __result = holder;
         _selected = plan;
-        _pending = null;
+        PlanStore.Save(plan);
         Log.Info($"测试1b #{plan.Sequence}：已替换 {name} → {Holder}，清单=[{string.Join(", ", plan.Monsters)}]");
     }
 
     private static void BindMutable(object __instance, object __result)
     {
-        if (__instance.GetType().Name != Holder || _selected == null) return;
-        Plans.Add(__result, _selected);
-        _selected = null;
+        try
+        {
+            if (__instance.GetType().Name != Holder || _selected == null) return;
+            Plans.AddOrUpdate(__result, _selected);
+            _selected = null;
+        }
+        catch (Exception e) { Log.Error("测试1b：关联召唤清单失败", e); }
     }
 
     private static void BeforeGenerate(object __instance, object __0)
     {
-        if (!Plans.TryGetValue(__instance, out var plan)) return;
-        Validate(plan, __0, true);
-        Log.Info($"测试1b #{plan.Sequence}：开始生成，楼层={Floor(__0)}");
+        try
+        {
+            if (!Plans.TryGetValue(__instance, out var plan))
+            {
+                // 读档或重开战斗时没有经过选遭遇：按种子和楼层从本地文件找回清单。
+                if (__instance.GetType().Name != Holder) return;
+                plan = PlanStore.Find(Seed(__0), Floor(__0));
+                if (plan == null) return;
+                Plans.AddOrUpdate(__instance, plan);
+                Log.Info($"测试1b #{plan.Sequence}：从本地文件找回清单（读档？）");
+            }
+            Validate(plan, __0, true);
+            Log.Info($"测试1b #{plan.Sequence}：开始生成，楼层={Floor(__0)}");
+        }
+        catch (Exception e)
+        {
+            Plans.Remove(__instance);
+            Log.Error("测试1b：生成前校验失败，这一场按载体遭遇原本的怪物", e);
+        }
     }
 
     private static void MixMonsters(object __instance, ref object __result)
+    {
+        try { MixMonstersCore(__instance, ref __result); }
+        catch (Exception e) { Log.Error("测试1b：混搭怪物失败，这一场按载体遭遇原本的怪物", e); }
+    }
+
+    private static void MixMonstersCore(object __instance, ref object __result)
     {
         if (!Plans.TryGetValue(__instance, out var plan)) return;
         var monsterType = RuntimeNetAction.Required("MonsterModel");
@@ -149,9 +200,13 @@ internal static class Test1bMixedEncounter
 
     private static void AfterGenerate(object __instance)
     {
-        if (!Plans.TryGetValue(__instance, out var plan)) return;
-        Log.Info($"测试1b #{plan.Sequence}：生成 {GameReflection.Dump(GameReflection.Get(__instance, "MonstersWithSlots"))}");
-        Plans.Remove(__instance);
+        try
+        {
+            if (!Plans.TryGetValue(__instance, out var plan)) return;
+            Log.Info($"测试1b #{plan.Sequence}：生成 {GameReflection.Dump(GameReflection.Get(__instance, "MonstersWithSlots"))}");
+            Plans.Remove(__instance);
+        }
+        catch (Exception e) { Log.Error("测试1b：记录生成结果失败", e); }
     }
 
     private static object Model(string getter, string typeName) => RuntimeNetAction.Required("ModelDb")

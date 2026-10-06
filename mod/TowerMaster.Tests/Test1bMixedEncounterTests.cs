@@ -38,6 +38,7 @@ public class Test1bMixedEncounterTests
             _patched = true;
         }
         Test1bMixedEncounter.Configure(Settings(), Prices());
+        PlanStore.Clear();
     }
     private static SummonPlan Plan() => new(1, 1, 123, "Overgrowth", 0, ["Mawler", "Flyconid"]);
     private static EncounterModel Generate()
@@ -115,6 +116,61 @@ public class Test1bMixedEncounterTests
         Assert.Throws<InvalidDataException>(() => Test1bMixedEncounter.Receive(JsonSerializer.Serialize(Plan() with { SourceFloor = 9 }), 100001));
         Assert.Throws<InvalidDataException>(() => Test1bMixedEncounter.Receive(JsonSerializer.Serialize(Plan() with { Monsters = ["Mawler", "UnknownMonster"] }), 100001));
         Test1bMixedEncounter.Receive(payload, 100001);
-        Assert.Throws<InvalidDataException>(() => Test1bMixedEncounter.Receive(payload, 100001));
+        Test1bMixedEncounter.Receive(payload, 100001); // 同一份清单收到两次：忽略，不报错
+    }
+
+    private static string[] Names(EncounterModel encounter) =>
+        encounter.MonstersWithSlots.Select(m => m.Monster.GetType().Name).ToArray();
+
+    [Fact]
+    public void WithoutPlanNormalRoomFallsBackToVanilla()
+    {
+        Init();
+        // 没收到清单就进房（例如读档、重连）：不换成混搭载体、不抛异常。
+        // 同一进程里测试 1a 的补丁也挂着，原版遭遇可能被 1a 换掉，所以只断言没进混搭流程。
+        var encounter = Generate();
+        Assert.IsNotType<CultistsNormal>(encounter);
+        Assert.DoesNotContain("Flyconid", Names(encounter));
+    }
+
+    [Fact]
+    public async Task RejectedPlanIsLoggedNotThrownAndRoomFallsBack()
+    {
+        Init();
+        var bad = RuntimeNetAction.Create(100002, JsonSerializer.Serialize(Plan())); // 不是房主
+        await ((GameAction)bad).Execute();
+        Assert.IsNotType<CultistsNormal>(Generate());
+        Assert.Contains("拒收召唤清单", File.ReadAllText(Path.Combine(Log.ModDir, "TowerMaster.log")));
+    }
+
+    [Fact]
+    public void HostRestartRenumberingIsAccepted()
+    {
+        Init();
+        Test1bMixedEncounter.Receive(JsonSerializer.Serialize(Plan() with { Sequence = 5 }), 100001);
+        Generate();
+        // 房主重启游戏后序号从 1 重来，对方没重启：仍然接受。
+        Test1bMixedEncounter.Receive(JsonSerializer.Serialize(Plan() with { Sequence = 1, SourceFloor = 1 }), 100001);
+        Assert.Equal(new[] { "Mawler", "Flyconid" }, Names(Generate()));
+    }
+
+    [Fact]
+    public void ReloadedCombatRecoversMixFromLocalFile()
+    {
+        Init();
+        Test1bMixedEncounter.Receive(JsonSerializer.Serialize(Plan()), 100001);
+        Assert.Equal(new[] { "Mawler", "Flyconid" }, Names(Generate()));
+
+        // 读档：游戏从存档恢复同一楼层的载体遭遇，没有经过选遭遇和清单动作。
+        var state = RunManager.Instance.State;
+        var reloaded = ModelDb.Encounter<CultistsNormal>().ToMutable();
+        new CombatRoom(reloaded, state).StartCombat();
+        Assert.Equal(new[] { "Mawler", "Flyconid" }, Names(reloaded));
+
+        // 别的楼层的载体遭遇（没有清单）保持原样。
+        state.TotalFloor++;
+        var other = ModelDb.Encounter<CultistsNormal>().ToMutable();
+        new CombatRoom(other, state).StartCombat();
+        Assert.Equal(new[] { "CalcifiedCultist", "DampCultist" }, Names(other));
     }
 }

@@ -116,7 +116,9 @@ public static class RuntimeNetAction
     public static object Kind(object action) => Enum.Parse(Required("GameActionType"), "NonCombat");
     public static Task Execute(object action)
     {
-        Test1bMixedEncounter.Receive(Payload(action), Owner(action));
+        // 清单不合格只记日志：各客户端执行同一个动作、得到同样的校验结果，都退回原版遭遇。
+        try { Test1bMixedEncounter.Receive(Payload(action), Owner(action)); }
+        catch (Exception e) { Log.Warn($"测试1b：拒收召唤清单（{e.Message}），下一场按原版遭遇"); }
         return Task.CompletedTask;
     }
 }

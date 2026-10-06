@@ -8,6 +8,9 @@ internal static class Log
     private static readonly object Lock = new();
     private static string? _path;
 
+    /// <summary>当前日志文件；同机双实例时每个实例不同，可用来派生其他按实例区分的文件。</summary>
+    public static string? FilePath => _path;
+
     public static string ModDir => Path.GetDirectoryName(typeof(Log).Assembly.Location) ?? ".";
 
     public static void Init()
