@@ -311,7 +311,8 @@ internal sealed class SummonPanel : ISummonUi
     /// </summary>
     private static void FitAndFreeze(G.SubViewport viewport, G.Node2D visuals, int order)
     {
-        int wait = 4 + order % 12, tries = 0;
+        // 有的怪开场有入场动画（碎片飞入、从水里升起），太早量会量到碎片；等约 0.6 秒再量
+        int wait = 36 + order % 12, tries = 0;
         bool fitted = false;
         void Tick()
         {
@@ -327,7 +328,7 @@ internal sealed class SummonPanel : ISummonUi
             try
             {
                 var size = new G.Vector2(viewport.Size.X, viewport.Size.Y);
-                var used = viewport.GetTexture().GetImage().GetUsedRect();
+                var used = OpaqueRect(viewport.GetTexture().GetImage());
                 if (used.Size.X <= 0 || used.Size.Y <= 0) { fitted = true; wait = 1; return; } // 什么都没画出来，保持原样
                 bool clipped = used.Position.X <= 0 || used.Position.Y <= 0 || used.End.X >= size.X || used.End.Y >= size.Y;
                 if (clipped && ++tries < 3)
@@ -351,6 +352,40 @@ internal sealed class SummonPanel : ISummonUi
             wait = 3;
         }
         Tree.ProcessFrame += Tick;
+    }
+
+    /// <summary>
+    /// 不透明像素的范围，去掉两头各 1.5% 的零星像素（飘散的粒子、远处的小特效），免得一点火星把主体缩得很小。
+    /// </summary>
+    private static G.Rect2I OpaqueRect(G.Image image)
+    {
+        if (image.GetFormat() != G.Image.Format.Rgba8) image.Convert(G.Image.Format.Rgba8);
+        int w = image.GetWidth(), h = image.GetHeight();
+        var data = image.GetData();
+        var rows = new int[h];
+        var cols = new int[w];
+        int total = 0;
+        for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+        {
+            if (data[(y * w + x) * 4 + 3] < 40) continue;
+            rows[y]++;
+            cols[x]++;
+            total++;
+        }
+        if (total == 0) return new G.Rect2I();
+        int trim = (int)(total * 0.015);
+        (int lo, int hi) Range(int[] counts)
+        {
+            int lo = 0, hi = counts.Length - 1, acc = 0;
+            while (lo < hi && acc + counts[lo] <= trim) acc += counts[lo++];
+            acc = 0;
+            while (hi > lo && acc + counts[hi] <= trim) acc += counts[hi--];
+            return (lo, hi);
+        }
+        var (x0, x1) = Range(cols);
+        var (y0, y1) = Range(rows);
+        return new G.Rect2I(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
     }
 
     /// <summary>把模型放大 f 倍，同时让视口里原来在 from 的点移到 to。</summary>

@@ -207,6 +207,8 @@ internal static class TestBridge
                 "/treasure/pick" => a => Main(() => TreasurePick(a)),
                 "/event" => _ => Main(EventOptions),
                 "/event/choose" => a => Main(() => EventChoose(a)),
+                "/cards" => _ => Main(Cards),
+                "/cards/pick" => a => Main(() => CardsPick(a)),
                 "/console" => a => MainAsync(() => ConsoleCommand(a)),
                 "/logs" => a => Main(() => Logs(a)),
                 "/screenshot" => a => Main(() => Screenshot(a)),
@@ -594,8 +596,56 @@ internal static class TestBridge
         int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
         var buttons = EventButtons();
         if (index < 0 || index >= buttons.Count) throw Fail("bad_request", $"只有 {buttons.Count} 个选项");
+        var path = buttons[index].GetPath().ToString(); // 点完按钮可能被移出场景树，先记下
+        var text = string.Join(" / ", Texts(buttons[index]));
         RuntimeNetAction.Call(buttons[index], "OnRelease");
-        return new { chosen = index, path = buttons[index].GetPath().ToString() };
+        return new { chosen = index, path, text };
+    }
+
+    // ---------------------------------------------------------------- 选牌界面（升级、删牌、变化等）
+
+    /// <summary>正在显示的选牌界面：有 OnCardClicked(一个参数) 方法和 _cards 列表的节点（例如 NDeckUpgradeSelectScreen）。</summary>
+    private static Godot.Node? CardScreen()
+    {
+        var stack = new Stack<Godot.Node>();
+        stack.Push(SceneTree.Root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node is Godot.CanvasItem ci && !ci.IsVisibleInTree()) continue;
+            if (node.GetType().GetMethods(GameReflection.All).Any(m => m.Name == "OnCardClicked" && m.GetParameters().Length == 1)
+                && Try(() => GameReflection.Get(node, "_cards")) is IEnumerable) return node;
+            foreach (var child in node.GetChildren()) stack.Push(child);
+        }
+        return null;
+    }
+
+    private static object Cards()
+    {
+        var screen = CardScreen();
+        if (screen == null) return new { visible = false };
+        var cards = (GameReflection.Get(screen, "_cards") as IEnumerable)!.Cast<object>()
+            .Select((c, i) => new { index = i, card = c.GetType().Name, upgraded = Try(() => GameReflection.Get(c, "IsUpgraded")) }).ToList();
+        return new { visible = true, screen = screen.GetType().Name, path = screen.GetPath().ToString(), cards };
+    }
+
+    /// <summary>点选第 index 张牌（和鼠标点一样）；confirm=true 时再按确认（ConfirmSelection）。</summary>
+    private static object CardsPick(JsonObject a)
+    {
+        var screen = CardScreen() ?? throw Fail("invalid_phase", "没有显示选牌界面");
+        int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
+        var cards = (GameReflection.Get(screen, "_cards") as IEnumerable)!.Cast<object>().ToList();
+        if (index < 0 || index >= cards.Count) throw Fail("bad_request", $"只有 {cards.Count} 张牌");
+        RuntimeNetAction.Call(screen, "OnCardClicked", cards[index]);
+        bool confirmed = false;
+        if (a["confirm"]?.GetValue<bool>() == true)
+        {
+            var confirm = screen.GetType().GetMethods(GameReflection.All).FirstOrDefault(m => m.Name == "ConfirmSelection" && m.GetParameters().Length <= 1)
+                          ?? throw Fail("unsupported", $"{screen.GetType().Name} 没有 ConfirmSelection");
+            confirm.Invoke(screen, confirm.GetParameters().Length == 1 ? [null] : []);
+            confirmed = true;
+        }
+        return new { picked = index, card = cards[index].GetType().Name, confirmed, screen = screen.GetType().Name };
     }
 
     private static IEnumerable<string> Texts(Godot.Node root)

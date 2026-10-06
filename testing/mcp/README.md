@@ -39,6 +39,7 @@
 | tm_rewards / tm_rewards_proceed / tm_rewards_skip | 读正在显示的奖励组（类型、金币数、遗物）；按「继续」（Boss 奖励后换幕也用它）；跳过奖励组 |
 | tm_treasure / tm_treasure_open / tm_treasure_pick | 宝箱里的遗物和序号、各玩家投票、本机现有遗物；本机点开宝箱（不要对塔主用）；选第 index 个遗物（不给 index = 跳过） |
 | tm_event / tm_event_choose | 列事件（含先古之民）选项按钮；点第 index 个 |
+| tm_cards / tm_cards_pick | 选牌界面（升级、删牌等，凡是有 OnCardClicked 和 _cards 的界面）：列牌；点第 index 张，confirm=true 再按确认 |
 | tm_console | 开发者控制台命令，例如 `win`（写进控制台输入框再按原版提交） |
 | tm_logs | 按字节游标读 TowerMaster 日志（source=mod）或游戏日志（source=game；游戏运行中这个文件可能是空的） |
 | tm_screenshot | 截该实例画面，返回 PNG 路径、尺寸、窗口模式 |
