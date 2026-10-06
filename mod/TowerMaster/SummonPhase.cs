@@ -107,7 +107,8 @@ internal static class SummonPhase
 
         var context = new RoomContext(actId, room.Value, Climbers(state), MasterLedger.BattlesFought, [], wallet.Points);
         bool opening = _rules.IsOpeningProtected(context);
-        context = context with { StandardCostOverride = _rules.AverageStandardCost(actId, room.Value, weak: opening) };
+        // Boss 免费出场，没有标准开销（不然日志和面板会显示一个没用的数）
+        context = context with { StandardCostOverride = room == RoomKind.Boss ? 0 : _rules.AverageStandardCost(actId, room.Value, weak: opening) };
         var candidates = room == RoomKind.Boss ? BossCandidates(state, actId, act.ActNo) : [];
 
         var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds);

@@ -1,4 +1,10 @@
-## 第 2 步：召唤阶段第一版 + 宝箱修复（2026-10-06，0.0.10，待实测）
+## 第 2 步：召唤阶段第一版（2026-10-06，0.0.11，待实测）
+
+**0.0.10 实测基本通过**（`docs/summon-phase-result.md`）：启动正常；召唤、清单两边一致、Boss 替换、5 场召唤点流水逐场对得上；宝箱能离开；读档后混搭找回。
+- 0.0.11 修复：塔主开宝箱拿金币（跳过 `DoLocalTreasureRoomRewards`）；Boss 标准开销显示为 0。
+- 0.0.11 按用户反馈重做召唤面板外观，仍只用 Godot 自带控件和 StyleBoxFlat。
+- 仍未覆盖：按原版出场、超时、换成不同精英、全新进程读档恢复召唤点、面板截图。
+- 日志里其余 ERROR 不是 mod 引起的：退出时 Godot 资源泄漏、商店悬浮提示重复键、断线后发地图画线消息。
 
 **0.0.9 加载失败**（`docs/summon-phase-result.md`）：游戏 `ModManager.TryLoadMod` 在调用入口前就 `GetTypes()`。新代码有规则库的枚举（值类型）字段，枚举类型时就要加载 TowerMaster.Core.dll，而入口里注册的依赖解析还没执行。
 - 0.0.10：规则库源码直接编进 TowerMaster.dll（csproj 的 `Compile Include="..\TowerMaster.Core\*.cs"`），不再单独出 Core DLL；测试守住「主程序集不引用 TowerMaster.Core」。

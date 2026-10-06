@@ -109,6 +109,7 @@ public class Test3MasterAutoPilotTests
         Assert.False(await new RewardsSetSynchronizer().SelectLocalReward(new object()));
         Assert.False(await new MerchantEntry().OnTryPurchaseWrapper(null));
         Assert.False(await new OneOffSynchronizer().DoLocalMerchantCardRemoval(75));
+        Assert.Equal(0, await new OneOffSynchronizer().DoLocalTreasureRoomRewards()); // 开箱金币
         var treasure = new TreasureRoomRelicSynchronizer();
         treasure.PickRelicLocally(1);
         treasure.PickRelicLocally(null); // 跳过放行
@@ -119,6 +120,7 @@ public class Test3MasterAutoPilotTests
         Assert.Equal(1, map.Selected);
         Assert.True(await new RewardsSetSynchronizer().SelectLocalReward(new object()));
         Assert.True(await new MerchantEntry().OnTryPurchaseWrapper(null));
+        Assert.Equal(42, await new OneOffSynchronizer().DoLocalTreasureRoomRewards());
     }
 
     [Fact]

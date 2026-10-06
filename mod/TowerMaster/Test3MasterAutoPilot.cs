@@ -42,6 +42,7 @@ internal static class Test3MasterAutoPilot
             Prefix(harmony, "OnTryPurchaseWrapper", "MerchantEntry", nameof(BlockTask));
             Prefix(harmony, "DoLocalMerchantCardRemoval", "OneOffSynchronizer", nameof(BlockTask));
             Prefix(harmony, "PickRelicLocally", "TreasureRoomRelicSynchronizer", nameof(BlockRelicPick));
+            Prefix(harmony, "DoLocalTreasureRoomRewards", "OneOffSynchronizer", nameof(BlockTreasureGold));
         }
         _lastMapVote = _lastEventVote = _lastActReady = null;
         Postfix(harmony, "PlayerVotedForMapCoord", "MapSelectionSynchronizer", nameof(AfterMapVote));
@@ -214,6 +215,18 @@ internal static class Test3MasterAutoPilot
         if (!LocalIsMaster) return true;
         __result = Task.FromResult(false);
         Log.Info($"测试3 物品：塔主不能 {__originalMethod.DeclaringType?.Name}.{__originalMethod.Name}，已拦下");
+        return false;
+    }
+
+    /// <summary>
+    /// 宝箱开箱时直接给本地玩家加金币（不经过领取奖励的接口，召唤阶段实测发现塔主还能拿到）。
+    /// 塔主这边整个跳过，返回 0 金币；塔主不发「开箱」消息，其他客户端也就不会替塔主加金币，各家一致。
+    /// </summary>
+    private static bool BlockTreasureGold(ref Task<int> __result)
+    {
+        if (!LocalIsMaster) return true;
+        __result = Task.FromResult(0);
+        Log.Info("测试3 宝箱：塔主不拿开箱金币，已跳过");
         return false;
     }
 

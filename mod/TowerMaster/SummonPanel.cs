@@ -4,23 +4,46 @@ using G = Godot;
 namespace TowerMaster;
 
 /// <summary>
-/// 召唤面板（只在塔主这台电脑上显示）。全部用 Godot 自带控件拼，不定义自己的节点类：
+/// 召唤面板（只在塔主这台电脑上显示）。全部用 Godot 自带控件 + StyleBoxFlat 样式拼，不定义自己的节点类：
 /// mod 程序集里的自定义节点类不一定能被引擎登记，用自带控件 + C# 事件最稳。
 /// 界面挂在场景树根上的一个高层 CanvasLayer 里，半透明遮罩挡住下面的点击。
 /// 中文字体借用游戏里第一个 MegaLabel 的字体（Godot 默认字体没有中文）。
+/// 配色向游戏靠：深蓝底、金色描边、青绿按钮。
 /// </summary>
 internal sealed class SummonPanel : ISummonUi
 {
-    private const int FontSize = 22;
+    // ---------------------------------------------------------------- 配色
+    private static readonly G.Color Backdrop = new(0.02f, 0.03f, 0.06f, 0.72f);
+    private static readonly G.Color PanelBg = new(0.075f, 0.09f, 0.13f, 0.97f);
+    private static readonly G.Color Gold = new(0.86f, 0.70f, 0.38f);
+    private static readonly G.Color GoldDim = new(0.55f, 0.45f, 0.26f);
+    private static readonly G.Color CardBg = new(0.13f, 0.16f, 0.22f);
+    private static readonly G.Color CardHover = new(0.18f, 0.22f, 0.30f);
+    private static readonly G.Color CardBorder = new(0.27f, 0.33f, 0.45f);
+    private static readonly G.Color Teal = new(0.16f, 0.42f, 0.44f);
+    private static readonly G.Color TealHover = new(0.21f, 0.52f, 0.54f);
+    private static readonly G.Color TextMain = new(0.93f, 0.91f, 0.86f);
+    private static readonly G.Color TextDim = new(0.62f, 0.64f, 0.70f);
+    private static readonly G.Color Good = new(0.45f, 0.82f, 0.52f);
+    private static readonly G.Color Bad = new(0.95f, 0.45f, 0.40f);
+
     private readonly SummonSession _session;
     private G.CanvasLayer? _layer;
-    private G.Label _timer = null!, _quote = null!;
-    private G.HFlowContainer _chosen = null!;
+    private G.Label _timer = null!, _status = null!, _emptyHint = null!;
+    private G.ProgressBar _timerBar = null!, _capBar = null!;
+    private G.HFlowContainer? _chosen;
+    private G.VBoxContainer _problems = null!;
     private G.Button _confirm = null!;
-    private readonly List<G.Button> _optionButtons = new();
+    private readonly Dictionary<string, (G.Button Card, G.Label Count)> _cards = new();
+    private readonly Dictionary<string, G.Label> _stats = new();
     private ulong _lastTicks;
+    private readonly double _totalSeconds;
 
-    public SummonPanel(SummonSession session) => _session = session;
+    public SummonPanel(SummonSession session)
+    {
+        _session = session;
+        _totalSeconds = Math.Max(1, session.SecondsLeft);
+    }
 
     private static G.SceneTree Tree => (G.SceneTree)G.Engine.GetMainLoop();
 
@@ -28,7 +51,7 @@ internal sealed class SummonPanel : ISummonUi
     {
         _layer = new G.CanvasLayer { Layer = 100 };
 
-        var backdrop = new G.ColorRect { Color = new G.Color(0, 0, 0, 0.65f), MouseFilter = G.Control.MouseFilterEnum.Stop };
+        var backdrop = new G.ColorRect { Color = Backdrop, MouseFilter = G.Control.MouseFilterEnum.Stop };
         backdrop.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
         _layer.AddChild(backdrop);
 
@@ -36,71 +59,20 @@ internal sealed class SummonPanel : ISummonUi
         center.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
         _layer.AddChild(center);
 
-        var panel = new G.PanelContainer { CustomMinimumSize = new G.Vector2(1100, 760) };
+        var panel = new G.PanelContainer { CustomMinimumSize = new G.Vector2(1180, 0) };
+        panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 3, 14, 28, shadow: 24));
         center.AddChild(panel);
-        var margin = new G.MarginContainer();
-        foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" }) margin.AddThemeConstantOverride(side, 24);
-        panel.AddChild(margin);
+
         var box = new G.VBoxContainer();
-        box.AddThemeConstantOverride("separation", 14);
-        margin.AddChild(box);
+        box.AddThemeConstantOverride("separation", 16);
+        panel.AddChild(box);
 
-        var room = _session.Room;
-        var roomName = room.Room switch { RoomKind.Elite => "精英房", RoomKind.Boss => "Boss 房", _ => "普通房" };
-        box.AddChild(Text($"塔主 · 召唤阶段　{roomName}", 30));
-
-        var header = new G.HBoxContainer();
-        header.AddChild(Text($"召唤点 {room.Savings}　标准开销 {_session.Room.StandardCostOverride ?? 0}" +
-                             (_session.IsOpeningProtected ? "　（开局保护：只能用简单遭遇的怪物，不超过标准开销）" : "")));
-        header.AddChild(new G.Control { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill });
-        _timer = Text("");
-        header.AddChild(_timer);
-        box.AddChild(header);
-
-        box.AddChild(Text(room.Room switch
-        {
-            RoomKind.Monster => "点击怪物加入本场；点击下方已选的怪物移除。",
-            RoomKind.Elite => "选择一个精英遭遇。",
-            _ => "选择一个 Boss（免费出场）。",
-        }));
-
-        var scroll = new G.ScrollContainer { SizeFlagsVertical = G.Control.SizeFlags.ExpandFill, CustomMinimumSize = new G.Vector2(0, 330) };
-        var grid = new G.GridContainer { Columns = 4, SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
-        grid.AddThemeConstantOverride("h_separation", 10);
-        grid.AddThemeConstantOverride("v_separation", 10);
-        scroll.AddChild(grid);
-        box.AddChild(scroll);
-        foreach (var option in _session.Options)
-        {
-            var button = MakeButton(room.Room == RoomKind.Boss ? option.Name : $"{option.Name}　{option.Price} 点");
-            button.CustomMinimumSize = new G.Vector2(250, 56);
-            var id = option.Id;
-            button.Pressed += () => { _session.Click(id); Render(); };
-            button.SetMeta("id", id);
-            _optionButtons.Add(button);
-            grid.AddChild(button);
-        }
-
-        if (room.Room == RoomKind.Monster)
-        {
-            box.AddChild(Text("已选："));
-            _chosen = new G.HFlowContainer();
-            box.AddChild(_chosen);
-        }
-
-        _quote = Text("");
-        _quote.AutowrapMode = G.TextServer.AutowrapMode.WordSmart;
-        box.AddChild(_quote);
-
-        var buttons = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.End };
-        buttons.AddThemeConstantOverride("separation", 16);
-        var vanilla = MakeButton("按原版出场");
-        vanilla.Pressed += () => _session.UseVanilla();
-        _confirm = MakeButton("确认召唤");
-        _confirm.Pressed += () => _session.Confirm();
-        buttons.AddChild(vanilla);
-        buttons.AddChild(_confirm);
-        box.AddChild(buttons);
+        BuildHeader(box);
+        box.AddChild(Divider());
+        BuildOptions(box);
+        if (_session.Room.Room == RoomKind.Monster) BuildChosenTray(box);
+        BuildSummary(box);
+        BuildButtons(box);
 
         ApplyGameFont(_layer);
         _session.Finished += _ => Close();
@@ -108,6 +80,7 @@ internal sealed class SummonPanel : ISummonUi
         Tree.ProcessFrame += OnFrame;
         Tree.Root.CallDeferred(G.Node.MethodName.AddChild, _layer);
         Render();
+        OnFrame();
     }
 
     public void Close()
@@ -117,12 +90,178 @@ internal sealed class SummonPanel : ISummonUi
         _layer = null;
     }
 
+    // ---------------------------------------------------------------- 各区块
+
+    private void BuildHeader(G.VBoxContainer box)
+    {
+        var room = _session.Room;
+        var (roomName, roomColor) = room.Room switch
+        {
+            RoomKind.Elite => ("精英房", new G.Color(0.85f, 0.45f, 0.30f)),
+            RoomKind.Boss => ("Boss 房", new G.Color(0.80f, 0.30f, 0.35f)),
+            _ => ("普通房", Teal),
+        };
+
+        var top = new G.HBoxContainer();
+        top.AddThemeConstantOverride("separation", 16);
+        var titles = new G.VBoxContainer();
+        titles.AddThemeConstantOverride("separation", 2);
+        titles.AddChild(Text("召唤阶段", 40, Gold));
+        titles.AddChild(Text(room.Room switch
+        {
+            RoomKind.Monster => "挑选这场战斗的怪物",
+            RoomKind.Elite => "挑选一个精英遭遇",
+            _ => "从候选中挑选这一幕的 Boss",
+        }, 20, TextDim));
+        top.AddChild(titles);
+        top.AddChild(Spacer());
+
+        var timerBox = new G.VBoxContainer { CustomMinimumSize = new G.Vector2(170, 0) };
+        timerBox.AddThemeConstantOverride("separation", 4);
+        _timer = Text("30", 40, TextMain);
+        _timer.HorizontalAlignment = G.HorizontalAlignment.Right;
+        timerBox.AddChild(_timer);
+        _timerBar = Bar(_totalSeconds, _totalSeconds, Gold, 8);
+        timerBox.AddChild(_timerBar);
+        top.AddChild(timerBox);
+        box.AddChild(top);
+
+        var chips = new G.HFlowContainer();
+        chips.AddThemeConstantOverride("h_separation", 10);
+        chips.AddThemeConstantOverride("v_separation", 8);
+        chips.AddChild(Chip(roomName, roomColor, TextMain));
+        chips.AddChild(Chip($"召唤点 {room.Savings}", new G.Color(0.20f, 0.17f, 0.09f), Gold, GoldDim));
+        if (room.Room != RoomKind.Boss)
+            chips.AddChild(Chip($"标准开销 {room.StandardCostOverride ?? 0}", CardBg, TextMain, CardBorder));
+        if (_session.IsOpeningProtected)
+            chips.AddChild(Chip("开局保护：只能用简单怪，不超过标准开销", new G.Color(0.12f, 0.24f, 0.18f), Good, new G.Color(0.25f, 0.45f, 0.30f)));
+        box.AddChild(chips);
+    }
+
+    private void BuildOptions(G.VBoxContainer box)
+    {
+        var room = _session.Room.Room;
+        var scroll = new G.ScrollContainer
+        {
+            CustomMinimumSize = new G.Vector2(0, room == RoomKind.Monster ? 250 : 170),
+            HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled,
+        };
+        var grid = new G.GridContainer { Columns = room == RoomKind.Monster ? 4 : 3, SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
+        grid.AddThemeConstantOverride("h_separation", 12);
+        grid.AddThemeConstantOverride("v_separation", 12);
+        scroll.AddChild(grid);
+        box.AddChild(scroll);
+
+        foreach (var option in _session.Options)
+        {
+            var card = new G.Button
+            {
+                FocusMode = G.Control.FocusModeEnum.None,
+                CustomMinimumSize = new G.Vector2(room == RoomKind.Monster ? 265 : 360, 72),
+                SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill,
+            };
+            StyleCard(card, selected: false);
+
+            var margin = new G.MarginContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            margin.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
+            foreach (var side in new[] { "margin_left", "margin_right" }) margin.AddThemeConstantOverride(side, 16);
+            var row = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            row.AddThemeConstantOverride("separation", 10);
+            var name = Text(option.Name, 23, TextMain);
+            name.SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill;
+            name.VerticalAlignment = G.VerticalAlignment.Center;
+            name.ClipText = true;
+            row.AddChild(name);
+            var count = Text("", 20, Gold);
+            count.VerticalAlignment = G.VerticalAlignment.Center;
+            row.AddChild(count);
+            row.AddChild(Chip(room == RoomKind.Boss ? "免费" : $"{option.Price} 点", new G.Color(0.20f, 0.17f, 0.09f), Gold, GoldDim));
+            margin.AddChild(row);
+            card.AddChild(margin);
+            foreach (var n in new G.Control[] { row, name, count }) n.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+
+            var id = option.Id;
+            card.Pressed += () => { _session.Click(id); Render(); };
+            _cards[id] = (card, count);
+            grid.AddChild(card);
+        }
+    }
+
+    private void BuildChosenTray(G.VBoxContainer box)
+    {
+        var tray = new G.PanelContainer();
+        tray.AddThemeStyleboxOverride("panel", Box(new G.Color(0.05f, 0.06f, 0.09f), CardBorder, 1, 10, 14));
+        var inner = new G.VBoxContainer();
+        inner.AddThemeConstantOverride("separation", 8);
+        inner.AddChild(Text("本场阵容（点击移除）", 19, TextDim));
+        _chosen = new G.HFlowContainer { CustomMinimumSize = new G.Vector2(0, 44) };
+        _chosen.AddThemeConstantOverride("h_separation", 10);
+        _chosen.AddThemeConstantOverride("v_separation", 8);
+        inner.AddChild(_chosen);
+        _emptyHint = Text("还没有选择怪物——点击上面的怪物加入", 20, TextDim);
+        inner.AddChild(_emptyHint);
+        tray.AddChild(inner);
+        box.AddChild(tray);
+    }
+
+    private void BuildSummary(G.VBoxContainer box)
+    {
+        if (_session.Room.Room != RoomKind.Boss)
+        {
+            var stats = new G.HBoxContainer();
+            stats.AddThemeConstantOverride("separation", 12);
+            foreach (var (key, label) in new[] { ("price", "召唤价"), ("tax", "群体税"), ("total", "合计 / 上限"), ("left", "确认后剩余") })
+            {
+                var cell = new G.PanelContainer { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
+                cell.AddThemeStyleboxOverride("panel", Box(CardBg, CardBorder, 1, 10, 12));
+                var v = new G.VBoxContainer();
+                v.AddThemeConstantOverride("separation", 0);
+                v.AddChild(Text(label, 18, TextDim));
+                var value = Text("0", 30, TextMain);
+                v.AddChild(value);
+                cell.AddChild(v);
+                _stats[key] = value;
+                stats.AddChild(cell);
+            }
+            box.AddChild(stats);
+            _capBar = Bar(1, 0, Good, 10);
+            box.AddChild(_capBar);
+        }
+
+        _status = Text("", 21, Good);
+        box.AddChild(_status);
+        _problems = new G.VBoxContainer();
+        _problems.AddThemeConstantOverride("separation", 4);
+        box.AddChild(_problems);
+    }
+
+    private void BuildButtons(G.VBoxContainer box)
+    {
+        var buttons = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.End };
+        buttons.AddThemeConstantOverride("separation", 16);
+        var vanilla = MakeButton("按原版出场", CardBg, CardHover, CardBorder, TextMain, new G.Vector2(220, 60));
+        vanilla.Pressed += () => _session.UseVanilla();
+        _confirm = MakeButton("确认召唤", Teal, TealHover, Gold, TextMain, new G.Vector2(280, 60), 26);
+        _confirm.Pressed += () => _session.Confirm();
+        buttons.AddChild(vanilla);
+        buttons.AddChild(_confirm);
+        box.AddChild(buttons);
+    }
+
+    // ---------------------------------------------------------------- 刷新
+
     private void OnFrame()
     {
         var now = G.Time.GetTicksMsec();
         _session.Tick((now - _lastTicks) / 1000.0);
         _lastTicks = now;
-        if (!_session.Done) _timer.Text = $"剩余 {Math.Ceiling(_session.SecondsLeft)} 秒";
+        if (_session.Done) return;
+        var left = _session.SecondsLeft;
+        _timer.Text = $"{Math.Ceiling(left)}";
+        _timerBar.Value = left;
+        var urgent = left <= 10;
+        _timer.AddThemeColorOverride("font_color", urgent ? Bad : TextMain);
+        _timerBar.AddThemeStyleboxOverride("fill", Box(urgent ? Bad : Gold, urgent ? Bad : Gold, 0, 4, 0));
     }
 
     private void Render()
@@ -131,50 +270,148 @@ internal sealed class SummonPanel : ISummonUi
         var room = _session.Room.Room;
         var quote = _session.Quote;
 
-        foreach (var b in _optionButtons)
+        foreach (var (id, (card, count)) in _cards)
         {
-            // 精英、Boss 房：高亮当前选中的那一个
-            if (room != RoomKind.Monster) b.Modulate = (string)b.GetMeta("id") == _session.Encounter ? new G.Color(1, 0.9f, 0.5f) : G.Colors.White;
+            int n = room == RoomKind.Monster ? _session.Monsters.Count(m => m == id) : (_session.Encounter == id ? 1 : 0);
+            count.Text = room == RoomKind.Monster && n > 0 ? $"×{n}" : "";
+            StyleCard(card, n > 0);
         }
 
-        if (room == RoomKind.Monster)
+        if (_chosen != null)
         {
             foreach (var child in _chosen.GetChildren()) child.QueueFree();
             for (int i = 0; i < _session.Monsters.Count; i++)
             {
                 int index = i;
-                var b = MakeButton($"{_session.NameOf(_session.Monsters[i])} ✕");
+                var b = MakeButton($"{_session.NameOf(_session.Monsters[i])}  ✕", new G.Color(0.20f, 0.17f, 0.09f), new G.Color(0.30f, 0.24f, 0.12f), GoldDim, Gold, new G.Vector2(0, 42), 20);
                 b.Pressed += () => { _session.RemoveAt(index); Render(); };
                 ApplyGameFont(b);
                 _chosen.AddChild(b);
             }
+            _emptyHint.Visible = _session.Monsters.Count == 0;
         }
 
-        var lines = new List<string>();
-        lines.Add(room == RoomKind.Boss
-            ? "Boss 免费出场。"
-            : $"召唤价 {quote.MonsterPrice} + 群体税 {quote.CrowdTax} = {quote.MonsterSpend}　（单场上限 {quote.SpendCap:0.#}）　确认后剩余 {_session.Room.Savings - quote.Total}");
-        lines.AddRange(quote.Violations.Select(v => "✗ " + SummonSession.Describe(v)));
-        _quote.Text = string.Join("\n", lines);
-        _quote.AddThemeColorOverride("font_color", quote.Ok ? G.Colors.White : new G.Color(1, 0.55f, 0.5f));
+        if (room != RoomKind.Boss)
+        {
+            int left = _session.Room.Savings - quote.Total;
+            _stats["price"].Text = $"{quote.MonsterPrice}";
+            _stats["tax"].Text = $"{quote.CrowdTax}";
+            _stats["total"].Text = $"{quote.MonsterSpend} / {quote.SpendCap:0.#}";
+            _stats["left"].Text = $"{left}";
+            bool overCap = quote.MonsterSpend > quote.SpendCap + 1e-9;
+            _stats["total"].AddThemeColorOverride("font_color", overCap ? Bad : TextMain);
+            _stats["left"].AddThemeColorOverride("font_color", left < 0 ? Bad : Gold);
+            _capBar.MaxValue = Math.Max(1, quote.SpendCap);
+            _capBar.Value = Math.Min(quote.MonsterSpend, _capBar.MaxValue);
+            _capBar.AddThemeStyleboxOverride("fill", Box(overCap ? Bad : Good, overCap ? Bad : Good, 0, 5, 0));
+        }
+
+        foreach (var child in _problems.GetChildren()) child.QueueFree();
+        bool emptyOnly = quote.Violations.Count == 1 && quote.Violations[0] == SummonViolation.EmptyRoom;
+        if (quote.Ok)
+        {
+            _status.Text = room == RoomKind.Boss ? "✓ Boss 免费出场，可以召唤" : "✓ 符合规则，可以召唤";
+            _status.AddThemeColorOverride("font_color", Good);
+        }
+        else if (emptyOnly)
+        {
+            _status.Text = "至少召唤一只怪物";
+            _status.AddThemeColorOverride("font_color", TextDim);
+        }
+        else
+        {
+            _status.Text = "";
+            foreach (var v in quote.Violations)
+            {
+                var line = Text("✗ " + SummonSession.Describe(v), 20, Bad);
+                ApplyGameFont(line);
+                _problems.AddChild(line);
+            }
+        }
         _confirm.Disabled = !quote.Ok;
     }
 
-    // ---------------------------------------------------------------- 控件与字体
+    // ---------------------------------------------------------------- 样式工具
 
-    private static G.Label Text(string text, int size = FontSize)
+    private static G.StyleBoxFlat Box(G.Color bg, G.Color border, int borderWidth, int radius, float padding, int shadow = 0)
+    {
+        var sb = new G.StyleBoxFlat { BgColor = bg, BorderColor = border };
+        sb.SetBorderWidthAll(borderWidth);
+        sb.SetCornerRadiusAll(radius);
+        sb.SetContentMarginAll(padding);
+        if (shadow > 0)
+        {
+            sb.ShadowColor = new G.Color(0, 0, 0, 0.55f);
+            sb.ShadowSize = shadow;
+        }
+        return sb;
+    }
+
+    private static void StyleCard(G.Button card, bool selected)
+    {
+        var border = selected ? Gold : CardBorder;
+        var width = selected ? 3 : 1;
+        card.AddThemeStyleboxOverride("normal", Box(selected ? new G.Color(0.20f, 0.20f, 0.20f) : CardBg, border, width, 10, 0));
+        card.AddThemeStyleboxOverride("hover", Box(CardHover, selected ? Gold : GoldDim, width, 10, 0));
+        card.AddThemeStyleboxOverride("pressed", Box(CardHover, Gold, 3, 10, 0));
+        card.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
+    }
+
+    private static G.Button MakeButton(string text, G.Color bg, G.Color hover, G.Color border, G.Color fg, G.Vector2 size, int fontSize = 22)
+    {
+        var button = new G.Button { Text = text, FocusMode = G.Control.FocusModeEnum.None, CustomMinimumSize = size };
+        button.AddThemeFontSizeOverride("font_size", fontSize);
+        button.AddThemeStyleboxOverride("normal", Box(bg, border, 2, 10, 14));
+        button.AddThemeStyleboxOverride("hover", Box(hover, border, 2, 10, 14));
+        button.AddThemeStyleboxOverride("pressed", Box(hover, Gold, 3, 10, 14));
+        button.AddThemeStyleboxOverride("disabled", Box(new G.Color(0.12f, 0.13f, 0.16f), new G.Color(0.22f, 0.24f, 0.28f), 2, 10, 14));
+        button.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
+        button.AddThemeColorOverride("font_color", fg);
+        button.AddThemeColorOverride("font_hover_color", G.Colors.White);
+        button.AddThemeColorOverride("font_pressed_color", Gold);
+        button.AddThemeColorOverride("font_disabled_color", new G.Color(0.45f, 0.46f, 0.50f));
+        return button;
+    }
+
+    private static G.PanelContainer Chip(string text, G.Color bg, G.Color fg, G.Color? border = null)
+    {
+        var chip = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter };
+        var sb = Box(bg, border ?? bg, border == null ? 0 : 1, 14, 0);
+        sb.ContentMarginLeft = sb.ContentMarginRight = 12;
+        sb.ContentMarginTop = sb.ContentMarginBottom = 3;
+        chip.AddThemeStyleboxOverride("panel", sb);
+        var label = Text(text, 19, fg);
+        label.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        chip.AddChild(label);
+        return chip;
+    }
+
+    private static G.ProgressBar Bar(double max, double value, G.Color fill, int height)
+    {
+        var bar = new G.ProgressBar
+        {
+            MinValue = 0, MaxValue = max, Value = value, ShowPercentage = false,
+            CustomMinimumSize = new G.Vector2(0, height), MouseFilter = G.Control.MouseFilterEnum.Ignore,
+        };
+        bar.AddThemeStyleboxOverride("background", Box(new G.Color(0.05f, 0.06f, 0.09f), CardBorder, 1, height / 2, 0));
+        bar.AddThemeStyleboxOverride("fill", Box(fill, fill, 0, height / 2, 0));
+        return bar;
+    }
+
+    private static G.ColorRect Divider() =>
+        new() { Color = new G.Color(Gold.R, Gold.G, Gold.B, 0.35f), CustomMinimumSize = new G.Vector2(0, 2), MouseFilter = G.Control.MouseFilterEnum.Ignore };
+
+    private static G.Control Spacer() => new() { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill, MouseFilter = G.Control.MouseFilterEnum.Ignore };
+
+    private static G.Label Text(string text, int size, G.Color? color = null)
     {
         var label = new G.Label { Text = text };
         label.AddThemeFontSizeOverride("font_size", size);
+        if (color != null) label.AddThemeColorOverride("font_color", color.Value);
         return label;
     }
 
-    private static G.Button MakeButton(string text)
-    {
-        var button = new G.Button { Text = text, FocusMode = G.Control.FocusModeEnum.None };
-        button.AddThemeFontSizeOverride("font_size", FontSize);
-        return button;
-    }
+    // ---------------------------------------------------------------- 字体
 
     private static G.Font? _gameFont;
 
@@ -215,18 +452,20 @@ internal sealed class SummonPanel : ISummonUi
 
     // ---------------------------------------------------------------- 结算提示
 
-    /// <summary>屏幕上方显示几秒的一行字（战斗收入等）。</summary>
+    /// <summary>屏幕上方显示几秒的提示条（战斗收入等）。</summary>
     public static void ShowToast(string text, double seconds = 6)
     {
         var layer = new G.CanvasLayer { Layer = 101 };
-        var label = Text(text, 26);
-        label.HorizontalAlignment = G.HorizontalAlignment.Center;
-        label.SetAnchorsPreset(G.Control.LayoutPreset.CenterTop);
-        label.Position = new G.Vector2(-600, 90);
-        label.Size = new G.Vector2(1200, 50);
-        label.AddThemeColorOverride("font_outline_color", G.Colors.Black);
-        label.AddThemeConstantOverride("outline_size", 8);
-        layer.AddChild(label);
+        var holder = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        holder.SetAnchorsPreset(G.Control.LayoutPreset.TopWide);
+        holder.Position = new G.Vector2(0, 90);
+        var panel = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 2, 12, 16, shadow: 12));
+        var label = Text(text, 24, Gold);
+        label.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        panel.AddChild(label);
+        holder.AddChild(panel);
+        layer.AddChild(holder);
         ApplyGameFont(layer);
         Tree.Root.CallDeferred(G.Node.MethodName.AddChild, layer);
         Tree.CreateTimer(seconds).Timeout += () => layer.QueueFree();

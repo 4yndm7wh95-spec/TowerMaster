@@ -156,6 +156,7 @@ public class SummonPhaseTests
         queue.RequestEnqueue(MoveTo(MapPointType.Boss));
         session = Shown.Single().Session;
         Assert.Equal("VantomBoss", session.Options[0].Id); // 候选第一个是游戏本来的 Boss
+        Assert.Equal(0, session.Room.StandardCostOverride); // Boss 免费，没有标准开销
         Assert.Equal(2, session.Options.Count);
         var other = session.Options[1].Id;
         session.Click(other);

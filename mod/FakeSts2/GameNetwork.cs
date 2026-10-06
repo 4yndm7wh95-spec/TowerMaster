@@ -176,6 +176,8 @@ namespace MegaCrit.Sts2.Core.Multiplayer.Game
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
         public Task<bool> DoLocalMerchantCardRemoval(int goldCost, bool cancelable = true) => Task.FromResult(true);
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public Task<int> DoLocalTreasureRoomRewards() => Task.FromResult(42);
     }
 
     public sealed class TreasureRoomRelicSynchronizer
