@@ -131,4 +131,14 @@ public class Test3MasterAutoPilotTests
         Assert.Contains("这一组奖励还没显示，不用跳过", log);
         Assert.DoesNotContain("自动跳过失败", log);
     }
+
+    [Fact]
+    public void TreasureFocusOutOfRangeAndQuitInputAreSwallowed()
+    {
+        Init();
+        var collection = new MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicCollection();
+        Assert.Null(collection.DefaultFocusedControl); // 不再抛越界
+        new MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NHandImageCollection()._Input(new object()); // 不再抛
+        Assert.Contains("默认焦点越界", File.ReadAllText(Path.Combine(Log.ModDir, "TowerMaster.log")));
+    }
 }

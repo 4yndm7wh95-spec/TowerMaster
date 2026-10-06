@@ -231,3 +231,29 @@ namespace MegaCrit.Sts2.Core.Nodes.Screens.Map
         public void OnMapPointSelectedLocally(object point) => Selected++;
     }
 }
+
+namespace MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic
+{
+    /// <summary>仿造实测：塔主跳过后只摆一个遗物槽，座位号 1 的玩家取默认焦点越界。</summary>
+    public sealed class NTreasureRoomRelicCollection
+    {
+        private readonly List<Godot.Control> _holdersInUse = new();
+        public int LocalSlot { get; set; } = 1;
+        public Godot.Control? SingleplayerRelicHolder => null;
+        public Godot.Control DefaultFocusedControl
+        {
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            get => _holdersInUse[LocalSlot];
+        }
+    }
+
+    public sealed class NHandImageCollection
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void _Input(object inputEvent)
+        {
+            ulong? netId = null;
+            _ = netId!.Value; // 退出后本地身份为空
+        }
+    }
+}

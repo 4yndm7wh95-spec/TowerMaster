@@ -50,7 +50,40 @@ internal static class Test3MasterAutoPilot
         Postfix(harmony, "PlayerVotedForSharedOptionIndex", "EventSynchronizer", nameof(AfterSharedEventVote));
         Postfix(harmony, "BeginRestSite", "RestSiteSynchronizer", nameof(AfterBeginRestSite));
         Postfix(harmony, "OnPlayerReady", "ActChangeSynchronizer", nameof(AfterActReady));
+
+        // 宝箱界面的两个原版异常（测试 3 第二轮实测）：不修会让爬塔玩家卡在宝箱里
+        Finalizer(harmony, "get_DefaultFocusedControl", "NTreasureRoomRelicCollection", nameof(TreasureFocusFinalizer));
+        Finalizer(harmony, "_Input", "NHandImageCollection", nameof(HandInputFinalizer));
     }
+
+    private static void Finalizer(Harmony harmony, string method, string type, string callback)
+    {
+        var target = GameReflection.FindMethod(method, type);
+        if (target == null) { Log.Warn($"测试3：找不到 {type}.{method}，宝箱可能卡住"); return; }
+        try
+        {
+            harmony.Patch(target, finalizer: new HarmonyMethod(typeof(Test3MasterAutoPilot).GetMethod(callback, GameReflection.All)!));
+            Log.Info($"测试3：已加异常保护 {GameReflection.Describe(target)}");
+        }
+        catch (Exception e) { Log.Error($"测试3：给 {type}.{method} 加异常保护失败", e); }
+    }
+
+    /// <summary>
+    /// 宝箱默认焦点：原版用「玩家在整局里的座位号」去取遗物槽列表。塔主跳过后只摆出一个遗物，
+    /// 座位号 1 的爬塔玩家就越界了，打开宝箱的流程中断，继续按钮再也不出现。越界时改为返回第一个遗物槽。
+    /// </summary>
+    private static Exception? TreasureFocusFinalizer(Exception? __exception, object __instance, ref Godot.Control? __result)
+    {
+        if (__exception is not ArgumentOutOfRangeException) return __exception;
+        var holders = GameReflection.Get(__instance, "_holdersInUse") as IList;
+        __result = holders is { Count: > 0 } ? holders[0] as Godot.Control : GameReflection.Get(__instance, "SingleplayerRelicHolder") as Godot.Control;
+        Log.Warn($"测试3 宝箱：默认焦点越界（遗物槽 {holders?.Count ?? 0} 个），改用第一个遗物槽");
+        return null;
+    }
+
+    /// <summary>宝箱手部动画的输入处理：退出联机后本地身份已清空，原版会报「Nullable object must have a value」。忽略这一种。</summary>
+    private static Exception? HandInputFinalizer(Exception? __exception) =>
+        __exception is InvalidOperationException e && e.Message.Contains("Nullable object must have a value") ? null : __exception;
 
     private static void Prefix(Harmony harmony, string method, string type, string callback)
     {

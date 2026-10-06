@@ -8,4 +8,9 @@
     <AssemblyName>sts2</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- 仿造宝箱界面要用 Godot.Control 当返回类型；只加载类型，不调用引擎 -->
+    <PackageReference Include="GodotSharp" Version="4.5.1" />
+  </ItemGroup>
+
 </Project>
