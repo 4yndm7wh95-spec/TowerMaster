@@ -1,4 +1,6 @@
-# 测试 1a 本机核对记录（实测前）
+# 测试 1a 本机核对记录
+
+最新状态：2026-10-05 已完成 3 场同机双实例实测，双端正文一致且替换先于生成。详细结果和异常分类见 `test1a-multiplayer-result.md`。下文保留实测前的核对依据。
 
 仓库：C:\Users\kkk\Desktop\tower-master-mod
 分支：claude/optimistic-rubin-hr3eit，已切换并拉取。

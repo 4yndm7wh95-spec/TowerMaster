@@ -21,8 +21,10 @@
 
 启动脚本使用游戏已有 --force-steam off 和不同 --clientId 参数，分开两个测试账号的存档；IP mod 的 user://mods/DirectConnectIP/config.ini 仍共享，所以在每个已启动的实例里分别设置自己的 ID。它会把 ID 保存在各进程内存中，但重新启动时会读取最后保存的设置，应按上面的顺序重新设置。
 
-TowerMaster 日志用 TOWERMASTER_LOG_FILE 分开。游戏输出用 --log-file 分开。脚本不修改游戏安装目录中的游戏文件。实例 A 已在本机成功启动并验证单人遭遇替换；实例 B 及双人大厅尚待实测。若双开失败、ID 冲突或 mod 未加载，先回传现有日志，不要改游戏 DLL。
+TowerMaster 日志用 TOWERMASTER_LOG_FILE 分开。游戏输出用 --log-file 分开。脚本不修改游戏安装目录中的游戏文件。A/B 已成功加入同一大厅并完成 3 场暗港普通战斗，双端日志一致；具体结论与异常见 docs/test1a-multiplayer-result.md。若双开失败、ID 冲突或 mod 未加载，先回传现有日志，不要改游戏 DLL。
 
 ## 仓库中运行
 
 启动脚本在 `scripts/local-test/`。双击两个 `.cmd`，或运行 `launch-instance-A.cmd -GameDir "你的游戏目录"`。也可设 `STS2_DIR`。未指定时使用本机已验证的路径。脚本自身用英文文件名，避免中文名称在批处理读取时出现编码问题。日志不提交到 Git，反馈时保留原文件。
+
+退出游戏后再读取游戏日志：本机两实例运行期间 game-A/B.log 曾显示 0 字节，正常退出后写出完整内容。TowerMaster 日志每次启动覆盖，必须先保存。

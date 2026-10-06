@@ -1,14 +1,16 @@
-## 测试 1a 实测结果（2026-10-05：单人生成已验证，联机待验证）
+## 测试 1a 实测结果（2026-10-05：同机双实例通过，跨机器待验证）
 
 ### 当前结论
 
-- 已在本机 v0.111.0 中加载 TowerMaster，用户截图确认普通战斗出现两只小啃兽。
-- 真实探针日志全部找到，TowerMaster 日志无 WARN/ERROR。
-- 第 1 场按顺序记录：`原遭遇=NibbitsWeak` → `已替换 NibbitsWeak → NibbitsNormal` → `生成 NibbitsNormal → [(Nibbit:MONSTER.NIBBIT, front), (Nibbit:MONSTER.NIBBIT, back)]`。替换先于生成，挂点有效。
-- 截至已保存的单人日志没有 StateDivergence；这不能证明多人同步。双实例尚未加入大厅，3～5 场联机及跨机器验证都未完成；单场完整战斗结束的稳定性也尚未单独核验。
-- 初次游戏日志有我方两个加载问题：测试配置中的 JSON 注释触发解析异常；价格表的 version 字段使它被误认成缺少 id 的 manifest。两处均已修正，需重启游戏核验不再报错。
-- 初次游戏日志另有其他 mod 的 `Test.Scripts.Entry` 初始化异常，涉及已不存在的 `SavedPropertiesTypeCache`。不能把整个游戏日志判为无异常；目前没有修改该 mod。
-- 用户最新要求先把所有当前改动和详细说明同步到分支；本次提交不是“联机测试通过”的结论。
+- **同机双实例测试 1a 通过**：v0.111.0、IP直连 1.4.0，A=100001、B=100002，暗港 3 场普通战斗，两端分别记录 3 次战斗结束。用户确认画面和战斗过程正常。
+- 两端探针全部找到，TowerMaster 日志均无 WARN/ERROR。
+- 每场“选遭遇 / 已替换 / 生成”的 9 条正文逐条完全一致（排除时间戳），每场替换都先于生成。
+- 原遭遇依次为 ToadpolesWeak、SeapunkWeak、SludgeSpinnerWeak，均替换为 CultistsNormal，生成 CalcifiedCultist 与 DampCultist（槽位 null）。这轮联机测试在暗港，不是先前单人密林的小啃兽。
+- 两份游戏日志均未发现 StateDivergence；成功握手后的 3 场战斗阶段没有发现 ERROR 或异常。测试配置解析和价格表误认 manifest 两处加载问题已在重启后的真实日志中确认消失。
+- **完整游戏日志仍有异常**：B 成功加入前发生旧单人存档删除失败、握手身份不匹配和玩家 ID 冲突；A 有一次 HandshakeTimeout 后重连成功。两边退出时有引擎 RID/shader/资源未释放错误，来源尚未定位。不能描述成“整份日志无异常”。另有未声明 min_game_version 的加载提示。
+- 之前单人密林的 NibbitsWeak → NibbitsNormal 和两只小啃兽生成顺序也已验证。
+- 结论仅覆盖本机双实例和此次 3 场暗港战斗；跨机器、跨幕、延迟、丢包和重连稳定性仍待验证。测试 1b 的怪物混搭、塔主选择和自定义消息尚未实现。
+- 详细逐场结果及异常分类：`docs/test1a-multiplayer-result.md`。原始日志仅保存在本机聊天输出目录，未上传。
 
 ### 猜测核对和代码依据
 
@@ -52,7 +54,7 @@
 
 两实例用 `--force-steam off` 和不同 `--clientId` 隔离游戏存档；TowerMaster 用 `TOWERMASTER_LOG_FILE` 分开日志，游戏用 `--log-file` 分开输出。默认运行 mod 时仍在 mod 目录写 TowerMaster.log。IP mod 的配置仍共享，各实例需在个人设置分别设 ID 100001/100002；重启后会读最后保存的配置，不能只改昵称。A 建 IP 大厅，B 连 127.0.0.1:33771。依据：`NGame.cs:1082–1090`、`NullPlatformUtilStrategy.cs:29`、`UserDataPathProvider.cs:30–42`；本机 IP mod 的 `ModConfigManager.cs:106、129–130`、`DirectHost.cs:200`、`JoinServerScreen.cs:216`。
 
-同机测试能检验确定性与锁步同步，不能覆盖跨机器运行环境或真实网络延迟/丢包。下一步先重启确认我方 JSON 加载异常消失，再连打 3～5 场，按消息正文（排除时间戳）对照两端日志。
+同机测试能检验确定性与锁步同步，不能覆盖跨机器运行环境或真实网络延迟/丢包。本次已重启确认我方 JSON 加载异常消失，并完成 3 场双端正文对照。下一步推进测试 1b；跨机器测试仍需补做。
 
 ### 测试 1b 所需签名（摘自本次真实探针日志）
 
