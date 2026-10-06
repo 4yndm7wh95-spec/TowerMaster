@@ -37,7 +37,10 @@ public static class RuntimeNetAction
         var ctor = at.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
         var cil = ctor.GetILGenerator();
         cil.Emit(OpCodes.Ldarg_0);
-        cil.Emit(OpCodes.Call, gameAction.GetConstructor(GameReflection.All, Type.EmptyTypes)!);
+        // 基类同时存在静态初始化器和无参实例构造，必须只查询实例构造。
+        var baseCtor = gameAction.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, Type.EmptyTypes)
+            ?? throw new MissingMethodException("GameAction", ".ctor()");
+        cil.Emit(OpCodes.Call, baseCtor);
         cil.Emit(OpCodes.Ret);
         at.DefineField("Payload", typeof(string), FieldAttributes.Public);
         at.DefineField("Owner", typeof(ulong), FieldAttributes.Public);

@@ -39,6 +39,9 @@ namespace MegaCrit.Sts2.Core.GameActions
 {
     public abstract class GameAction
     {
+        // 真游戏的静态日志字段使基类同时具有静态和实例构造，覆盖反射歧义回归。
+        static GameAction() { }
+
         public abstract ulong OwnerId { get; }
         public abstract MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType ActionType { get; }
         protected abstract Task ExecuteAction();

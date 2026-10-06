@@ -17,6 +17,10 @@
 
 ## 改动范围
 
+### 首次单人实测修复
+
+首次截图只有一只原版怪物；TowerMaster-A.log 明确记录初始化失败：GameAction 无参构造函数查询触发 AmbiguousMatchException，1b 挂钩未安装。原因是查询使用了同时包含 Static/Instance 的标志，而真实 GameAction 的静态日志字段（MegaCrit.Sts2.Core.GameActions/GameAction.cs:15）生成了静态初始化器。RuntimeNetAction 改为仅查询 Public/NonPublic/Instance 无参构造；FakeSts2.GameAction 添加静态构造以复现该结构。修复后 44 个测试全部通过，真实程序集编译并安装成功（0 警告、0 错误）。需重新启动、新开对局确认初始化及生成；该修复尚不能代表实测通过。
+
 新增 RuntimeNetAction.cs、Test1bMixedEncounter.cs；扩展 TestSettings 和入口模式选择；配置默认开启测试 1b 并关闭 1a。manifest 版本改为 0.0.2，仍 affects_gameplay=true。
 
 FakeSts2 增加怪物规范模型/可变副本、生成包装方法、动作队列、网络接口和包读写结构。保留原有 3 个 mod 测试，新增 4 个覆盖动态接口与序列化往返、房主动作顺序及混搭生成、客户端采用房主清单，以及错误身份/楼层/怪物/重复消息拒绝。假包读写只模拟字符串往返，不能代替真实网络验证。
