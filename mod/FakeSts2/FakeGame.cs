@@ -143,6 +143,8 @@ namespace MegaCrit.Sts2.Core.Combat
         public IReadOnlyList<MegaCrit.Sts2.Core.Entities.Players.Player> Players =>
             (RunState as MegaCrit.Sts2.Core.Runs.RunState)?.Players ?? [];
         public List<MegaCrit.Sts2.Core.Entities.Creatures.Creature> Enemies { get; } = new();
+        public CombatSide CurrentSide { get; set; } = CombatSide.Player;
+        public int RoundNumber { get; set; } = 1;
 
         // 真游戏：按人数缩放怪物血量（调用方读 Players.Count 传进公式）
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -155,9 +157,22 @@ namespace MegaCrit.Sts2.Core.Combat
         }
     }
 
+    public enum CombatSide { None, Player, Enemy }
+
     public sealed class CombatManager
     {
+        public static CombatManager? Instance { get; set; }
         public CombatState? State { get; private set; }
+        public CombatState? DebugOnlyGetState() => State;
+        public event Action<CombatState>? TurnStarted;
+        public event Action<MegaCrit.Sts2.Core.Rooms.CombatRoom>? CombatEnded;
+        public void StartTurn(CombatSide side, int round)
+        {
+            State!.CurrentSide = side;
+            State.RoundNumber = round;
+            TurnStarted?.Invoke(State);
+        }
+        public void End(MegaCrit.Sts2.Core.Rooms.CombatRoom room) => CombatEnded?.Invoke(room);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public void SetUpCombat(CombatState state) => State = state;
@@ -230,6 +245,9 @@ namespace MegaCrit.Sts2.Core.Entities.Creatures
     {
         public int MaxHp { get; } = maxHp;
         public int CurrentHp { get; private set; } = maxHp;
+        public int Block { get; internal set; }
+        public List<MegaCrit.Sts2.Core.Models.PowerModel> Powers { get; } = new();
+        internal void HealBy(int amount) => CurrentHp = Math.Min(MaxHp, CurrentHp + amount);
         public bool IsDead => CurrentHp <= 0;
         public void Damage(int amount) => CurrentHp = Math.Max(0, CurrentHp - amount);
         public void Revive() { if (IsDead) CurrentHp = 1; }

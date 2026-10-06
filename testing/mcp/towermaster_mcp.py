@@ -30,7 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_INSTANCES = {"A": {"port": 47101}, "B": {"port": 47102}}
 # 本机接口不走代理（系统或环境变量里的代理会把 127.0.0.1 也转出去）
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-COMPARE_KEYWORDS = ["收到清单", "已替换", "开始生成", "：生成 ", "水土不服", "找回"]
+COMPARE_KEYWORDS = ["收到清单", "已替换", "开始生成", "：生成 ", "水土不服", "找回", "塔主回合 #"]
 
 
 class ToolError(Exception):
@@ -114,6 +114,8 @@ def check_condition(instance: str, cond: dict) -> tuple[bool, Any]:
             ok &= state.get("point_type") == want
         elif key == "total_floor_at_least":
             ok &= (state.get("total_floor") or 0) >= want
+        elif key == "master_turn_open":
+            ok &= bool(state.get("master_turn_open")) == want
         elif key == "rewards_visible":
             ok &= bool(state.get("rewards_visible")) == want
         elif key == "in_run":
@@ -257,7 +259,22 @@ def run_battle(args: dict) -> dict:
         "screenshots": [s["path"] for s in shots],
     }
 
-    # 4. win
+    # 4. 塔主回合：玩家队列暂停期间 win 会排队等着，所以先按 threat 列表操作再结束
+    try:  # 第一回合开始（开场动画后）才开塔主回合；没有威胁点时不会开
+        wait_for(host, {"master_turn_open": True}, args.get("master_turn_wait_s", 6))
+        opened = True
+    except ToolError:
+        opened = False
+    result["master_turn_opened"] = opened
+    if opened:
+        result["threat"] = []
+        for op in args.get("threat") or []:
+            result["threat"].append(step(f"threat_{op.get('op')}", lambda op=op: call(host, "/threat/act", op)))
+        if call(host, "/state").get("master_turn_open"):
+            step("threat_end", lambda: call(host, "/threat/end"))
+        result["threat_state"] = call(host, "/threat")
+
+    # 5. win
     if args.get("win", True):
         step("console_win", lambda: call(climber, "/console", {"command": "win"}))
         step("wait_combat_end", lambda: wait_for(host, {"in_combat": False}, args.get("timeout_s", 60)))
@@ -345,6 +362,13 @@ TOOLS = [
          lambda a: call(a["instance"], "/cards")),
     tool("tm_cards_pick", "在选牌界面点第 index 张牌（和鼠标点一样）；confirm=true 再按确认。", {**INST, "index": I, "confirm": B}, ["instance", "index"],
          lambda a: call(a["instance"], "/cards/pick", {"index": a["index"], "confirm": a.get("confirm", False)})),
+    tool("tm_threat", "塔主回合状态（塔主实例）：是否进行中、第几回合、威胁点、剩余秒数、活着的怪（下标、血、格挡、力量、剩余回血次数）、玩家（血、手牌、状态）。", INST, [],
+         lambda a: call(host_or(a), "/threat")),
+    tool("tm_threat_act", "塔主回合操作：op=block/heal/strength（给 monster 下标）、strength_all、weak/vulnerable/frail/dazed（给 player 联机 id）。不合规则返回 rejected_rule。",
+         {**INST, "op": S, "monster": I, "player": I}, ["op"],
+         lambda a: call(host_or(a), "/threat/act", {k: a[k] for k in ("op", "monster", "player") if k in a})),
+    tool("tm_threat_end", "结束塔主回合，玩家恢复出牌。", INST, [],
+         lambda a: call(host_or(a), "/threat/end")),
     tool("tm_console", "执行开发者控制台命令（例如 win），走原版控制台提交。", {**INST, "command": S}, ["instance", "command"],
          lambda a: call(a["instance"], "/console", {"command": a["command"]})),
     tool("tm_logs", "按游标读日志增量。source=mod（TowerMaster 日志）或 game（游戏日志，需启动脚本设 TOWERMASTER_GAME_LOG）。返回新游标。",
@@ -361,7 +385,7 @@ TOOLS = [
     tool("tm_reflect", "反射读对象或调方法：target 以 run/state/combat/node:路径/type:类型名 开头，用 .成员 [下标] 往下走。没有 method 就读值。",
          {**INST, "target": S, "method": S, "args": {"type": "array"}, "await": B, "depth": I}, ["instance", "target"],
          lambda a: call(a["instance"], "/reflect", {k: a[k] for k in ("target", "method", "args", "await", "depth") if k in a})),
-    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、rewards_visible、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
+    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、master_turn_open、rewards_visible、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
          {**INST, "condition": {"type": "object"}, "timeout_s": {"type": "number"}}, ["instance", "condition"],
          lambda a: wait_for(a["instance"], a["condition"], a.get("timeout_s", 30))),
     tool("tm_compare_logs", "对比各实例 TowerMaster 日志里清单、替换、生成、降血相关的行（去掉时间戳），列出差异。",
@@ -372,7 +396,7 @@ TOOLS = [
          lambda a: bench(a["instance"], a.get("route", "/state"), a.get("n", 100))),
     tool("tm_battle", "一键跑一场：爬塔玩家选路（col/row 或 point_type 取第一个）→ 塔主选怪（monsters/encounter，或 vanilla=true）→ 截图 → 确认 → 两端对比怪物 → win → 召唤点前后 → 日志对比。失败时返回失败的步骤。",
          {"host": S, "climber": S, "col": I, "row": I, "point_type": S, "monsters": {"type": "array", "items": S}, "encounter": S,
-          "vanilla": B, "win": B, "read_rewards": B, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
+          "vanilla": B, "win": B, "read_rewards": B, "threat": {"type": "array", "items": {"type": "object"}, "description": "第一回合塔主回合里依次执行的操作，如 [{\"op\":\"block\",\"monster\":0}]；做完自动结束塔主回合"}, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
          run_battle),
 ]
 

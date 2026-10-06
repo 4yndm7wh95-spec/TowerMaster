@@ -208,6 +208,9 @@ internal static class TestBridge
                 "/event" => _ => Main(EventOptions),
                 "/event/choose" => a => Main(() => EventChoose(a)),
                 "/cards" => _ => Main(Cards),
+                "/threat" => _ => Main(Threat),
+                "/threat/act" => a => Main(() => ThreatAct(a)),
+                "/threat/end" => _ => Main(ThreatEnd),
                 "/cards/pick" => a => Main(() => CardsPick(a)),
                 "/console" => a => MainAsync(() => ConsoleCommand(a)),
                 "/logs" => a => Main(() => Logs(a)),
@@ -296,6 +299,7 @@ internal static class TestBridge
             wallet = wallet == null ? null : new { points = wallet.Points, act = wallet.ActNo, battles = MasterLedger.BattlesFought },
             summon_open = SummonPhase.Current is { Done: false },
             rewards_visible = Try(() => RewardsScreen() != null) ?? false,
+            master_turn_open = ThreatPhase.TurnOpen,
         };
     }
 
@@ -600,6 +604,44 @@ internal static class TestBridge
         var text = string.Join(" / ", Texts(buttons[index]));
         RuntimeNetAction.Call(buttons[index], "OnRelease");
         return new { chosen = index, path, text };
+    }
+
+    // ---------------------------------------------------------------- 塔主回合
+
+    private static object Threat()
+    {
+        if (!Test3MasterAutoPilot.LocalIsMaster) throw Fail("not_host", "塔主回合只在塔主（房主）这边");
+        var (monsters, players) = ThreatPhase.Snapshot();
+        return new
+        {
+            open = ThreatPhase.TurnOpen,
+            round = ThreatPhase.Round,
+            points = ThreatPhase.Session?.Points,
+            seconds_left = ThreatPhase.Unlimited ? (double?)null : Math.Round(ThreatPhase.SecondsLeft, 1),
+            strength_cap = ThreatPhase.Session?.StrengthCap,
+            monsters = monsters.Select(m => new { index = m.Index, id = m.Id, name = m.Name, hp = m.Hp, max_hp = m.MaxHp, block = m.Block, strength = m.Strength, strength_from_master = m.StrengthFromMaster, heals_left = m.HealsLeft }),
+            players = players.Select(p => new { net_id = p.NetId, hp = p.Hp, max_hp = p.MaxHp, block = p.Block, hand = p.Hand, powers = p.Powers }),
+            ops = new[] { "block(monster)", "heal(monster)", "strength(monster)", "strength_all", "weak(player)", "vulnerable(player)", "frail(player)", "dazed(player)" },
+        };
+    }
+
+    /// <summary>塔主回合操作（和面板按钮一样走 ThreatPhase.Act）。</summary>
+    private static object ThreatAct(JsonObject a)
+    {
+        if (!Test3MasterAutoPilot.LocalIsMaster) throw Fail("not_host", "塔主回合只在塔主（房主）这边");
+        if (!ThreatPhase.TurnOpen) throw Fail("invalid_phase", "现在不是塔主回合");
+        var op = a["op"]?.GetValue<string>() ?? throw Fail("bad_request", "要 op");
+        var before = ThreatPhase.Session?.Points;
+        var (ok, message) = ThreatPhase.Act(op, a["monster"]?.GetValue<int>() ?? -1, a["player"]?.GetValue<ulong>() ?? 0);
+        if (!ok) throw Fail("rejected_rule", message);
+        return new { op, message, points_before = before, points_after = ThreatPhase.Session?.Points, still_open = ThreatPhase.TurnOpen };
+    }
+
+    private static object ThreatEnd()
+    {
+        if (!ThreatPhase.TurnOpen) throw Fail("invalid_phase", "现在不是塔主回合");
+        ThreatPhase.EndTurn("测试接口");
+        return new { ended = true, points_left = ThreatPhase.Session?.Points };
     }
 
     // ---------------------------------------------------------------- 选牌界面（升级、删牌、变化等）

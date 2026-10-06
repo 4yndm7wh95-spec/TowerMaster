@@ -13,19 +13,19 @@ namespace TowerMaster;
 internal sealed class SummonPanel : ISummonUi
 {
     // ---------------------------------------------------------------- 配色
-    private static readonly G.Color Backdrop = new(0.02f, 0.03f, 0.06f, 0.72f);
-    private static readonly G.Color PanelBg = new(0.075f, 0.09f, 0.13f, 0.97f);
-    private static readonly G.Color Gold = new(0.86f, 0.70f, 0.38f);
-    private static readonly G.Color GoldDim = new(0.55f, 0.45f, 0.26f);
-    private static readonly G.Color CardBg = new(0.13f, 0.16f, 0.22f);
-    private static readonly G.Color CardHover = new(0.18f, 0.22f, 0.30f);
-    private static readonly G.Color CardBorder = new(0.27f, 0.33f, 0.45f);
-    private static readonly G.Color Teal = new(0.16f, 0.42f, 0.44f);
-    private static readonly G.Color TealHover = new(0.21f, 0.52f, 0.54f);
-    private static readonly G.Color TextMain = new(0.93f, 0.91f, 0.86f);
-    private static readonly G.Color TextDim = new(0.62f, 0.64f, 0.70f);
-    private static readonly G.Color Good = new(0.45f, 0.82f, 0.52f);
-    private static readonly G.Color Bad = new(0.95f, 0.45f, 0.40f);
+    internal static readonly G.Color Backdrop = new(0.02f, 0.03f, 0.06f, 0.72f);
+    internal static readonly G.Color PanelBg = new(0.075f, 0.09f, 0.13f, 0.97f);
+    internal static readonly G.Color Gold = new(0.86f, 0.70f, 0.38f);
+    internal static readonly G.Color GoldDim = new(0.55f, 0.45f, 0.26f);
+    internal static readonly G.Color CardBg = new(0.13f, 0.16f, 0.22f);
+    internal static readonly G.Color CardHover = new(0.18f, 0.22f, 0.30f);
+    internal static readonly G.Color CardBorder = new(0.27f, 0.33f, 0.45f);
+    internal static readonly G.Color Teal = new(0.16f, 0.42f, 0.44f);
+    internal static readonly G.Color TealHover = new(0.21f, 0.52f, 0.54f);
+    internal static readonly G.Color TextMain = new(0.93f, 0.91f, 0.86f);
+    internal static readonly G.Color TextDim = new(0.62f, 0.64f, 0.70f);
+    internal static readonly G.Color Good = new(0.45f, 0.82f, 0.52f);
+    internal static readonly G.Color Bad = new(0.95f, 0.45f, 0.40f);
 
     private readonly SummonSession _session;
     private G.CanvasLayer? _layer;
@@ -47,7 +47,7 @@ internal sealed class SummonPanel : ISummonUi
         _totalSeconds = Math.Max(1, session.SecondsLeft);
     }
 
-    private static G.SceneTree Tree => (G.SceneTree)G.Engine.GetMainLoop();
+    internal static G.SceneTree Tree => (G.SceneTree)G.Engine.GetMainLoop();
 
     public void Show()
     {
@@ -551,7 +551,7 @@ internal sealed class SummonPanel : ISummonUi
 
     // ---------------------------------------------------------------- 样式工具
 
-    private static G.StyleBoxFlat Box(G.Color bg, G.Color border, int borderWidth, int radius, float padding, int shadow = 0)
+    internal static G.StyleBoxFlat Box(G.Color bg, G.Color border, int borderWidth, int radius, float padding, int shadow = 0)
     {
         var sb = new G.StyleBoxFlat { BgColor = bg, BorderColor = border };
         sb.SetBorderWidthAll(borderWidth);
@@ -565,7 +565,7 @@ internal sealed class SummonPanel : ISummonUi
         return sb;
     }
 
-    private static void StyleCard(G.Button card, bool selected)
+    internal static void StyleCard(G.Button card, bool selected)
     {
         var border = selected ? Gold : CardBorder;
         var width = selected ? 3 : 1;
@@ -576,7 +576,7 @@ internal sealed class SummonPanel : ISummonUi
         card.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
     }
 
-    private static G.Button MakeButton(string text, G.Color bg, G.Color hover, G.Color border, G.Color fg, G.Vector2 size, int fontSize = 22)
+    internal static G.Button MakeButton(string text, G.Color bg, G.Color hover, G.Color border, G.Color fg, G.Vector2 size, int fontSize = 22)
     {
         var button = new G.Button { Text = text, FocusMode = G.Control.FocusModeEnum.None, CustomMinimumSize = size };
         button.AddThemeFontSizeOverride("font_size", fontSize);
@@ -592,7 +592,7 @@ internal sealed class SummonPanel : ISummonUi
         return button;
     }
 
-    private static G.PanelContainer Chip(string text, G.Color bg, G.Color fg, G.Color? border = null)
+    internal static G.PanelContainer Chip(string text, G.Color bg, G.Color fg, G.Color? border = null)
     {
         var chip = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter };
         var sb = Box(bg, border ?? bg, border == null ? 0 : 1, 14, 0);
@@ -605,7 +605,7 @@ internal sealed class SummonPanel : ISummonUi
         return chip;
     }
 
-    private static G.ProgressBar Bar(double max, double value, G.Color fill, int height)
+    internal static G.ProgressBar Bar(double max, double value, G.Color fill, int height)
     {
         var bar = new G.ProgressBar
         {
@@ -617,12 +617,12 @@ internal sealed class SummonPanel : ISummonUi
         return bar;
     }
 
-    private static G.ColorRect Divider() =>
+    internal static G.ColorRect Divider() =>
         new() { Color = new G.Color(Gold.R, Gold.G, Gold.B, 0.35f), CustomMinimumSize = new G.Vector2(0, 2), MouseFilter = G.Control.MouseFilterEnum.Ignore };
 
-    private static G.Control Spacer() => new() { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill, MouseFilter = G.Control.MouseFilterEnum.Ignore };
+    internal static G.Control Spacer() => new() { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill, MouseFilter = G.Control.MouseFilterEnum.Ignore };
 
-    private static G.Label Text(string text, int size, G.Color? color = null)
+    internal static G.Label Text(string text, int size, G.Color? color = null)
     {
         var label = new G.Label { Text = text };
         label.AddThemeFontSizeOverride("font_size", size);
@@ -655,7 +655,7 @@ internal sealed class SummonPanel : ISummonUi
         return null;
     }
 
-    private static void ApplyGameFont(G.Node root)
+    internal static void ApplyGameFont(G.Node root)
     {
         var font = GameFont();
         if (font == null) return;

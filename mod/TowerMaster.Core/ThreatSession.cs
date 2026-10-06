@@ -57,6 +57,9 @@ public sealed class ThreatSession
 
     public int StrengthOf(int monster) => _strength.GetValueOrDefault(monster);
 
+    /// <summary>这只怪本场还能回几次血。</summary>
+    public int HealsLeft(int monster) => Math.Max(0, _p.HealPerMonsterPerBattle - _heals.GetValueOrDefault(monster));
+
     /// <summary>进入新的一轮（玩家抽牌后、塔主回合开始前调用）。</summary>
     public void NextTurn()
     {

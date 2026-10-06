@@ -39,14 +39,15 @@
 | tm_rewards / tm_rewards_proceed / tm_rewards_skip | 读正在显示的奖励组（类型、金币数、遗物）；按「继续」（Boss 奖励后换幕也用它）；跳过奖励组 |
 | tm_treasure / tm_treasure_open / tm_treasure_pick | 宝箱里的遗物和序号、各玩家投票、本机现有遗物；本机点开宝箱（不要对塔主用）；选第 index 个遗物（不给 index = 跳过） |
 | tm_event / tm_event_choose | 列事件（含先古之民）选项按钮；点第 index 个 |
+| tm_threat / tm_threat_act / tm_threat_end | 塔主回合：状态（威胁点、怪、玩家手牌）、操作（block/heal/strength 给 monster 下标，strength_all，weak/vulnerable/frail/dazed 给 player）、结束 |
 | tm_cards / tm_cards_pick | 选牌界面（升级、删牌等，凡是有 OnCardClicked 和 _cards 的界面）：列牌；点第 index 张，confirm=true 再按确认 |
 | tm_console | 开发者控制台命令，例如 `win`（写进控制台输入框再按原版提交） |
 | tm_logs | 按字节游标读 TowerMaster 日志（source=mod）或游戏日志（source=game；游戏运行中这个文件可能是空的） |
 | tm_screenshot | 截该实例画面，返回 PNG 路径、尺寸、窗口模式 |
-| tm_wait | 等条件：`summon_open`、`in_combat`、`rewards_visible`、`room`、`point_type`、`total_floor_at_least`、`in_run`、`log_contains` |
+| tm_wait | 等条件：`summon_open`、`in_combat`、`master_turn_open`、`rewards_visible`、`room`、`point_type`、`total_floor_at_least`、`in_run`、`log_contains` |
 | tm_compare_logs | 两端 TowerMaster 日志里清单/替换/生成/降血行逐行对比（去时间戳） |
 | tm_bench | 连续调用 n 次测延迟（p50/p95/最大） |
-| tm_battle | 一键：选路 → 等面板 → 截图 → 选怪 → 截图 → 确认 → 两端进战斗、对比怪物、截图 → win → 召唤点前后 → 等奖励出现并读出（read_rewards，默认开）→ 可选跳过 → 日志对比；失败时返回失败步骤 |
+| tm_battle | 一键：选路 → 等面板 → 截图 → 选怪 → 截图 → 确认 → 两端进战斗、对比怪物、截图 → 塔主回合（按 threat 列表操作后结束；不给就直接结束）→ win → 召唤点前后 → 等奖励出现并读出（read_rewards，默认开）→ 可选跳过 → 日志对比；失败时返回失败步骤 |
 | tm_tree / tm_node_call / tm_reflect | 兜底：列场景树节点、调节点方法、反射读对象或调方法。给有游戏源码的助手补上还没有专门工具的操作（奖励领取、宝箱、事件、休息、商店等） |
 
 ### tm_reflect / tm_node_call 参数

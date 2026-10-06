@@ -115,9 +115,12 @@ public static class RuntimeNetAction
         return net;
     }
     public static ulong Owner(object action) => (ulong)action.GetType().GetField("Owner")!.GetValue(action)!;
-    public static object Kind(object action) => Enum.Parse(Required("GameActionType"), "NonCombat");
+    /// <summary>召唤清单在战斗外执行（NonCombat）；塔主回合指令要在玩家队列暂停时也能执行（Any）。</summary>
+    public static object Kind(object action) =>
+        Enum.Parse(Required("GameActionType"), Payload(action).StartsWith(ThreatPhase.Prefix) ? "Any" : "NonCombat");
     public static Task Execute(object action)
     {
+        if (Payload(action).StartsWith(ThreatPhase.Prefix)) return ThreatPhase.Execute(Payload(action), action);
         // 清单不合格只记日志：各客户端执行同一个动作、得到同样的校验结果，都退回原版遭遇。
         try { Test1bMixedEncounter.Receive(Payload(action), Owner(action)); }
         catch (Exception e) { Log.Warn($"测试1b：拒收召唤清单（{e.Message}），下一场按原版遭遇"); }

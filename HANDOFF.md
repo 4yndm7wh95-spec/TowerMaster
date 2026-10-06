@@ -1,3 +1,11 @@
+## 塔主回合 + 威胁点（2026-10-06，0.0.20，待实测）
+
+用户让我先做、做好一起测。说明和测试点见 `docs/master-turn-plan.md`。
+- `ThreatPhase`（房主判定 + 联机指令 + 各端执行），`ThreatPanel`（右侧面板、爬塔玩家提示条），`ThreatSession.HealsLeft`。
+- 暂停玩家用 `ActionQueueSet.PauseAllPlayerQueues`；指令动作类型 Any（`RuntimeNetAction.Kind` 按 payload 前缀区分）。
+- 测试接口：/threat、/threat/act、/threat/end，state.master_turn_open；MCP tm_threat*，tm_battle 先处理塔主回合再 win。
+- 风险：原版可能在回合中途 Unpause；死掉的塔主拥有的 Any 动作在回合末可能被取消；暂停期间玩家点牌的界面表现未知。
+
 ## 0.0.18 实测 → 0.0.19（2026-10-06）
 
 0.0.18 实测：宝箱真正领到遗物（B 多了臂甲，塔主不变，日志「塔主不播分遗物动画」，无 AnimateRelicAwards ERROR）；奖励读取、继续、Boss 后换幕、事件选择通过；Boss + 2 只另加怪再次通过；暴徒、棘刺蟾蜍取景完整；单场自动约 4.4–5 秒；StateDivergence 0。

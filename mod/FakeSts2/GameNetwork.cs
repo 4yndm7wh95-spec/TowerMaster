@@ -16,6 +16,12 @@ namespace MegaCrit.Sts2.Core.Entities.Players
         public Player(ulong id) { NetId = id; Creature = new MegaCrit.Sts2.Core.Entities.Creatures.Creature(80) { Player = this }; }
         public ulong NetId { get; }
         public MegaCrit.Sts2.Core.Entities.Creatures.Creature Creature { get; }
+        public PlayerCombatState PlayerCombatState { get; } = new();
+    }
+    public sealed class PlayerCombatState
+    {
+        public MegaCrit.Sts2.Core.Entities.Cards.CardPile Hand { get; } = new();
+        public MegaCrit.Sts2.Core.Entities.Cards.CardPile DrawPile { get; } = new();
     }
 }
 namespace MegaCrit.Sts2.Core.Multiplayer.Serialization
@@ -90,6 +96,7 @@ namespace MegaCrit.Sts2.Core.Runs
         public RunState State { get; set; } = new();
         public FakeService NetService { get; set; } = new();
         public MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer? ActionQueueSynchronizer { get; set; }
+        public MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet ActionQueueSet { get; set; } = new();
     }
 }
 namespace MegaCrit.Sts2.Core.Modding

@@ -22,6 +22,9 @@ internal sealed class TestSettings
     /// <summary>召唤阶段（开发第 2 步）：进普通、精英、Boss 房前塔主用召唤点选怪。开着时测试 1b 的固定混搭不再发送。</summary>
     [JsonPropertyName("summon_phase")] public bool SummonPhase { get; set; }
 
+    /// <summary>塔主回合（开发第 3 步）：每个玩家回合开始时塔主花威胁点。需要召唤阶段开着。</summary>
+    [JsonPropertyName("master_turn")] public bool MasterTurn { get; set; }
+
     [JsonPropertyName("test3_block_master_items")] public bool Test3BlockMasterItems { get; set; } = true;
 
     /// <summary>
