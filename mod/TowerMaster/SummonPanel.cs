@@ -270,19 +270,18 @@ internal sealed class SummonPanel : ISummonUi
             };
             viewport.AddChild(visuals);
 
-            // Bounds 是模型的点击框，高个子、带特效的怪画出来常比它高。所以只把点击框缩到视口高度的 62%、宽度的 80%，
-            // 脚底（点击框下沿）贴在视口底部附近、水平居中，上面留出空间给超出点击框的头、角、特效
+            // 先按点击框（Bounds）缩得很小、放在正中画几帧（高个子、带特效的怪画出来常比点击框大很多），
+            // 再读出实际画了像素的范围，按这个范围缩放、脚底贴底；见 FitAndFreeze
             if (GameReflection.Get(visuals, "Bounds") is G.Control bounds && bounds.Size.X > 1 && bounds.Size.Y > 1)
             {
-                float scale = Math.Min(size.X * 0.80f / bounds.Size.X, size.Y * 0.62f / bounds.Size.Y);
+                float scale = Math.Min(size.X * 0.30f / bounds.Size.X, size.Y * 0.30f / bounds.Size.Y);
                 visuals.Scale = new G.Vector2(scale, scale);
-                var feet = new G.Vector2(bounds.Position.X + bounds.Size.X / 2, bounds.Position.Y + bounds.Size.Y);
-                visuals.Position = new G.Vector2(size.X / 2, size.Y * 0.95f) - feet * scale;
+                visuals.Position = size / 2 - (bounds.Position + bounds.Size / 2) * scale;
             }
             else
             {
-                visuals.Scale = new G.Vector2(0.5f, 0.5f);
-                visuals.Position = new G.Vector2(size.X / 2, size.Y * 0.9f);
+                visuals.Scale = new G.Vector2(0.25f, 0.25f);
+                visuals.Position = size / 2;
             }
 
             var container = new G.SubViewportContainer
@@ -292,7 +291,7 @@ internal sealed class SummonPanel : ISummonUi
                 MouseFilter = G.Control.MouseFilterEnum.Ignore,
             };
             container.AddChild(viewport);
-            FreezeAfterFirstFrames(viewport, visuals);
+            FitAndFreeze(viewport, visuals, _portraits++);
             return container;
         }
         catch (Exception e)
@@ -302,22 +301,63 @@ internal sealed class SummonPanel : ISummonUi
         }
     }
 
+    private static int _portraits;
+
     /// <summary>
-    /// 省性能：模型摆好姿势、画出头几帧后就定格——视口不再每帧重画，模型（含 Spine 动画）暂停处理。
-    /// 十几张卡片同时开着也几乎没有持续开销，代价是怪物不会动。
+    /// 自动取景：画几帧后读视口图片里不透明像素的范围（Image.GetUsedRect），按它放大到视口 90%、水平居中、底部贴近下沿，
+    /// 再画几帧后定格（视口不再重画、模型暂停处理），十几张卡片同时开着也几乎没有持续开销，代价是怪物不会动。
+    /// 读到的范围碰到视口边（说明还是太大被裁了）就再缩小一半重来，最多 3 次。
+    /// 每张卡片错开几帧，免得同一帧里几十次从显卡读图卡一下。
     /// </summary>
-    private static void FreezeAfterFirstFrames(G.SubViewport viewport, G.Node2D visuals, int frames = 5)
+    private static void FitAndFreeze(G.SubViewport viewport, G.Node2D visuals, int order)
     {
-        int left = frames;
+        int wait = 4 + order % 12, tries = 0;
+        bool fitted = false;
         void Tick()
         {
-            if (!G.GodotObject.IsInstanceValid(viewport)) { Tree.ProcessFrame -= Tick; return; }
-            if (--left > 0) return;
-            Tree.ProcessFrame -= Tick;
-            viewport.RenderTargetUpdateMode = G.SubViewport.UpdateMode.Disabled;
-            if (G.GodotObject.IsInstanceValid(visuals)) visuals.ProcessMode = G.Node.ProcessModeEnum.Disabled;
+            if (!G.GodotObject.IsInstanceValid(viewport) || !G.GodotObject.IsInstanceValid(visuals)) { Tree.ProcessFrame -= Tick; return; }
+            if (--wait > 0) return;
+            if (fitted)
+            {
+                Tree.ProcessFrame -= Tick;
+                viewport.RenderTargetUpdateMode = G.SubViewport.UpdateMode.Disabled;
+                visuals.ProcessMode = G.Node.ProcessModeEnum.Disabled;
+                return;
+            }
+            try
+            {
+                var size = new G.Vector2(viewport.Size.X, viewport.Size.Y);
+                var used = viewport.GetTexture().GetImage().GetUsedRect();
+                if (used.Size.X <= 0 || used.Size.Y <= 0) { fitted = true; wait = 1; return; } // 什么都没画出来，保持原样
+                bool clipped = used.Position.X <= 0 || used.Position.Y <= 0 || used.End.X >= size.X || used.End.Y >= size.Y;
+                if (clipped && ++tries < 3)
+                {
+                    Rescale(visuals, 0.5f, size / 2, size / 2); // 以视口中心缩小一半再量
+                    wait = 3;
+                    return;
+                }
+                var rect = new G.Rect2(used.Position, used.Size);
+                float f = Math.Min(size.X * 0.90f / rect.Size.X, size.Y * 0.90f / rect.Size.Y);
+                f = Math.Min(f, 6f); // 很小的怪也别放大到糊
+                var center = rect.Position + rect.Size / 2;
+                var target = new G.Vector2(size.X / 2, size.Y * 0.96f - rect.Size.Y * f / 2);
+                Rescale(visuals, f, center, target);
+            }
+            catch (Exception e)
+            {
+                Log.Warn($"召唤面板：自动取景失败，保持原样：{e.Message}");
+            }
+            fitted = true;
+            wait = 3;
         }
         Tree.ProcessFrame += Tick;
+    }
+
+    /// <summary>把模型放大 f 倍，同时让视口里原来在 from 的点移到 to。</summary>
+    private static void Rescale(G.Node2D visuals, float f, G.Vector2 from, G.Vector2 to)
+    {
+        visuals.Position = to - (from - visuals.Position) * f;
+        visuals.Scale *= f;
     }
 
     private void BuildChosenTray(G.VBoxContainer box)

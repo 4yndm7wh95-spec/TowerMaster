@@ -114,6 +114,8 @@ def check_condition(instance: str, cond: dict) -> tuple[bool, Any]:
             ok &= state.get("point_type") == want
         elif key == "total_floor_at_least":
             ok &= (state.get("total_floor") or 0) >= want
+        elif key == "rewards_visible":
+            ok &= bool(state.get("rewards_visible")) == want
         elif key == "in_run":
             ok &= bool(state.get("in_run")) == want
         elif key == "log_contains":
@@ -216,6 +218,7 @@ def run_battle(args: dict) -> dict:
     before = summon["state"].get("wallet")
     panel = step("summon_panel", lambda: call(host, "/summon"))
     shots = []
+    prefix = args.get("screenshot_prefix", f"floor{summon['state'].get('total_floor')}")
     if args.get("screenshot", True):
         prefix = args.get("screenshot_prefix", f"floor{summon['state'].get('total_floor')}")
         shots.append(step("screenshot_panel", lambda: call(host, "/screenshot", {"name": f"{prefix}-panel"})))
@@ -260,6 +263,9 @@ def run_battle(args: dict) -> dict:
         step("wait_combat_end", lambda: wait_for(host, {"in_combat": False}, args.get("timeout_s", 60)))
         time.sleep(args.get("settle_s", 1.0))
         result["wallet_after"] = call(host, "/state").get("wallet")
+        if args.get("read_rewards", True) or args.get("skip_rewards", False):
+            step("wait_rewards", lambda: wait_for(climber, {"rewards_visible": True}, args.get("timeout_s", 60)))
+            result["rewards"] = step("read_rewards", lambda: call(climber, "/rewards")).get("rewards")
         if args.get("skip_rewards", False):
             step("rewards_skip", lambda: call(climber, "/rewards/skip"))
     result["compare_logs"] = compare_logs([host, climber], COMPARE_KEYWORDS)
@@ -321,6 +327,20 @@ TOOLS = [
          lambda a: call(a["instance"], "/map/vote", {"col": a["col"], "row": a["row"], "force": a.get("force", False)})),
     tool("tm_rewards_skip", "本机玩家跳过当前显示的奖励组。", INST, ["instance"],
          lambda a: call(a["instance"], "/rewards/skip")),
+    tool("tm_rewards", "读本机正在显示的奖励组：每项类型、金币数、遗物。没显示时 visible=false。", INST, ["instance"],
+         lambda a: call(a["instance"], "/rewards")),
+    tool("tm_rewards_proceed", "按奖励界面的「继续」（Boss 奖励后换幕也用这个）。", INST, ["instance"],
+         lambda a: call(a["instance"], "/rewards/proceed")),
+    tool("tm_treasure", "宝箱状态：宝箱里的遗物（序号、类型）、各玩家投票、本机玩家现有遗物（领取前后对比）。", INST, ["instance"],
+         lambda a: call(a["instance"], "/treasure")),
+    tool("tm_treasure_open", "本机玩家点开宝箱（塔主那边会自动开，不要对塔主用）。", INST, ["instance"],
+         lambda a: call(a["instance"], "/treasure/open")),
+    tool("tm_treasure_pick", "本机玩家选宝箱第 index 个遗物；不给 index 表示跳过。", {**INST, "index": I}, ["instance"],
+         lambda a: call(a["instance"], "/treasure/pick", {"index": a.get("index")})),
+    tool("tm_event", "列出当前事件（含先古之民）的选项按钮：序号、文字、是否禁用。", INST, ["instance"],
+         lambda a: call(a["instance"], "/event")),
+    tool("tm_event_choose", "点第 index 个事件选项（和鼠标点一样）。", {**INST, "index": I}, ["instance", "index"],
+         lambda a: call(a["instance"], "/event/choose", {"index": a["index"]})),
     tool("tm_console", "执行开发者控制台命令（例如 win），走原版控制台提交。", {**INST, "command": S}, ["instance", "command"],
          lambda a: call(a["instance"], "/console", {"command": a["command"]})),
     tool("tm_logs", "按游标读日志增量。source=mod（TowerMaster 日志）或 game（游戏日志，需启动脚本设 TOWERMASTER_GAME_LOG）。返回新游标。",
@@ -337,7 +357,7 @@ TOOLS = [
     tool("tm_reflect", "反射读对象或调方法：target 以 run/state/combat/node:路径/type:类型名 开头，用 .成员 [下标] 往下走。没有 method 就读值。",
          {**INST, "target": S, "method": S, "args": {"type": "array"}, "await": B, "depth": I}, ["instance", "target"],
          lambda a: call(a["instance"], "/reflect", {k: a[k] for k in ("target", "method", "args", "await", "depth") if k in a})),
-    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
+    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、rewards_visible、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
          {**INST, "condition": {"type": "object"}, "timeout_s": {"type": "number"}}, ["instance", "condition"],
          lambda a: wait_for(a["instance"], a["condition"], a.get("timeout_s", 30))),
     tool("tm_compare_logs", "对比各实例 TowerMaster 日志里清单、替换、生成、降血相关的行（去掉时间戳），列出差异。",
@@ -348,7 +368,7 @@ TOOLS = [
          lambda a: bench(a["instance"], a.get("route", "/state"), a.get("n", 100))),
     tool("tm_battle", "一键跑一场：爬塔玩家选路（col/row 或 point_type 取第一个）→ 塔主选怪（monsters/encounter，或 vanilla=true）→ 截图 → 确认 → 两端对比怪物 → win → 召唤点前后 → 日志对比。失败时返回失败的步骤。",
          {"host": S, "climber": S, "col": I, "row": I, "point_type": S, "monsters": {"type": "array", "items": S}, "encounter": S,
-          "vanilla": B, "win": B, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
+          "vanilla": B, "win": B, "read_rewards": B, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
          run_battle),
 ]
 

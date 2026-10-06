@@ -36,19 +36,21 @@
 | tm_state | 种子、幕、楼层、坐标、房间类型、玩家血量金币、战斗中的怪（类型、槽位、血量、改血前上限）、召唤点、面板是否打开 |
 | tm_summon / tm_summon_select / tm_summon_confirm / tm_summon_vanilla | 读召唤面板、整份替换选择、确认、按原版出场（不填 instance 自动找房主）。不合规则时返回 `rejected_rule` 和原因 |
 | tm_map_options / tm_map_vote | 下一步能去的点；本机玩家投票（入队联机投票动作，和点地图一样）。塔主默认拒绝 |
-| tm_rewards_skip | 本机玩家跳过当前奖励组 |
+| tm_rewards / tm_rewards_proceed / tm_rewards_skip | 读正在显示的奖励组（类型、金币数、遗物）；按「继续」（Boss 奖励后换幕也用它）；跳过奖励组 |
+| tm_treasure / tm_treasure_open / tm_treasure_pick | 宝箱里的遗物和序号、各玩家投票、本机现有遗物；本机点开宝箱（不要对塔主用）；选第 index 个遗物（不给 index = 跳过） |
+| tm_event / tm_event_choose | 列事件（含先古之民）选项按钮；点第 index 个 |
 | tm_console | 开发者控制台命令，例如 `win`（写进控制台输入框再按原版提交） |
 | tm_logs | 按字节游标读 TowerMaster 日志（source=mod）或游戏日志（source=game；游戏运行中这个文件可能是空的） |
 | tm_screenshot | 截该实例画面，返回 PNG 路径、尺寸、窗口模式 |
-| tm_wait | 等条件：`summon_open`、`in_combat`、`room`、`point_type`、`total_floor_at_least`、`in_run`、`log_contains` |
+| tm_wait | 等条件：`summon_open`、`in_combat`、`rewards_visible`、`room`、`point_type`、`total_floor_at_least`、`in_run`、`log_contains` |
 | tm_compare_logs | 两端 TowerMaster 日志里清单/替换/生成/降血行逐行对比（去时间戳） |
 | tm_bench | 连续调用 n 次测延迟（p50/p95/最大） |
-| tm_battle | 一键：选路 → 等面板 → 截图 → 选怪 → 截图 → 确认 → 两端进战斗、对比怪物、截图 → win → 召唤点前后 → 日志对比；失败时返回失败步骤 |
+| tm_battle | 一键：选路 → 等面板 → 截图 → 选怪 → 截图 → 确认 → 两端进战斗、对比怪物、截图 → win → 召唤点前后 → 等奖励出现并读出（read_rewards，默认开）→ 可选跳过 → 日志对比；失败时返回失败步骤 |
 | tm_tree / tm_node_call / tm_reflect | 兜底：列场景树节点、调节点方法、反射读对象或调方法。给有游戏源码的助手补上还没有专门工具的操作（奖励领取、宝箱、事件、休息、商店等） |
 
 ### tm_reflect / tm_node_call 参数
 
-- `target`：`run`（RunManager.Instance）、`state`（当前对局 RunState）、`combat`（当前战斗 CombatState）、`node:/root/...|成员`（节点；节点路径后用 `|` 接成员）、`type:类型名`（静态成员），后面 `.成员`、`[下标]`。
+- `target`：`run`（RunManager.Instance）、`state`（当前对局 RunState）、`combat`（当前战斗 CombatState）、`node:/root/...|成员`（节点；节点路径后用 `|` 接成员）、`type:类型名或全名|成员`（静态成员，也找 Godot 等非游戏程序集，例如 `type:Godot.DisplayServer`，方法用 method 传），后面 `.成员`、`[下标]`。
 - `args`：数字、字符串、布尔、null 原样；枚举写名字；`{"ref": "state.Players[1]"}` 取对象；`{"new": "MapCoord", "args": [3, 1]}` 现造。
 - 返回值是 Task 时默认等它完成（`await:false` 不等）。`depth` 控制展开层数（默认 1）。
 - 这两个工具能直接调用任何方法，**只用于测试**；能用专门工具或原版界面路径的地方优先用它们，报告里写明用了哪条路径。

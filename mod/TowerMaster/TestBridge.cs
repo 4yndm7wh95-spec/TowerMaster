@@ -200,6 +200,13 @@ internal static class TestBridge
                 "/map/options" => _ => Main(MapOptions),
                 "/map/vote" => a => Main(() => MapVote(a)),
                 "/rewards/skip" => _ => Main(RewardsSkip),
+                "/rewards" => _ => Main(Rewards),
+                "/rewards/proceed" => _ => Main(RewardsProceed),
+                "/treasure" => _ => Main(Treasure),
+                "/treasure/open" => _ => Main(TreasureOpen),
+                "/treasure/pick" => a => Main(() => TreasurePick(a)),
+                "/event" => _ => Main(EventOptions),
+                "/event/choose" => a => Main(() => EventChoose(a)),
                 "/console" => a => MainAsync(() => ConsoleCommand(a)),
                 "/logs" => a => Main(() => Logs(a)),
                 "/screenshot" => a => Main(() => Screenshot(a)),
@@ -286,6 +293,7 @@ internal static class TestBridge
             },
             wallet = wallet == null ? null : new { points = wallet.Points, act = wallet.ActNo, battles = MasterLedger.BattlesFought },
             summon_open = SummonPhase.Current is { Done: false },
+            rewards_visible = Try(() => RewardsScreen() != null) ?? false,
         };
     }
 
@@ -357,7 +365,7 @@ internal static class TestBridge
                 monster_price = q.MonsterPrice,
                 crowd_tax = q.CrowdTax,
                 total = q.Total,
-                spend_cap = q.SpendCap,
+                spend_cap = Math.Round(q.SpendCap, 2),
                 left_after = s.Room.Savings - q.Total,
                 lineup = q.Lineup,
             },
@@ -443,6 +451,163 @@ internal static class TestBridge
         var sync = FindMemberOfType(run, "RewardsSetSynchronizer") ?? throw Fail("exception", "找不到 RewardsSetSynchronizer", 500);
         RuntimeNetAction.Call(sync, "SkipLocalRewardsSet");
         return new { skipped = true };
+    }
+
+    // ---------------------------------------------------------------- 节点查找
+
+    /// <summary>场景树里第一个类型名为 typeName 的节点（可见的优先）。</summary>
+    private static Godot.Node? FindNode(string typeName, bool visibleOnly = true)
+    {
+        var stack = new Stack<Godot.Node>();
+        stack.Push(SceneTree.Root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (visibleOnly && node is Godot.CanvasItem ci && !ci.IsVisibleInTree()) continue;
+            if (IsType(node, typeName)) return node;
+            foreach (var child in node.GetChildren()) stack.Push(child);
+        }
+        return null;
+    }
+
+    /// <summary>节点的类型或它的某个基类叫这个名字。</summary>
+    private static bool IsType(object node, string typeName)
+    {
+        for (var t = node.GetType(); t != null; t = t.BaseType)
+            if (t.Name == typeName) return true;
+        return false;
+    }
+
+    private static List<Godot.Node> FindNodes(string typeName)
+    {
+        var found = new List<Godot.Node>();
+        var stack = new Stack<Godot.Node>();
+        stack.Push(SceneTree.Root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node is Godot.CanvasItem ci && !ci.IsVisibleInTree()) continue;
+            if (IsType(node, typeName)) found.Add(node);
+            var children = node.GetChildren();
+            for (int i = children.Count - 1; i >= 0; i--) stack.Push(children[i]);
+        }
+        return found;
+    }
+
+    // ---------------------------------------------------------------- 奖励界面
+
+    /// <summary>正在显示、且已经有奖励组的奖励界面（NRewardsScreen）。</summary>
+    private static Godot.Node? RewardsScreen() =>
+        FindNode("NRewardsScreen") is { } screen && GameReflection.Get(screen, "_rewardsSet") != null ? screen : null;
+
+    private static object Rewards()
+    {
+        var screen = RewardsScreen();
+        if (screen == null) return new { visible = false };
+        var set = GameReflection.Get(screen, "_rewardsSet")!;
+        var rewards = (GameReflection.Get(set, "Rewards") as IEnumerable)?.Cast<object>().Select((r, i) => new
+        {
+            index = i,
+            type = r.GetType().Name,
+            gold = Try(() => GameReflection.Get(r, "Amount")),
+            relic = Try(() => GameReflection.Get(r, "Relic")?.GetType().Name),
+            detail = ToJson(r, 0),
+        }).ToList();
+        return new { visible = true, path = screen.GetPath().ToString(), rewards };
+    }
+
+    /// <summary>奖励界面的「继续」按钮（NRewardsScreen.OnProceedButtonPressed）。</summary>
+    private static object RewardsProceed()
+    {
+        var screen = FindNode("NRewardsScreen") ?? throw Fail("invalid_phase", "没有显示奖励界面");
+        RuntimeNetAction.Call(screen, "OnProceedButtonPressed", [null]);
+        return new { proceeded = true };
+    }
+
+    // ---------------------------------------------------------------- 宝箱
+
+    private static object TreasureSync() =>
+        FindMemberOfType(RunOrNull() ?? throw Fail("invalid_phase", "不在对局里"), "TreasureRoomRelicSynchronizer")
+        ?? throw Fail("exception", "找不到 TreasureRoomRelicSynchronizer", 500);
+
+    /// <summary>宝箱状态：宝箱里的遗物（序号、类型）、每个玩家的投票、本机玩家现有遗物（领取前后对比用）。</summary>
+    private static object Treasure()
+    {
+        var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
+        var sync = TreasureSync();
+        var relics = (GameReflection.Get(sync, "CurrentRelics") as IEnumerable)?.Cast<object>()
+            .Select((r, i) => new { index = i, relic = r.GetType().Name }).ToList();
+        var players = (GameReflection.Get(state, "Players") as IEnumerable)!.Cast<object>().ToList();
+        var votes = players.Select(p => new
+        {
+            net_id = Test2MasterOffField.NetIdOf(p),
+            vote = Try(() => ToJson(RuntimeNetAction.Call(sync, "GetPlayerVote", p), 1)),
+        }).ToList();
+        var room = FindNode("NTreasureRoom");
+        return new
+        {
+            in_treasure_room = room != null,
+            chest_opened = room == null ? null : GameReflection.Get(room, "_hasChestBeenOpened"),
+            relics,
+            votes,
+            my_relics = (GameReflection.Get(LocalPlayer(state), "Relics") as IEnumerable)?.Cast<object>().Select(r => r.GetType().Name).ToList(),
+        };
+    }
+
+    /// <summary>本机玩家点开宝箱（NTreasureRoom.OnChestButtonReleased）。塔主那边是自动开的。</summary>
+    private static object TreasureOpen()
+    {
+        var room = FindNode("NTreasureRoom") ?? throw Fail("invalid_phase", "不在宝箱房");
+        RuntimeNetAction.Call(room, "OnChestButtonReleased", [null]);
+        return new { opened = GameReflection.Get(room, "_hasChestBeenOpened") };
+    }
+
+    /// <summary>本机玩家选宝箱里第 index 个遗物；index 省略或 null 表示跳过（TreasureRoomRelicSynchronizer.PickRelicLocally）。</summary>
+    private static object TreasurePick(JsonObject a)
+    {
+        var sync = TreasureSync();
+        int? index = a["index"]?.GetValue<int>();
+        RuntimeNetAction.Call(sync, "PickRelicLocally", index);
+        return new { picked = index };
+    }
+
+    // ---------------------------------------------------------------- 事件
+
+    private static List<Godot.Node> EventButtons() =>
+        FindNodes("NEventOptionButton"); // 先古之民的选项按钮也是它的子类
+
+    private static object EventOptions() => new
+    {
+        options = EventButtons().Select((b, i) => new
+        {
+            index = i,
+            path = b.GetPath().ToString(),
+            type = b.GetType().Name,
+            text = string.Join(" / ", Texts(b)),
+            disabled = Try(() => GameReflection.Get(b, "IsEnabled") is false || GameReflection.Get(b, "_isEnabled") is false),
+        }).ToList(),
+    };
+
+    /// <summary>点第 index 个事件选项（NEventOptionButton.OnRelease，和鼠标点一样）。</summary>
+    private static object EventChoose(JsonObject a)
+    {
+        int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
+        var buttons = EventButtons();
+        if (index < 0 || index >= buttons.Count) throw Fail("bad_request", $"只有 {buttons.Count} 个选项");
+        RuntimeNetAction.Call(buttons[index], "OnRelease");
+        return new { chosen = index, path = buttons[index].GetPath().ToString() };
+    }
+
+    private static IEnumerable<string> Texts(Godot.Node root)
+    {
+        var stack = new Stack<Godot.Node>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (NodeText(node) is { Length: > 0 } t) yield return t;
+            foreach (var child in node.GetChildren()) stack.Push(child);
+        }
     }
 
     private static object LocalPlayer(object state)
@@ -623,7 +788,7 @@ internal static class TestBridge
         else if (head.StartsWith("node:")) obj = SceneTree.Root.GetNodeOrNull(head[5..]) ?? throw Fail("not_found", $"没有节点 {head[5..]}", 404);
         else if (head.StartsWith("type:"))
         {
-            staticType = GameReflection.TypeNamed(head[5..]) ?? throw Fail("not_found", $"没有类型 {head[5..]}", 404);
+            staticType = AnyType(head[5..]) ?? throw Fail("not_found", $"没有类型 {head[5..]}", 404);
             obj = null;
         }
         else throw Fail("bad_request", "target 要以 run、state、combat、node:路径 或 type:类型名 开头");
@@ -655,11 +820,27 @@ internal static class TestBridge
         return (obj, staticType);
     }
 
+    /// <summary>按短名或全名找类型：先找游戏程序集，再找所有已加载的程序集（例如 Godot.DisplayServer）。</summary>
+    private static Type? AnyType(string name)
+    {
+        var game = GameReflection.Types.FirstOrDefault(t => t.FullName == name) ?? GameReflection.TypeNamed(name);
+        if (game != null) return game;
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type[] types;
+            try { types = assembly.GetTypes(); } catch (ReflectionTypeLoadException e) { types = e.Types.Where(t => t != null).ToArray()!; }
+            var hit = types.FirstOrDefault(t => t.FullName == name) ?? types.FirstOrDefault(t => t.Name == name);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
     private static List<string> SplitPath(string target)
     {
         // node:/root/a/b 里的 / 和 . 不拆；后面 .x[0].y 照常拆
         string head = target, rest = "";
-        int cut = target.StartsWith("node:") ? target.IndexOf('|') : target.IndexOfAny(['.', '[']);
+        // node: 和 type: 后面可能有 / 和 .（节点路径、类型全名），用 | 接成员
+        int cut = target.StartsWith("node:") || target.StartsWith("type:") ? target.IndexOf('|') : target.IndexOfAny(['.', '[']);
         if (cut >= 0) { head = target[..cut]; rest = target[cut..].TrimStart('|'); }
         var parts = new List<string> { head };
         var sb = new StringBuilder();
@@ -687,7 +868,7 @@ internal static class TestBridge
             if (o["ref"] is { } r) return Resolve(r.GetValue<string>()).Obj;
             if (o["new"] is { } n)
             {
-                var t = GameReflection.TypeNamed(n.GetValue<string>()) ?? throw Fail("not_found", $"没有类型 {n}", 404);
+                var t = AnyType(n.GetValue<string>()) ?? throw Fail("not_found", $"没有类型 {n}", 404);
                 var ctorArgs = o["args"] as JsonArray ?? new JsonArray();
                 var ctor = t.GetConstructors(GameReflection.All).FirstOrDefault(c => c.GetParameters().Length == ctorArgs.Count)
                            ?? throw Fail("not_found", $"{t.Name} 没有 {ctorArgs.Count} 个参数的构造函数", 404);

@@ -1,3 +1,11 @@
+## 0.0.17 实测 → 0.0.18（2026-10-06，待实测）
+
+0.0.17 实测：接口阶段 A 基本可用（/state p95 约 33ms（A，帧节拍）/12ms（B），tm_battle 一场约 6.5 秒）；开局保护、按原版扣款、跨幕降血、精英+小怪（金币 38、遗物）、Boss + 2 只另加怪（生成、站位、扣款）通过；StateDivergence 0。
+所有 Boss 能否另加：CeremonialBeast、Vantom、LagavulinMatriarch、SoulFysh、WaterfallGiant、KnowledgeDemon、TheInsatiable、Aeonglass、TestSubject 可；TheKin、KaiserCrab、Queen 不可。所以「Boss + 另加怪」大多数 Boss 都能用。
+未完成：宝箱遗物真正领到（之前用节点 OnRelease 没生效）、不能另加的 Boss 的界面、怪物形象头部被裁。
+
+0.0.18：形象自动取景（`SummonPanel.FitAndFreeze`，Image.GetUsedRect）；接口加 rewards、treasure、event、rewards_visible，反射类型全名。
+
 ## 0.0.16 实测 → 0.0.17：Boss 另加怪、宝箱动画、测试接口阶段 A（2026-10-06，待实测）
 
 修复：
