@@ -247,6 +247,20 @@ namespace MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic
             [MethodImpl(MethodImplOptions.NoInlining)]
             get => _holdersInUse[LocalSlot];
         }
+
+        private readonly TaskCompletionSource _relicPickingCompleteTaskCompletionSource = new();
+        public Task RelicPickingFinished() => _relicPickingCompleteTaskCompletionSource.Task;
+        public int Animated { get; private set; }
+
+        /// <summary>原版：按结果找遗物槽播动画，塔主跳过时找不到（0.0.16 实测）。</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void OnRelicsAwarded(List<object> results)
+        {
+            Animated++;
+            _relicPickingCompleteTaskCompletionSource.SetResult();
+        }
+
+        public void Award() => OnRelicsAwarded(new List<object>());
     }
 
     public sealed class NHandImageCollection

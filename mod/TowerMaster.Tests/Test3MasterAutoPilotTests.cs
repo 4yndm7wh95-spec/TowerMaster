@@ -145,6 +145,22 @@ public class Test3MasterAutoPilotTests
     }
 
     [Fact]
+    public void MasterSkipsRelicAwardAnimationButClientPlaysIt()
+    {
+        Init();
+        var master = new MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicCollection();
+        master.Award();
+        master.Award(); // 第二次（原版「空宝箱」再触发）也不会重复完成报错
+        Assert.Equal(0, master.Animated);
+        Assert.True(master.RelicPickingFinished().IsCompleted);
+
+        Init(NetGameType.Client);
+        var client = new MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicCollection();
+        client.Award();
+        Assert.Equal(1, client.Animated);
+    }
+
+    [Fact]
     public void MasterOpensChestAutomaticallyOnceButClientDoesNot()
     {
         Init();

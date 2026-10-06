@@ -239,6 +239,30 @@ public class SummonPhaseTests
     }
 
     [Fact]
+    public void SceneBossRejectsExtrasAndClearsThem()
+    {
+        var queue = Init();
+        var original = SummonPhase.BossAllowsExtras;
+        try
+        {
+            SummonPhase.BossAllowsExtras = id => id == "VantomBoss"; // 假设第二个候选有专用场景
+            queue.RequestEnqueue(MoveTo(MapPointType.Boss));
+            var session = Shown.Single().Session;
+            Assert.True(session.EncounterAllowsExtras("VantomBoss"));
+            session.Click("LeafSlimeS");
+            Assert.Single(session.Monsters);
+            var scene = session.EncounterOptions[1].Id;
+            Assert.False(session.EncounterAllowsExtras(scene));
+            session.Click(scene);
+            Assert.Empty(session.Monsters);  // 换成不能另加的 Boss：已选的清掉
+            session.Click("LeafSlimeS");
+            Assert.Empty(session.Monsters);  // 也加不进去
+            Assert.True(session.Confirm());
+        }
+        finally { SummonPhase.BossAllowsExtras = original; }
+    }
+
+    [Fact]
     public async Task SameBossAsOriginalIsNotReplaced()
     {
         var queue = Init();

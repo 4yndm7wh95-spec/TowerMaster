@@ -207,9 +207,10 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
         // 群体税：Boss 房把 Boss 遭遇算 1 个单位，另加的怪从 +1 起收
         int tax = room.Room == RoomKind.Boss ? CrowdTax(1 + plan.Monsters.Count) : CrowdTax(plan.Monsters.Count);
 
-        // 数量限制
+        // 数量限制：Boss 遭遇整体算 1 个单位（同族小队本体就有 3 只，否则一只都加不了；0.0.16 实测）
         var lineup = encounterMonsters.Concat(plan.Monsters).ToList();
-        if (plan.Monsters.Count > 0 && lineup.Count > MaxMonsters(room.Climbers)) errors.Add(SummonViolation.TooManyMonsters);
+        int units = room.Room == RoomKind.Boss ? 1 + plan.Monsters.Count : plan.Monsters.Count;
+        if (plan.Monsters.Count > 0 && units > MaxMonsters(room.Climbers)) errors.Add(SummonViolation.TooManyMonsters);
         if (lineup.GroupBy(m => m).Any(g => g.Count() > Config.MaxSameMonster)) errors.Add(SummonViolation.TooManySameMonster);
 
         // 陷阱

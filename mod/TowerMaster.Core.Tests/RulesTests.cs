@@ -195,8 +195,9 @@ public class SummonRulesTests
         Assert.Contains(SummonViolation.OverBossExtraCap,
             rules.Quote(room with { Climbers = 3 }, new SummonPlan("CeremonialBeastBoss", ["Mawler", "Fogmog", "Nibbit"])).Violations);
 
-        // 同族小队本身 3 只，单人时场上上限 3，不能再加。
-        Assert.Contains(SummonViolation.TooManyMonsters, rules.Quote(room, new SummonPlan("TheKinBoss", ["Nibbit"])).Violations);
+        // Boss 遭遇整体算 1 个单位：同族小队本身 3 只，单人时（上限 3）还能另加 2 只，第 3 只超限。
+        Assert.DoesNotContain(SummonViolation.TooManyMonsters, rules.Quote(room, new SummonPlan("TheKinBoss", ["Nibbit", "Nibbit"])).Violations);
+        Assert.Contains(SummonViolation.TooManyMonsters, rules.Quote(room, new SummonPlan("TheKinBoss", ["Nibbit", "Nibbit", "LeafSlimeS"])).Violations);
         Assert.True(rules.Quote(room, new SummonPlan("TheKinBoss", [])).Ok);
     }
 

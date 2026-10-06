@@ -150,6 +150,9 @@ internal static class SummonPhase
         // Boss 免费出场，没有标准开销（不然日志和面板会显示一个没用的数）
         context = context with { StandardCostOverride = room == RoomKind.Boss ? 0 : _rules.AverageStandardCost(actId, room.Value, weak: opening) };
         var candidates = room == RoomKind.Boss ? BossCandidates(state, actId, act.ActNo) : [];
+        if (room == RoomKind.Boss)
+            Log.Info($"召唤阶段：Boss 候选 {string.Join("、", candidates.Select(c => $"{c}（{(BossAllowsExtras(c) ? "可另加怪" : "专用场景，不能另加")}）"))}；" +
+                     $"所有 Boss：{string.Join("、", prices.Acts.Values.SelectMany(a => a.Encounters).Where(e => e.Value.Room == RoomKind.Boss).Select(e => $"{e.Key}={(BossAllowsExtras(e.Key) ? "可" : "不可")}"))}");
 
         var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds, m => MonsterFilter(actId, m), BossAllowsExtras);
         _heldMove = move;
@@ -209,7 +212,7 @@ internal static class SummonPhase
             if (session.Confirmed) SendPlan(session);
             Log.Info(session.Confirmed
                 ? $"召唤阶段：确认 {(session.Encounter ?? string.Join("+", session.Monsters))}，花费 {total}，剩余 {wallet.Points}"
-                : $"召唤阶段：{(session.SecondsLeft <= 0 ? "超时" : "放弃")}，按原版出场，花费 {total}，剩余 {wallet.Points}");
+                : $"召唤阶段：{(!session.Unlimited && session.SecondsLeft <= 0 ? "超时" : "塔主选择按原版出场")}，按原版出场，花费 {total}，剩余 {wallet.Points}");
         }
         catch (Exception e)
         {

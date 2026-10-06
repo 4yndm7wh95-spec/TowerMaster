@@ -218,8 +218,17 @@ internal sealed class SummonPanel : ISummonUi
         row.AddChild(Chip(isEncounter ? "免费" : $"{option.Price} 点", new G.Color(0.20f, 0.17f, 0.09f), Gold, GoldDim));
         column.AddChild(row);
 
+        // Boss 卡片标出能不能另加怪
+        if (isEncounter)
+        {
+            var tags = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            tags.AddChild(_session.EncounterAllowsExtras(option.Id)
+                ? Chip("可以另加怪", new G.Color(0.12f, 0.24f, 0.18f), Good)
+                : Chip("专用场景 · 不能另加怪", new G.Color(0.30f, 0.12f, 0.12f), new G.Color(1f, 0.65f, 0.6f)));
+            column.AddChild(tags);
+        }
         // 标签：精英、跨幕（带「水土不服」血量）
-        if (!isEncounter)
+        else
         {
             var tags = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
             tags.AddThemeConstantOverride("separation", 6);
@@ -402,6 +411,11 @@ internal sealed class SummonPanel : ISummonUi
             int n = isEncounter ? (_session.Encounter == id ? 1 : 0) : _session.Monsters.Count(m => m == id);
             count.Text = !isEncounter && n > 0 ? $"×{n}" : "";
             StyleCard(card, n > 0);
+            if (!isEncounter) // 选了不能另加怪的 Boss：怪物卡片变灰、点不了
+            {
+                card.Disabled = !_session.BossAllowsExtras;
+                card.Modulate = new G.Color(1, 1, 1, _session.BossAllowsExtras ? 1f : 0.35f);
+            }
         }
 
         if (_chosen != null && _emptyHint != null)
@@ -416,6 +430,8 @@ internal sealed class SummonPanel : ISummonUi
                 _chosen.AddChild(b);
             }
             _emptyHint.Visible = _session.Monsters.Count == 0;
+            if (room == RoomKind.Boss)
+                _emptyHint.Text = _session.BossAllowsExtras ? "不另加怪物也可以" : "这个 Boss 有专用场景，不能另加怪物";
         }
 
         {
@@ -434,10 +450,10 @@ internal sealed class SummonPanel : ISummonUi
 
         foreach (var child in _problems.GetChildren()) child.QueueFree();
         bool emptyOnly = quote.Violations.Count == 1 && quote.Violations[0] == SummonViolation.EmptyRoom;
-        if (quote.Ok && _session.ExtraProblems.Count > 0)
+        if (_session.ExtraProblems.Count > 0 || !quote.Ok && !emptyOnly)
         {
             _status.Text = "";
-            foreach (var problem in _session.ExtraProblems)
+            foreach (var problem in _session.ExtraProblems.Concat(quote.Violations.Select(SummonSession.Describe)))
             {
                 var line = Text("✗ " + problem, 20, Bad);
                 ApplyGameFont(line);
@@ -453,16 +469,6 @@ internal sealed class SummonPanel : ISummonUi
         {
             _status.Text = "至少召唤一只怪物";
             _status.AddThemeColorOverride("font_color", TextDim);
-        }
-        else
-        {
-            _status.Text = "";
-            foreach (var v in quote.Violations)
-            {
-                var line = Text("✗ " + SummonSession.Describe(v), 20, Bad);
-                ApplyGameFont(line);
-                _problems.AddChild(line);
-            }
         }
         _confirm.Disabled = !_session.CanConfirm;
     }
@@ -490,6 +496,7 @@ internal sealed class SummonPanel : ISummonUi
         card.AddThemeStyleboxOverride("normal", Box(selected ? new G.Color(0.20f, 0.20f, 0.20f) : CardBg, border, width, 10, 0));
         card.AddThemeStyleboxOverride("hover", Box(CardHover, selected ? Gold : GoldDim, width, 10, 0));
         card.AddThemeStyleboxOverride("pressed", Box(CardHover, Gold, 3, 10, 0));
+        card.AddThemeStyleboxOverride("disabled", Box(CardBg, CardBorder, 1, 10, 0));
         card.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
     }
 

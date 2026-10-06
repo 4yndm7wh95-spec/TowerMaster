@@ -80,6 +80,9 @@ internal sealed class SummonSession
             : null;
     }
 
+    /// <summary>某个候选 Boss 能不能另加怪（面板在 Boss 卡片上标出来）。</summary>
+    public bool EncounterAllowsExtras(string encounterId) => _bossAllowsExtras(encounterId);
+
     /// <summary>当前选的 Boss 能不能另加怪。</summary>
     public bool BossAllowsExtras => Room.Room != RoomKind.Boss || Encounter == null || _bossAllowsExtras(Encounter);
 
@@ -102,8 +105,12 @@ internal sealed class SummonSession
     public void Click(string id)
     {
         if (Done) return;
-        if (EncounterOptions.Any(o => o.Id == id)) Encounter = id;
-        else _monsters.Add(id);
+        if (EncounterOptions.Any(o => o.Id == id))
+        {
+            Encounter = id;
+            if (!BossAllowsExtras) _monsters.Clear(); // 换成不能另加怪的 Boss：已选的另加怪清掉
+        }
+        else if (BossAllowsExtras) _monsters.Add(id);
     }
 
     public void RemoveAt(int index)

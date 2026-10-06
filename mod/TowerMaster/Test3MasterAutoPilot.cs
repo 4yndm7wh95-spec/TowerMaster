@@ -58,6 +58,31 @@ internal static class Test3MasterAutoPilot
         // 宝箱界面的两个原版异常（测试 3 第二轮实测）：不修会让爬塔玩家卡在宝箱里
         Finalizer(harmony, "get_DefaultFocusedControl", "NTreasureRoomRelicCollection", nameof(TreasureFocusFinalizer));
         Finalizer(harmony, "_Input", "NHandImageCollection", nameof(HandInputFinalizer));
+
+        // 塔主这边的宝箱分遗物动画（0.0.16 实测两次报错：找不到遗物槽、Task 重复完成）。塔主不拿遗物，动画也不用播
+        Prefix(harmony, "OnRelicsAwarded", "NTreasureRoomRelicCollection", nameof(SkipMasterRelicAnimation));
+    }
+
+    /// <summary>
+    /// 分遗物的动画只是画面：遗物由 TreasureRoomRelicSynchronizer 在各端发放，动画之前已经完成。
+    /// 塔主跳过了挑选，他屏幕上的遗物槽和爬塔玩家的结果对不上，原版动画按结果找遗物槽时抛异常；
+    /// 随后开箱动画又以「空宝箱」再触发一次，重复完成同一个 Task。塔主这边直接标记「分完了」，不播动画。
+    /// </summary>
+    private static bool SkipMasterRelicAnimation(object __instance)
+    {
+        try
+        {
+            if (!LocalIsMaster) return true;
+            if (GameReflection.Get(__instance, "_relicPickingCompleteTaskCompletionSource") is TaskCompletionSource done)
+                done.TrySetResult();
+            Log.Info("测试3 宝箱：塔主不播分遗物动画");
+            return false;
+        }
+        catch (Exception e)
+        {
+            Log.Error("测试3 宝箱：跳过塔主的分遗物动画失败，按原版播放", e);
+            return true;
+        }
     }
 
     private static void Finalizer(Harmony harmony, string method, string type, string callback)
