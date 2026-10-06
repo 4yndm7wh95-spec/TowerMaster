@@ -42,6 +42,10 @@ public static class ModEntry
         // 召唤阶段要用测试 1b 的清单通道（上面已经挂好），塔主身份沿用测试 2
         if (settings.SummonPhase && settings.Test1bMixedEncounter) SummonPhase.Apply(harmony, new TowerMasterConfig(), prices);
         else if (settings.SummonPhase) Log.Warn("召唤阶段需要 test1b_mixed_encounter 开着（复用它的清单通道），没有启用");
+
+        // 测试接口：只有设了 TOWERMASTER_BRIDGE_PORT 才启动（本机测试助手用）
+        try { TestBridge.StartFromEnvironment(); }
+        catch (Exception e) { Log.Error("测试接口启动失败", e); }
     }
 
     private static Assembly? ResolveFromModDir(object? sender, ResolveEventArgs args)

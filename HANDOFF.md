@@ -1,3 +1,18 @@
+## 0.0.16 实测 → 0.0.17：Boss 另加怪、宝箱动画、测试接口阶段 A（2026-10-06，待实测）
+
+修复：
+- Boss 房数量上限把 Boss 遭遇算 1 个单位（`SummonRules.Quote` 的 units）。
+- 专用场景 Boss（`SummonPhase.IsSceneless` 为假）不能另加：`SummonSession.Click` 拦住、换 Boss 时清空，面板标注、变灰；问题列表合并显示。
+  **待确认**：如果各幕 Boss 大多有专用场景，「Boss + 另加怪」基本用不上，需要研究能否把另加怪摆进专用场景（看 0.0.17 日志「所有 Boss：…」）。
+- 塔主跳过 `NTreasureRoomRelicCollection.OnRelicsAwarded`（只是动画），直接 TrySetResult 完成任务。根因推测：塔主跳过挑选后本地遗物槽和结果对不上，未拿源码确认。
+- 「超时」日志标签。
+
+测试接口（用户要求，需求见 `docs/testing-mcp-handoff.md`）：
+- 游戏内 `TestBridge`：TcpListener + 最简 HTTP/JSON，主线程队列（ProcessFrame 里取）。接口：ping、state、summon（读/选/确认/按原版）、map/options、map/vote、rewards/skip、console、logs、screenshot、tree、node/call、reflect。
+- `testing/mcp/towermaster_mcp.py`：stdio MCP + 命令行，工具 tm_*，含 tm_wait、tm_compare_logs、tm_bench、tm_battle。
+- 启动脚本加 `-BridgePort`（默认 47101/47102）和相关环境变量。
+- 没有在真实游戏里跑过：选路投票、跳过奖励、控制台、截图这些游戏路径都要实测；不行时测试助手可以先用 tm_reflect/tm_node_call 兜底，并告诉我正确的调用路径。
+
 ## 测试助手 MCP 需求交接（2026-10-06）
 
 用户希望用轻量 MCP 自动跑本机双实例测试，允许控制台 win，不需要 AI 逐关思考打法。详细需求、社区参考、工具接口、批量用例、速度验收和开发优先级见 [docs/testing-mcp-handoff.md](docs/testing-mcp-handoff.md)。这次仅整理资料，未改 mod 代码或实现 MCP。

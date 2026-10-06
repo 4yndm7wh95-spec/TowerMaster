@@ -66,6 +66,9 @@ internal sealed class SummonSession
     /// <summary>确认或放弃后调用一次。</summary>
     public event Action<SummonSession>? Finished;
 
+    /// <summary>选择变了（面板以外的地方改的，例如测试接口），面板据此刷新。</summary>
+    public event Action? Changed;
+
     public bool IsOpeningProtected => _rules.IsOpeningProtected(Room);
 
     public string NameOf(string id) =>
@@ -111,16 +114,35 @@ internal sealed class SummonSession
             if (!BossAllowsExtras) _monsters.Clear(); // 换成不能另加怪的 Boss：已选的另加怪清掉
         }
         else if (BossAllowsExtras) _monsters.Add(id);
+        Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// 整份替换选择（测试接口用，重复调用不会叠加）。不认识的编号原样返回、不改任何东西；
+    /// Boss 房 encounter 为 null 时保留当前 Boss。
+    /// </summary>
+    public IReadOnlyList<string> SetSelection(string? encounter, IReadOnlyList<string> monsters)
+    {
+        var unknown = monsters.Where(m => MonsterOptions.All(o => o.Id != m)).ToList();
+        if (encounter != null && EncounterOptions.All(o => o.Id != encounter)) unknown.Insert(0, encounter);
+        if (Done || unknown.Count > 0) return unknown;
+        if (encounter != null) Encounter = encounter;
+        _monsters.Clear();
+        if (BossAllowsExtras) _monsters.AddRange(monsters);
+        Changed?.Invoke();
+        return [];
     }
 
     public void RemoveAt(int index)
     {
         if (!Done && index >= 0 && index < _monsters.Count) _monsters.RemoveAt(index);
+        Changed?.Invoke();
     }
 
     public void Clear()
     {
         if (!Done) _monsters.Clear();
+        Changed?.Invoke();
     }
 
     /// <summary>经过 seconds 秒；限时模式下到时间就按放弃结束。不限时什么都不做。</summary>

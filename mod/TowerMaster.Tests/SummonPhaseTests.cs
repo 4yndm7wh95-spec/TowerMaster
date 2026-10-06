@@ -239,6 +239,53 @@ public class SummonPhaseTests
     }
 
     [Fact]
+    public async Task BridgeSelectsAndConfirmsLikeThePanel()
+    {
+        var queue = Init();
+        TestBridge.Dispatch = work => work(); // 测试里没有 Godot 主线程，直接执行
+        var (status, _) = await TestBridge.Route("POST", "/summon", null, "");
+        Assert.Equal(400, status); // 还没有面板
+
+        queue.RequestEnqueue(MoveTo(MapPointType.Monster));
+        var session = Shown.Single().Session;
+        int changed = 0;
+        session.Changed += () => changed++;
+
+        (status, var body) = await TestBridge.Route("POST", "/summon/select", null, """{"monsters":["Nibbit","Nope"]}""");
+        Assert.Equal(400, status);
+        Assert.Contains("unknown_option", Json(body));
+        Assert.Empty(session.Monsters); // 有不认识的就整份不改
+
+        var other = session.MonsterOptions.First(o => o.Id != "Nibbit").Id;
+        (status, body) = await TestBridge.Route("POST", "/summon/select", null, $$"""{"monsters":["Nibbit","{{other}}"]}""");
+        Assert.True(status == 200, Json(body));
+        (status, _) = await TestBridge.Route("POST", "/summon/select", null, """{"monsters":["Nibbit"]}""");
+        Assert.Equal(new[] { "Nibbit" }, session.Monsters); // 整份替换，不叠加
+        Assert.Equal(2, changed);
+
+        (status, body) = await TestBridge.Route("POST", "/summon/confirm", null, "");
+        Assert.Equal(200, status);
+        Assert.Contains("\"points_after\":10", Json(body));
+        Assert.True(session.Confirmed);
+        Assert.Equal(2, queue.Queued.Count);
+    }
+
+    [Fact]
+    public async Task BridgeRejectsUnconfirmableAndWrongToken()
+    {
+        var queue = Init();
+        TestBridge.Dispatch = work => work();
+        queue.RequestEnqueue(MoveTo(MapPointType.Monster));
+        var (status, body) = await TestBridge.Route("POST", "/summon/confirm", null, ""); // 空阵容
+        Assert.Equal(400, status);
+        Assert.Contains("rejected_rule", Json(body));
+        (status, _) = await TestBridge.Route("POST", "/nope", null, "");
+        Assert.Equal(404, status);
+    }
+
+    private static string Json(object body) => System.Text.Json.JsonSerializer.Serialize(body, TestBridge.JsonOut);
+
+    [Fact]
     public void SceneBossRejectsExtrasAndClearsThem()
     {
         var queue = Init();

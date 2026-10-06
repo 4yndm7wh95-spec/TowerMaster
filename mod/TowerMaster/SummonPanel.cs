@@ -92,6 +92,7 @@ internal sealed class SummonPanel : ISummonUi
 
         ApplyGameFont(_layer);
         _session.Finished += _ => Close();
+        _session.Changed += Render;
         _lastTicks = G.Time.GetTicksMsec();
         Tree.ProcessFrame += OnFrame;
         Tree.Root.CallDeferred(G.Node.MethodName.AddChild, _layer);
@@ -243,7 +244,7 @@ internal sealed class SummonPanel : ISummonUi
         margin.AddChild(column);
         card.AddChild(margin);
         var id = option.Id;
-        card.Pressed += () => { _session.Click(id); Render(); };
+        card.Pressed += () => _session.Click(id); // 选择变化时 Changed 事件会刷新面板
         _cards[id] = (card, count);
         return card;
     }
@@ -425,7 +426,7 @@ internal sealed class SummonPanel : ISummonUi
             {
                 int index = i;
                 var b = MakeButton($"{_session.NameOf(_session.Monsters[i])}  ✕", new G.Color(0.20f, 0.17f, 0.09f), new G.Color(0.30f, 0.24f, 0.12f), GoldDim, Gold, new G.Vector2(0, 42), 20);
-                b.Pressed += () => { _session.RemoveAt(index); Render(); };
+                b.Pressed += () => _session.RemoveAt(index);
                 ApplyGameFont(b);
                 _chosen.AddChild(b);
             }
