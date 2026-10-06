@@ -117,7 +117,7 @@ public static class RuntimeNetAction
     public static ulong Owner(object action) => (ulong)action.GetType().GetField("Owner")!.GetValue(action)!;
     /// <summary>召唤清单在战斗外执行（NonCombat）；塔主回合指令要在玩家队列暂停时也能执行（Any）。</summary>
     public static object Kind(object action) =>
-        Enum.Parse(Required("GameActionType"), Payload(action).StartsWith(ThreatPhase.Prefix) ? "Any" : "NonCombat");
+        Enum.Parse(Required("GameActionType"), Payload(action).StartsWith(ThreatPhase.Prefix) ? ThreatPhase.ActionKind(Payload(action)) : "NonCombat");
     public static Task Execute(object action)
     {
         if (Payload(action).StartsWith(ThreatPhase.Prefix)) return ThreatPhase.Execute(Payload(action), action);

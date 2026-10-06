@@ -86,11 +86,12 @@ public class ThreatPhaseTests
         Assert.True(ThreatPhase.TurnOpen);
         Assert.True(Assert.Single(Shown).Open);
         var begin = Assert.Single(s.Queue.Queued);
-        Assert.Equal(GameActionType.Any, begin.ActionType); // 玩家队列暂停时也能执行
+        Assert.Equal(GameActionType.CombatPlayPhaseOnly, begin.ActionType); // 各端进了出牌阶段才开始（0.0.20 用 Any 导致不同步）
         await begin.Execute();
         Assert.True(RunManager.Instance.ActionQueueSet.Paused);
 
         Assert.True(ThreatPhase.Act("block", 0).Ok);
+        Assert.Equal(GameActionType.Any, s.Queue.Queued[1].ActionType); // 操作在玩家队列暂停时也要能执行
         Assert.True(ThreatPhase.Act("strength", 1).Ok); // 3 − 1 − 2 = 0：自动结束
         Assert.False(ThreatPhase.TurnOpen);
         Assert.False(Shown[0].Open);

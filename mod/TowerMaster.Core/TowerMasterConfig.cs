@@ -89,7 +89,8 @@ public sealed class TowerMasterConfig
     // ---------------------------------------------------------------- 计时
     /// <summary>召唤阶段限时（秒）；0 = 不限时（用户要求去掉倒计时）。</summary>
     public int SummonPhaseSeconds { get; set; } = 0;
-    public int MasterTurnSeconds { get; set; } = 20;
+    /// <summary>塔主回合限时（秒）；0 = 不限时、不显示倒计时（用户要求去掉）。</summary>
+    public int MasterTurnSeconds { get; set; } = 0;
 
     // ---------------------------------------------------------------- 威胁点
     /// <summary>每场威胁点（按幕）。</summary>

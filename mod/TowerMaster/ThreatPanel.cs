@@ -5,7 +5,7 @@ using P = TowerMaster.SummonPanel;
 namespace TowerMaster;
 
 /// <summary>
-/// 塔主回合面板（只在塔主电脑上）：停靠在屏幕右边，不挡战场；列出活着的怪和每名玩家（含手牌），
+/// 塔主回合面板（只在塔主电脑上）：停靠在屏幕左边（挡住的是玩家角色，玩家的信息面板里都有；怪物在右边要看得见）；列出活着的怪和每名玩家（含手牌），
 /// 每项旁边是可以花威胁点的按钮。每条指令执行完（<see cref="ThreatPhase.Applied"/>）就重画列表。
 /// 样式沿用召唤面板。
 /// </summary>
@@ -26,9 +26,9 @@ internal sealed class ThreatPanel : IThreatUi
 
         var panel = new G.PanelContainer();
         panel.AddThemeStyleboxOverride("panel", P.Box(P.PanelBg, P.Gold, 3, 14, 18, shadow: 18));
-        panel.SetAnchorsPreset(G.Control.LayoutPreset.RightWide);
-        panel.OffsetLeft = -width - 16;
-        panel.OffsetRight = -16;
+        panel.SetAnchorsPreset(G.Control.LayoutPreset.LeftWide);
+        panel.OffsetLeft = 16;
+        panel.OffsetRight = 16 + width;
         panel.OffsetTop = 90;
         panel.OffsetBottom = -24;
         _layer.AddChild(panel);

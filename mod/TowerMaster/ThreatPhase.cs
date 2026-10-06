@@ -36,6 +36,14 @@ internal static class ThreatPhase
 {
     public const string Prefix = "threat:";
 
+    /// <summary>
+    /// begin 是 CombatPlayPhaseOnly：各端都要进入出牌阶段（抽完牌、能量重置、生成「回合开始」校验之后）才执行，
+    /// 和玩家出牌同一个时间点。0.0.20 用 Any，慢的一端还在发牌时就执行了，校验编号错位，StateDivergence。
+    /// begin 之后的操作和 end 排在塔主队列里 begin 后面（每个玩家的队列只看队头），用 Any 才不被暂停挡住。
+    /// </summary>
+    internal static string ActionKind(string payload) =>
+        payload.Contains("\"Op\":\"begin\"") ? "CombatPlayPhaseOnly" : "Any";
+
     private static TowerMasterConfig _config = new();
     private static PriceBook? _prices;
     private static bool _patched;
@@ -53,6 +61,9 @@ internal static class ThreatPhase
     public static bool TurnOpen { get; private set; }
 
     public static int Round { get; private set; }
+
+    /// <summary>本机执行过 begin、还没执行 end：玩家队列正被塔主回合暂停（各端都有）。</summary>
+    public static bool PausedHere => _pausedByUs;
 
     /// <summary>塔主回合剩余秒数；配置为 0 时不限时。</summary>
     public static double SecondsLeft { get; private set; }

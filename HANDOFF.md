@@ -1,3 +1,9 @@
+## 0.0.20 实测 → 0.0.21（塔主回合不同步修复）
+
+0.0.20 实测：第一回合正常（威胁点 3、看得到手牌、超时结束）；第二回合开始 StateDivergence（校验 ID 9：房主「After player turn start」，客户端「finished action execution TowerMasterSummonGameAction」，客户端手牌还在抽牌堆）。
+原因：begin 是 Any，客户端在回合开始流程里（还没发牌）就执行了，多生成一个校验。0.0.21 改为 CombatPlayPhaseOnly（ThreatPhase.ActionKind）。
+用户要求去掉倒计时：MasterTurnSeconds 默认 0。面板移到左边。接口加出牌/结束回合（PlayCardAction(CardModel, Creature)、EndPlayerTurnAction(Player, int)）。
+
 ## 塔主回合 + 威胁点（2026-10-06，0.0.20，待实测）
 
 用户让我先做、做好一起测。说明和测试点见 `docs/master-turn-plan.md`。

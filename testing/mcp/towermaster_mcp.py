@@ -114,6 +114,8 @@ def check_condition(instance: str, cond: dict) -> tuple[bool, Any]:
             ok &= state.get("point_type") == want
         elif key == "total_floor_at_least":
             ok &= (state.get("total_floor") or 0) >= want
+        elif key == "paused_by_master_turn":
+            ok &= bool(state.get("paused_by_master_turn")) == want
         elif key == "master_turn_open":
             ok &= bool(state.get("master_turn_open")) == want
         elif key == "rewards_visible":
@@ -362,6 +364,13 @@ TOOLS = [
          lambda a: call(a["instance"], "/cards")),
     tool("tm_cards_pick", "在选牌界面点第 index 张牌（和鼠标点一样）；confirm=true 再按确认。", {**INST, "index": I, "confirm": B}, ["instance", "index"],
          lambda a: call(a["instance"], "/cards/pick", {"index": a["index"], "confirm": a.get("confirm", False)})),
+    tool("tm_hand", "本机玩家手牌（序号、类型、标题、目标类型、费用）、能量、回合数、怪物下标，以及是否正被塔主回合暂停。", INST, ["instance"],
+         lambda a: call(a["instance"], "/combat/hand")),
+    tool("tm_play", "本机玩家打出第 index 张手牌（入队原版 PlayCardAction）；需要目标的牌给 target（怪物下标）。只代表入队，用 tm_hand 看是否打出。",
+         {**INST, "index": I, "target": I}, ["instance", "index"],
+         lambda a: call(a["instance"], "/combat/play", {k: a[k] for k in ("index", "target") if k in a})),
+    tool("tm_end_turn", "本机玩家结束回合（入队原版 EndPlayerTurnAction）。", INST, ["instance"],
+         lambda a: call(a["instance"], "/combat/end_turn")),
     tool("tm_threat", "塔主回合状态（塔主实例）：是否进行中、第几回合、威胁点、剩余秒数、活着的怪（下标、血、格挡、力量、剩余回血次数）、玩家（血、手牌、状态）。", INST, [],
          lambda a: call(host_or(a), "/threat")),
     tool("tm_threat_act", "塔主回合操作：op=block/heal/strength（给 monster 下标）、strength_all、weak/vulnerable/frail/dazed（给 player 联机 id）。不合规则返回 rejected_rule。",
@@ -385,7 +394,7 @@ TOOLS = [
     tool("tm_reflect", "反射读对象或调方法：target 以 run/state/combat/node:路径/type:类型名 开头，用 .成员 [下标] 往下走。没有 method 就读值。",
          {**INST, "target": S, "method": S, "args": {"type": "array"}, "await": B, "depth": I}, ["instance", "target"],
          lambda a: call(a["instance"], "/reflect", {k: a[k] for k in ("target", "method", "args", "await", "depth") if k in a})),
-    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、master_turn_open、rewards_visible、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
+    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、master_turn_open、paused_by_master_turn、rewards_visible、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
          {**INST, "condition": {"type": "object"}, "timeout_s": {"type": "number"}}, ["instance", "condition"],
          lambda a: wait_for(a["instance"], a["condition"], a.get("timeout_s", 30))),
     tool("tm_compare_logs", "对比各实例 TowerMaster 日志里清单、替换、生成、降血相关的行（去掉时间戳），列出差异。",

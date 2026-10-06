@@ -209,6 +209,9 @@ internal static class TestBridge
                 "/event/choose" => a => Main(() => EventChoose(a)),
                 "/cards" => _ => Main(Cards),
                 "/threat" => _ => Main(Threat),
+                "/combat/hand" => _ => Main(CombatHand),
+                "/combat/play" => a => Main(() => CombatPlay(a)),
+                "/combat/end_turn" => _ => Main(CombatEndTurn),
                 "/threat/act" => a => Main(() => ThreatAct(a)),
                 "/threat/end" => _ => Main(ThreatEnd),
                 "/cards/pick" => a => Main(() => CardsPick(a)),
@@ -300,6 +303,7 @@ internal static class TestBridge
             summon_open = SummonPhase.Current is { Done: false },
             rewards_visible = Try(() => RewardsScreen() != null) ?? false,
             master_turn_open = ThreatPhase.TurnOpen,
+            paused_by_master_turn = ThreatPhase.PausedHere, // 本机玩家队列被塔主回合暂停（各端都有）
         };
     }
 
@@ -604,6 +608,73 @@ internal static class TestBridge
         var text = string.Join(" / ", Texts(buttons[index]));
         RuntimeNetAction.Call(buttons[index], "OnRelease");
         return new { chosen = index, path, text };
+    }
+
+    // ---------------------------------------------------------------- 出牌（本机玩家，走原版联机动作）
+
+    private static object CombatHand()
+    {
+        var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
+        var player = LocalPlayer(state);
+        var pcs = GameReflection.Get(player, "PlayerCombatState") ?? throw Fail("invalid_phase", "不在战斗中");
+        var cards = (GameReflection.Get(GameReflection.Get(pcs, "Hand")!, "Cards") as IEnumerable)!.Cast<object>()
+            .Select((c, i) => new
+            {
+                index = i,
+                card = c.GetType().Name,
+                title = Try(() => GameReflection.Get(c, "Title")?.ToString()),
+                target_type = Try(() => GameReflection.Get(c, "TargetType")?.ToString()),
+                cost = Try(() => GameReflection.Get(c, "EnergyCost") is { } e ? ToJson(e, 0) : null),
+            }).ToList();
+        var enemies = (GameReflection.Get(CombatState()!, "Enemies") as IEnumerable)!.Cast<object>()
+            .Select((e, i) => new { index = i, monster = Try(() => GameReflection.Get(e, "Monster")?.GetType().Name), hp = Try(() => GameReflection.Get(e, "CurrentHp")) }).ToList();
+        return new
+        {
+            energy = Try(() => GameReflection.Get(pcs, "Energy")),
+            turn = Try(() => GameReflection.Get(pcs, "TurnNumber")),
+            paused_by_master_turn = ThreatPhase.PausedHere,
+            hand = cards,
+            enemies,
+        };
+    }
+
+    /// <summary>
+    /// 本机玩家打出第 index 张手牌：和点牌一样入队 PlayCardAction(CardModel, Creature 目标)。
+    /// target 是 Enemies 下标；不需要目标的牌不给 target。只代表入队，打没打出去看 /combat/hand 和日志。
+    /// </summary>
+    private static object CombatPlay(JsonObject a)
+    {
+        var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
+        var player = LocalPlayer(state);
+        var pcs = GameReflection.Get(player, "PlayerCombatState") ?? throw Fail("invalid_phase", "不在战斗中");
+        var cards = (GameReflection.Get(GameReflection.Get(pcs, "Hand")!, "Cards") as IEnumerable)!.Cast<object>().ToList();
+        int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
+        if (index < 0 || index >= cards.Count) throw Fail("bad_request", $"手牌只有 {cards.Count} 张");
+        object? target = null;
+        if (a["target"]?.GetValue<int>() is { } t)
+        {
+            var enemies = (GameReflection.Get(CombatState()!, "Enemies") as IEnumerable)!.Cast<object>().ToList();
+            if (t < 0 || t >= enemies.Count) throw Fail("bad_request", $"只有 {enemies.Count} 只怪");
+            target = enemies[t];
+        }
+        var type = RuntimeNetAction.Required("PlayCardAction");
+        var ctor = type.GetConstructors(GameReflection.All).First(c => c.GetParameters().Length == 2 && c.GetParameters()[0].ParameterType.Name == "CardModel");
+        var action = ctor.Invoke([cards[index], target]);
+        RuntimeNetAction.Call(GameReflection.Get(RunOrNull()!, "ActionQueueSynchronizer")!, "RequestEnqueue", action);
+        return new { enqueued = cards[index].GetType().Name, target = a["target"]?.GetValue<int>() };
+    }
+
+    /// <summary>本机玩家结束回合：入队 EndPlayerTurnAction(Player, 回合数)，和按结束回合按钮一样。</summary>
+    private static object CombatEndTurn()
+    {
+        var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
+        var player = LocalPlayer(state);
+        var pcs = GameReflection.Get(player, "PlayerCombatState") ?? throw Fail("invalid_phase", "不在战斗中");
+        int turn = Convert.ToInt32(GameReflection.Get(pcs, "TurnNumber"));
+        var type = RuntimeNetAction.Required("EndPlayerTurnAction");
+        var action = type.GetConstructors(GameReflection.All).First(c => c.GetParameters().Length == 2).Invoke([player, turn]);
+        RuntimeNetAction.Call(GameReflection.Get(RunOrNull()!, "ActionQueueSynchronizer")!, "RequestEnqueue", action);
+        return new { enqueued = "EndPlayerTurnAction", turn };
     }
 
     // ---------------------------------------------------------------- 塔主回合
