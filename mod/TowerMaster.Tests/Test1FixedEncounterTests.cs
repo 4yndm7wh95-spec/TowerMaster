@@ -17,7 +17,13 @@ public class Test1FixedEncounterTests
         {
             if (_initialized) return;
             _ = typeof(CombatRoom).Assembly; // 确保假 sts2 已加载
-            ModEntry.Init();
+            Log.Init();
+            GameProbe.Run();
+            Test1FixedEncounter.Apply(new HarmonyLib.Harmony("towermaster.test1a"), new TestSettings
+            {
+                Test1FixedEncounter = true,
+                FixedEncounters = new() { ["Overgrowth"] = "NibbitsNormal", ["Underdocks"] = "CultistsNormal" },
+            }, TowerMaster.Core.PriceBook.Load(Path.Combine(Log.ModDir, "price_book.data")));
             _initialized = true;
         }
     }
@@ -34,11 +40,11 @@ public class Test1FixedEncounterTests
         Assert.IsType<NibbitsNormal>(room.Encounter);
         Assert.True(room.Encounter.IsMutable);
         Assert.NotSame(ModelDb.Encounter<NibbitsNormal>(), room.Encounter);
-        Assert.Equal(new[] { ("Nibbit", (string?)"front"), ("Nibbit", (string?)"back") }, room.Encounter.MonstersWithSlots);
+        Assert.Equal(new[] { ("Nibbit", (string?)"front"), ("Nibbit", (string?)"back") }, room.Encounter.MonstersWithSlots.Select(m => (m.Monster.GetType().Name, m.Slot)));
 
         var log = LogText();
         Assert.Contains("已替换 MawlerNormal → NibbitsNormal", log);
-        Assert.Contains("生成 NibbitsNormal → [(Nibbit, front), (Nibbit, back)]", log);
+        Assert.Contains("生成 NibbitsNormal → [(Nibbit:MONSTER.NIBBIT, front), (Nibbit:MONSTER.NIBBIT, back)]", log);
         Assert.True(log.IndexOf("已替换 MawlerNormal") < log.IndexOf("生成 NibbitsNormal"));
     }
 
@@ -49,7 +55,7 @@ public class Test1FixedEncounterTests
         var room = new CombatRoom((EncounterModel)new ActModel(ModelDb.Encounter<BygoneEffigyElite>()).PullNextEncounter(RoomType.Elite).ToMutable());
         room.StartCombat();
         Assert.IsType<BygoneEffigyElite>(room.Encounter);
-        Assert.Equal("BygoneEffigy", room.Encounter.MonstersWithSlots.Single().Monster);
+        Assert.Equal("BygoneEffigy", room.Encounter.MonstersWithSlots.Single().Monster.GetType().Name);
     }
 
     [Fact]

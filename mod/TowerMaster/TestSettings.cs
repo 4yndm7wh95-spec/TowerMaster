@@ -9,6 +9,8 @@ internal sealed class TestSettings
     [JsonPropertyName("test1_fixed_encounter")] public bool Test1FixedEncounter { get; set; } = true;
     [JsonPropertyName("fixed_encounters")] public Dictionary<string, string> FixedEncounters { get; set; } = new();
     [JsonPropertyName("probe")] public bool Probe { get; set; } = true;
+    [JsonPropertyName("test1b_mixed_encounter")] public bool Test1bMixedEncounter { get; set; }
+    [JsonPropertyName("mixed_monsters")] public Dictionary<string, string[]> MixedMonsters { get; set; } = new();
 
     public static TestSettings Load()
     {

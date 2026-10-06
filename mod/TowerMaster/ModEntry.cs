@@ -35,7 +35,8 @@ public static class ModEntry
         if (settings.Probe) GameProbe.Run();
 
         var harmony = new Harmony(HarmonyId);
-        Test1FixedEncounter.Apply(harmony, settings, prices);
+        if (settings.Test1bMixedEncounter) Test1bMixedEncounter.Apply(harmony, settings, prices);
+        else Test1FixedEncounter.Apply(harmony, settings, prices);
     }
 
     private static Assembly? ResolveFromModDir(object? sender, ResolveEventArgs args)
