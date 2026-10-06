@@ -1,126 +1,154 @@
-# 召唤阶段0.0.12测试结果：槽位兼容性与重连恢复问题
+# 召唤阶段 0.0.15 实测结果
 
 ## 结论
 
-**不通过，当前战斗无法开始，停止本轮验收并交Claude修复。** 本轮发现：Exoskeleton混搭缺少槽位导致首回合初始化抛异常；Boss召唤物需要场景槽位但EncounterSlots为空；用户报告重连后怪物恢复为原版阵容。只读调查，没有修改代码。
+**部分通过，有界面问题，覆盖不完整，可交 Claude 继续开发。** 只测试和只读分析，没有修改 mod 代码。
 
-测试代码8b9ed7e，游戏v0.111.0，manifest0.0.12。69个测试全过（Core39、mod30）；真实游戏编译安装成功，0警告0错误。塔主=NetId100001，爬塔玩家=100002，报告按身份称呼。
+代码 ccb3ebe，游戏 v0.111.0；测试 75 个全过（Core 41、mod 34），实际游戏编译安装零警告、零错误，安装 manifest version=0.0.15。塔主 NetId=100001，爬塔玩家=100002。新局种子 13025795298417210998，第一幕 Overgrowth。
 
-## 重连对照
+以测试说明开头 0.0.15 和设计文档“召唤规则变更”为准；说明后半段仍有旧版倒计时和禁止另加的文字，本轮不沿用。
 
-- 后续用户再次复现同一阻塞房间：重连后怪物又恢复为原版阵容，同时爬塔玩家B能够出牌。此项为用户画面观察；尚未单独核对这次重连后的日志。它支持“重新加载原版阵容后不再触发当前混搭初始化阻塞”的判断，但不代表召唤阵容恢复正确，也不代表重连完整通过。
+## 画面观察和待修问题
 
-- 先在两个测试账号设置中停用全部mod，只启用DirectConnectIP，启动日志确认TowerMaster及其他mod跳过。
-- 用户进入房间后完全关闭爬塔玩家进程；保存关闭前日志，重开100002，用户确认可以正常进入。**仅IP直连的这一次主动退出重连通过，无黑屏。** 不能因此排除其他状态下IP插件的重连缺陷。
-- 对照结束两端退出，已恢复原mod设置（塔主及之前启用的外观/其他mod），启动0.0.12。用户随后反馈：重连会让怪物变回原版安排。恢复时还有其他mod，因此不是严格“IP+塔主二者”最小化对照；需保留这个限制。
-- 本次塔主模式没有明确再反馈持续黑屏；发现的是阵容恢复错误，不能把它写成黑屏复现。
-- 原始对照/故障日志在本机工作目录分阶段备份，不提交全文。
+- **不通过：Boss 召唤面板整体超出屏幕。** 用户截图显示顶部内容被截、当前画面看不到底部确认按钮；是否能通过外层滚动完全访问按钮未单独确认。
+- **不通过：高个子怪物预览超出显示区域。** 用户明确补充“不止 Boss，还有一些比较高个子的怪都会超出显示”；未逐一确认怪物名称，不猜具体名单。需要覆盖普通、精英、Boss 预览的缩放与居中。
+- **平衡反馈：召唤点经常花完，感觉不够用。** 本轮账本算术对得上；这不代表经济平衡合适。后半段连续花费 7、8、6、6，收入分别 4、4、4、5，使余额从 15 降至 5，其中精英确认后余额曾为 0。
+- 用户确认跨幕怪画面、动画、出招正常，没有明显卡顿。
+- **用户追加的平衡建议：前三场开局保护太保守。** 用户认为怪物血量已有下调、塔主召唤点少、能召唤的怪也少，叠加后偏弱，希望“稍微加强一点点”。供 Claude 调整数值或保护范围时参考，不是要求全面取消保护。日志中的跨幕降血发生在第四场，不能将用户这项感受写成已确认前三场也触发水土不服。
+- 用户没有试本轮“按原版出场”；以前试过不能替代本版本覆盖。
+- 精英“1 精英＋小怪”没有试，不能凭“应该不大”判通过。实际仅召唤 BygoneEffigy。
+- Boss 截图选中方柱构装体，但最终广播 Monsters=[]，因此 **Boss 另加怪没有实际提交/生成，未覆盖**。墨影幻灵禁止另加未覆盖。
+- 普通房和精英房面板截图未提供；仅保存本次 Boss 面板截图。
 
-## 阻塞1：Exoskeleton槽位为空，战斗初始化失败
+![Boss 面板超出屏幕及预览裁切](screenshots/summon-phase-0.0.15-boss-overflow.png)
 
-![爬塔玩家无手牌、0能量、没有结束回合按钮](screenshots/summon-phase-0.0.12-stuck-start.png)
+只读代码定位供开发者检查，尚未证实具体布局根因：SummonPanel.cs:64–77 为面板/外层滚动高度；:245–281 为按 Bounds 缩放预览及无有效 Bounds 的固定 0.5 倍兜底。没有修改。
 
-用户：进入这个房间后没牌，房间开始不了。截图是第21层，Ovicopter126/126与Exoskeleton25/25；爬塔玩家71/90，能量0/3，手牌为空，没有结束回合按钮。对应清单#7，Hive，SourceFloor20，种子18184632449158284757。
+## 清单、替换、生成及降血
 
-两端清单和生成均是Ovicopter+Exoskeleton，生成记录明确两者slot都是null。爬塔玩家端game-B.log:6469、房主端game-A.log:6049出现同样的首回合异常；不是只有客户端显示未刷新。
+去掉时间戳后，两端相关记录逐行比较：**31 / 31 行，完全一致=True**。包含 8 份收到清单、7 次混搭生成、Boss 替换以及跨幕降血。Boss 原版生成没有测试1b混搭生成行，不能当成追加已验证。
 
-```text
-[ERROR] System.InvalidOperationException: No valid next state found.
-   at MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.ConditionalBranchState.GetNextState(Creature _, Rng __)
-   at MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.MonsterMoveStateMachine.FindNextMoveState(IEnumerable`1 targets, Creature owner, Rng rng, Boolean logMove)
-   at MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.MonsterMoveStateMachine.RollMove(IEnumerable`1 targets, Creature owner, Rng rng)
-   at MegaCrit.Sts2.Core.Models.MonsterModel.RollMove(IEnumerable`1 targets)
-   at MegaCrit.Sts2.Core.Combat.CombatManager.AfterCreatureAdded(Creature creature, CombatState state)
-   at MegaCrit.Sts2.Core.Combat.CombatManager.StartCombatInternal(CombatTurnState turnState)
-```
+|序号|房间|阵容|替换载体/遭遇|结论|
+|---|---|---|---|---|
+|1|普通|TwigSlimeM + TwigSlimeS|FuzzyWurmCrawlerWeak → CultistsNormal|两端一致|
+|2|普通|ShrinkerBeetle|NibbitsWeak → CultistsNormal|两端一致|
+|3|普通|Nibbit|ShrinkerBeetleWeak → CultistsNormal|两端一致|
+|4|普通|LivingShield|SlitheringStranglerNormal → CultistsNormal|两端一致|
+|5|普通|BruteRubyRaider + CalcifiedCultist + Inklet|NibbitsNormal → CultistsNormal|两端一致|
+|6|普通|SlitheringStrangler + CubexConstruct|RubyRaidersNormal → CultistsNormal|两端一致|
+|7|精英|BygoneEffigy|ByrdonisElite → BygoneEffigyElite|两端一致|
+|8|Boss|TheKinBoss，无另加怪|CeremonialBeastBoss → TheKinBoss|两端一致|
 
-**原因已定位**（以下反编译路径相对decompiled/sts2，仅转述）：
-
-- MegaCrit.Sts2.Core.Models.Monsters/Exoskeleton.cs:52–74，GenerateMoveStateMachine的初始条件分支只接受Creature.SlotName为first、second、third、fourth；没有默认分支。
-- MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine/ConditionalBranchState.cs:44–53，条件全部不满足时抛No valid next state found。
-- mod/TowerMaster/Test1bMixedEncounter.cs:236–245，MixMonstersCore生成每只怪的(MonsterModel,string)二元组时统一把slot置null。
-- 当前双端生成日志证实Exoskeleton槽位null，因此初始行动无法选择；错误发生在StartCombatInternal/AfterCreatureAdded，尚未发能量抽牌。
-
-开发建议：跨遭遇候选需记录怪物的槽位/遭遇上下文要求，或针对具槽位依赖的怪物做兼容处理；不能假设所有怪物都支持null槽位。临时过滤此类怪物与正式适配的取舍由Claude决定，未实施。
-
-## 阻塞2：Boss召唤物illusion缺少场景槽位
-
-早于当前房间，两端还记录战斗循环死亡：
+两端降血原文（去掉时间戳）：
 
 ```text
-[ERROR] Combat #5 turn loop died while its combat is in progress; the combat is stuck until the room is restarted: System.InvalidOperationException: Creature Creature 利齿之眼 has slot name 'illusion' but NCombatRoom.EncounterSlots is null.
+INFO 召唤：LivingShield 水土不服，生命 55 → 33
 ```
 
-后续重复异常为 `Creature Creature 利齿之眼 has slot name 'illusion' but NCombatRoom.EncounterSlots is null.`。对应VantomBoss附近日志，用户仍继续到后面房间，但不能把这个Boss判正常通过。
+55 × 60%=33，符合超前两幕各减20%的规则；这次是跨两幕，不是80%样例。用户确认表现正常，但没有提供战斗血量截图或明确报出33，**日志降血一致通过，画面数值核对未确认**。
 
-源码定位：MegaCrit.Sts2.Core.Nodes.Rooms/NCombatRoom.cs:344–361，槽位容器依赖房间视觉Encounter.CreateScene结果；没有场景槽位容器却加入有名slot生物会抛错。此处证明运行时视觉上下文不满足召唤物要求；为何选中Boss的视觉/Encounter没有建立槽位还需Claude继续检查实际替换与载体房间的一致性，不能只删slot名规避而忽略布局/机制。
+## 精英奖励
 
-## 重连后恢复原版怪物
-
-用户明确观察重连后房间怪物变回原版。塔主日志07:49:48与07:50:53有“没有收到召唤清单（读档、重连？），按原版遭遇VineShamblerNormal”的WARN。这些WARN支持清单恢复路径缺失的方向，但没有完整UI前后截图/独立断线时刻探针，不能逐一断定两条WARN都对应同一次恢复。
-
-mod/TowerMaster/Test1bMixedEncounter.cs:207起，BeforeGenerate依靠Encounter对象缓存或本地持久化清单重新绑定，再Validate；这只覆盖生成钩子，重连房间重建、规范遭遇、序列/楼层缓存匹配和已有MonstersWithSlots恢复需要一并检查。**最终根因尚未确诊，不自动修。**
-
-## 宝箱及覆盖
-
-- 新的一局有两个“塔主自动开箱”记录（07:46:36、07:47:23），可以确认自动开箱补丁实际触发。
-- 应继续对照RewardsSet Id/Owner全序列和每端恢复边界；本次多次重连/战斗异常使全程验收中止，未宣称全部编号序列一致。
-- 用户尚未提供本轮普通、精英、Boss召唤面板截图和外观意见；此次保存的是卡住截图，不能代替三张面板截图。
-- “按原版出场”两次日志有扣费3和7；超时尚无证据。流水原文见下方，余额为0时的原版放行也需遵循实际扣到0规则。
-- 本轮现有日志StateDivergence有无以本次扫描计数为准，列在下方；战斗异常本身已足够判不通过。
-
-## 召唤点流水及全部TowerMaster ERROR/WARN摘录
-
-以下保留本次塔主阶段开始/扣费/收入/账本行，便于Claude复查，未将原始日志全文提交。初始化10点；异常终场#7扣6后剩0，没有胜利收入，不能补记胜利。完整逐场验收因故障中止。
+两端均记录以下爬塔玩家奖励组，包含金币、遗物和卡牌：
 
 ```text
-[07:45:11.461] INFO 塔主账本：新的一局，召唤点 10
-[07:45:11.473] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 10，标准开销 3（开局保护），扣住移动
-[07:45:23.069] INFO 召唤阶段：确认 TwigSlimeM+TwigSlimeS，花费 3，剩余 7
-[07:45:38.266] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 11/30；玩家掉血 5，击倒 []，有奖励 []
-[07:45:47.959] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 11，标准开销 3（开局保护），扣住移动
-[07:46:11.393] INFO 召唤阶段：放弃，按原版出场，花费 3，剩余 8
-[07:46:28.561] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 12/30；玩家掉血 0，击倒 []，有奖励 []
-[07:46:43.737] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 12，标准开销 3（开局保护），扣住移动
-[07:46:57.610] INFO 召唤阶段：确认 TwigSlimeM+TwigSlimeS，花费 3，剩余 9
-[07:47:09.941] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 13/30；玩家掉血 5，击倒 []，有奖励 []
-[07:47:32.047] INFO 召唤阶段：Elite 房，幕 Overgrowth，召唤点 13，标准开销 9，扣住移动
-[07:47:43.857] INFO 召唤阶段：确认 PhrogParasiteElite，花费 11，剩余 2
-[07:48:50.348] INFO 召唤阶段：战斗收入 +8（基础 4，节约 0，战果 4），召唤点 10/30；玩家掉血 48，击倒 []，有奖励 []
-[07:49:08.239] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 10，标准开销 5，扣住移动
-[07:49:13.183] INFO 召唤阶段：确认 Fogmog+Mawler，花费 7，剩余 3
-[07:50:55.090] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 7/30；玩家掉血 0，击倒 []，有奖励 []
-[07:50:59.338] INFO 召唤阶段：Elite 房，幕 Overgrowth，召唤点 7，标准开销 9，扣住移动
-[07:51:05.698] INFO 召唤阶段：放弃，按原版出场，花费 7，剩余 0
-[07:51:13.667] INFO 召唤阶段：战斗收入 +5（基础 4，节约 1，战果 0），召唤点 5/30；玩家掉血 0，击倒 []，有奖励 []
-[07:51:22.929] INFO 召唤阶段：Boss 房，幕 Overgrowth，召唤点 5，标准开销 0，扣住移动
-[07:51:27.523] INFO 召唤阶段：确认 VantomBoss，花费 0，剩余 5
-[07:51:36.118] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 9/30；玩家掉血 0，击倒 []，有奖励 []
-[07:51:47.529] INFO 塔主账本：进入第 2 幕，上限 45
-[07:51:47.530] INFO 召唤阶段：Monster 房，幕 Hive，召唤点 9，标准开销 6，扣住移动
-[07:51:53.233] INFO 召唤阶段：确认 LouseProgenitor+Chomper，花费 9，剩余 0
-[07:52:11.337] INFO 召唤阶段：战斗收入 +6（基础 5，节约 0，战果 1），召唤点 6/45；玩家掉血 14，击倒 []，有奖励 []
-[07:52:22.362] INFO 召唤阶段：Monster 房，幕 Hive，召唤点 6，标准开销 6，扣住移动
-[07:52:29.904] INFO 召唤阶段：确认 Ovicopter+Exoskeleton，花费 6，剩余 0
+[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 9 Owner: 100002 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.RelicReward,MegaCrit.Sts2.Core.Rewards.CardReward
 ```
 
-所有TowerMaster ERROR/WARN：
+**单精英替换后生成遗物奖励通过；1精英＋小怪奖励未覆盖。** 用户未注意遗物和金币，奖励组随后为 Skipped；日志未提供该组金币具体数量，不能核实精英金币档位，也不能写成已领取。上一组普通战实际领取19金币不属于精英奖励。
+
+## 召唤点流水
+
+起始10点。各行“开局余额−花费=确认后余额”；已结算各行“确认后余额＋收入=结束余额”均成立。
+
+|场次|阵容|开局余额|花费|确认后余额|收入|结束余额|
+|---|---|---:|---:|---:|---|---:|
+|1|TwigSlimeM+TwigSlimeS|10|3|7|4|11|
+|2|ShrinkerBeetle|11|2|9|4|13|
+|3|Nibbit|13|2|11|4|15|
+|4|LivingShield|15|7|8|4|12|
+|5|BruteRubyRaider+CalcifiedCultist+Inklet|12|8|4|4|8|
+|6|SlitheringStrangler+CubexConstruct|8|6|2|4|6|
+|7|BygoneEffigy|6|6|0|5|5|
+|8|TheKinBoss|5|0|5|未结算|5|
+
+Boss 免费本体花费0，退出前未见Boss胜利收入。注意：游戏日志存在 `Executing DevConsole command (player 100002): win`，多场用控制台结束。不能据此验证完整战斗难度、怪物全部行动及自然战果收入。召唤点“算术正确”和“平衡足够”是两个结论。
+
+## 异常和资源警告
+
+- 两端 TowerMaster 日志 **ERROR=0，WARN=0**，探针无 WARN。
+- 两端游戏日志 StateDivergence 均为0；未见运行中战斗初始化异常或Boss站位异常。Boss另加未覆盖，不能据此验证其站位。
+- 游戏日志存在大量 `Asset not cached`，尤其塔主生成面板预览时加载各幕战斗模型。用户未感到明显卡顿。没有最小mod对照，不能把所有资源警告或退出泄漏都归因于TowerMaster。
+
+资源警告摘录：
 
 ```text
---- 塔主 ---
-[07:46:12.016] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 NibbitsWeak
-[07:49:48.804] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
-[07:50:53.252] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
-[07:54:53.360] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 ExoskeletonsWeak
---- 爬塔玩家 ---
-[07:46:12.004] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 NibbitsWeak
-[07:49:48.826] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
-[07:50:53.272] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
-[07:54:53.379] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 ExoskeletonsWeak
+[WARN] Asset not cached: res://scenes/creature_visuals/bygone_effigy.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/living_shield.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/bygone_effigy.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/living_shield.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/bygone_effigy.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/living_shield.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/bygone_effigy.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/living_shield.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/ceremonial_beast.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/kin_priest.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/bygone_effigy.tscn
+[WARN] Asset not cached: res://scenes/creature_visuals/living_shield.tscn
 ```
 
-塔主游戏日志StateDivergence文本命中：0。
+### 塔主游戏日志全部 ERROR 原文
 
-爬塔玩家游戏日志StateDivergence文本命中：0。
+以下均在退出阶段。
 
-本轮报告完成后可交Claude修复；不继续推进卡住房间，不提交原始日志或反编译方法体。
+```text
+ERROR: 1 RID allocations of type 'N26RendererEnvironmentStorage11EnvironmentE' were leaked at exit.
+ERROR: 5 shaders of type CanvasShaderRD were never freed
+ERROR: 27 RID allocations of type 'N10RendererRD16ParticlesStorage9ParticlesE' were leaked at exit.
+ERROR: 1 shaders of type ParticlesShaderRD were never freed
+ERROR: 27 RID allocations of type 'N10RendererRD11MeshStorage4MeshE' were leaked at exit.
+ERROR: 79 RID allocations of type 'N10RendererRD15MaterialStorage8MaterialE' were leaked at exit.
+ERROR: 6 RID allocations of type 'N10RendererRD15MaterialStorage6ShaderE' were leaked at exit.
+ERROR: 185 RID allocations of type 'N10RendererRD14TextureStorage7TextureE' were leaked at exit.
+ERROR: 342 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 10 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
+ERROR: 8 RID allocations of type 'PN18TextServerAdvanced27FontAdvancedLinkedVariationE' were leaked at exit.
+ERROR: 231 resources still in use at exit (run with --verbose for details).
+```
+
+### 爬塔玩家游戏日志全部 ERROR 原文
+
+以下均在退出阶段。
+
+```text
+ERROR: 1 RID allocations of type 'N26RendererEnvironmentStorage11EnvironmentE' were leaked at exit.
+ERROR: 5 shaders of type CanvasShaderRD were never freed
+ERROR: 15 RID allocations of type 'N10RendererRD16ParticlesStorage9ParticlesE' were leaked at exit.
+ERROR: 1 shaders of type ParticlesShaderRD were never freed
+ERROR: 15 RID allocations of type 'N10RendererRD11MeshStorage4MeshE' were leaked at exit.
+ERROR: 25 RID allocations of type 'N10RendererRD15MaterialStorage8MaterialE' were leaked at exit.
+ERROR: 6 RID allocations of type 'N10RendererRD15MaterialStorage6ShaderE' were leaked at exit.
+ERROR: 172 RID allocations of type 'N10RendererRD14TextureStorage7TextureE' were leaked at exit.
+ERROR: 239 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 8 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
+ERROR: 3 RID allocations of type 'PN18TextServerAdvanced27FontAdvancedLinkedVariationE' were leaked at exit.
+ERROR: 211 resources still in use at exit (run with --verbose for details).
+```
+
+## 回归与未覆盖
+
+- 前3场普通战保护范围有实际召唤；第四场跨幕LivingShield生成并降血。
+- 未覆盖：精英＋小怪、Boss追加怪、墨影幻灵禁止追加、本轮按原版出场、读档/重连恢复、普通/精英面板截图。
+- 本轮宝箱自动开箱以日志是否出现为准，不延用以前通过结果。
+- 没有提交原始日志全文或反编译源码。原始日志仅在本机工作目录备份。
+
+本轮宝箱记录：
+
+```text
+[08:31:58.806] INFO 测试3 宝箱：塔主跳过遗物
+[08:32:00.270] INFO 测试3 宝箱：塔主不拿开箱金币，已跳过
+[08:32:00.277] INFO 测试3 宝箱：塔主自动开箱（保证各端奖励编号一致）
+[08:32:42.849] INFO 测试3 宝箱：塔主跳过遗物
+[08:32:44.311] INFO 测试3 宝箱：塔主不拿开箱金币，已跳过
+[08:32:44.314] INFO 测试3 宝箱：塔主自动开箱（保证各端奖励编号一致）
+```
