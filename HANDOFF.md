@@ -1,3 +1,9 @@
+## 测试助手 MCP 需求交接（2026-10-06）
+
+用户希望用轻量 MCP 自动跑本机双实例测试，允许控制台 win，不需要 AI 逐关思考打法。详细需求、社区参考、工具接口、批量用例、速度验收和开发优先级见 [docs/testing-mcp-handoff.md](docs/testing-mcp-handoff.md)。这次仅整理资料，未改 mod 代码或实现 MCP。
+
+0.0.16 实测结果已提交 3b13147，见 [docs/summon-phase-result.md](docs/summon-phase-result.md)：开局12/收入5、账本和两端生成通过；塔主宝箱动画有运行异常；Boss追加因同族小队本体数量占满上限未完成。用户已结束手工测试，未覆盖项在报告中列出。先调查这些问题，再实现最小测试接口补足覆盖。
+
 ## 0.0.15 实测反馈 → 0.0.16（2026-10-06，待实测）
 
 0.0.15 实测（`docs/summon-phase-result.md`）：两端清单、生成、降血完全一致，StateDivergence 0；精英载体奖励有遗物。问题：
