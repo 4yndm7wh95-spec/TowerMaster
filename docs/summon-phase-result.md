@@ -1,100 +1,124 @@
-# 召唤阶段0.0.11实测：StateDivergence与重连黑屏
+# 召唤阶段0.0.12测试结果：槽位兼容性与重连恢复问题
 
 ## 结论
 
-**本轮不通过，联机被不同步中断，爬塔玩家重连后一直黑屏。** 用户报告玩家B出现多人数据不同步；日志确定爬塔玩家=100002、塔主/房主=100001。只做测试和只读分析，未修改代码。交由Claude修复后再继续剩余验收。
+**不通过，当前战斗无法开始，停止本轮验收并交Claude修复。** 本轮发现：Exoskeleton混搭缺少槽位导致首回合初始化抛异常；Boss召唤物需要场景槽位但EncounterSlots为空；用户报告重连后怪物恢复为原版阵容。只读调查，没有修改代码。
 
-版本0.0.11，游戏v0.111.0，测试代码fa95443。68个测试全部通过（Core39+mod29），真实游戏编译安装成功、0警告0错误，manifest0.0.11。新启动日志正常、召唤已启用。此次实际上继续了之前的存档：seed仍15584742761026350208，启动从第二幕已有房间重建，并非新开第一幕；这不影响下面不同步的实际证据。
+测试代码8b9ed7e，游戏v0.111.0，manifest0.0.12。69个测试全过（Core39、mod30）；真实游戏编译安装成功，0警告0错误。塔主=NetId100001，爬塔玩家=100002，报告按身份称呼。
 
-## 不同步发生在哪里
+## 重连对照
 
-爬塔玩家game-B.log:1394起：
+- 先在两个测试账号设置中停用全部mod，只启用DirectConnectIP，启动日志确认TowerMaster及其他mod跳过。
+- 用户进入房间后完全关闭爬塔玩家进程；保存关闭前日志，重开100002，用户确认可以正常进入。**仅IP直连的这一次主动退出重连通过，无黑屏。** 不能因此排除其他状态下IP插件的重连缺陷。
+- 对照结束两端退出，已恢复原mod设置（塔主及之前启用的外观/其他mod），启动0.0.12。用户随后反馈：重连会让怪物变回原版安排。恢复时还有其他mod，因此不是严格“IP+塔主二者”最小化对照；需保留这个限制。
+- 本次塔主模式没有明确再反馈持续黑屏；发现的是阵容恢复错误，不能把它写成黑屏复现。
+- 原始对照/故障日志在本机工作目录分阶段备份，不提交全文。
 
-```text
-[ERROR] State divergence message received for player 100001 checksum ID 7! (We are Client 100002)
-Context: Exiting event room EVENT.FIELD_OF_MAN_SIZED_HOLES. Local: 1282962384. Remote: 1816849326.
-```
+## 阻塞1：Exoskeleton槽位为空，战斗初始化失败
 
-随后明确断线原因StateDivergence。触发校验的是离开事件FIELD_OF_MAN_SIZED_HOLES，不是此次召唤清单发送时。比较该报错中LOCAL STATE DUMP与REMOTE STATE DUMP：**唯一打印出的差异是奖励编号**。
+![爬塔玩家无手牌、0能量、没有结束回合按钮](screenshots/summon-phase-0.0.12-stuck-start.png)
 
-| 项目 | 爬塔玩家本地状态 | 房主远端状态 |
-| --- | --- | --- |
-| Choice IDs | 1,7 | 1,7 |
-| Reward IDs | **4,5** | **3,4** |
-| 塔主金币 | 325 | 325 |
-| 爬塔玩家金币 | 187 | 187 |
-| 其余转储字段 | 玩家遗物、药水、随机流/计数等逐行一致 | 同左 |
+用户：进入这个房间后没牌，房间开始不了。截图是第21层，Ovicopter126/126与Exoskeleton25/25；爬塔玩家71/90，能量0/3，手牌为空，没有结束回合按钮。对应清单#7，Hive，SourceFloor20，种子18184632449158284757。
 
-这是状态转储可见差异，不意味着没有未转储的其他内部状态；不能将不同步泛归于网速，也不能说金币已经两端不一致。
-
-## 首次奖励编号分叉：前一个宝箱
-
-两端奖励集合序列起初一致（两名玩家先后创建Id0、Id1、Id2）。CRYSTAL_SPHERE事件的爬塔玩家奖励集合Id3也一致。之后第二幕(3,9)的宝箱：
-
-- 塔主日志07:25:33.410只有“塔主跳过遗物”，随后07:25:36.843跟投前进；这次没有“塔主不拿开箱金币”行，也没有创建宝箱空奖励组。
-- 爬塔玩家游戏日志1209/1211行在塔主遗物跳过动作之后，额外创建Owner100001的Id3空奖励组、Owner100002的Id4空奖励组。
-- 房主日志没有这两组；因此各玩家nextId在爬塔玩家端多1。下一事件离开校验读出4,5 vs3,4。
-
-原文（爬塔玩家端）：
+两端清单和生成均是Ovicopter+Exoskeleton，生成记录明确两者slot都是null。爬塔玩家端game-B.log:6469、房主端game-A.log:6049出现同样的首回合异常；不是只有客户端显示未刷新。
 
 ```text
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 3 Owner: 100001 Rewards: 
-[DEBUG] [RewardsSetSynchronizer] Reward set Id: 3 Owner: 100001 Rewards:  completed with state: Completed
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 4 Owner: 100002 Rewards: 
-[DEBUG] [RewardsSetSynchronizer] Reward set Id: 4 Owner: 100002 Rewards:  completed with state: Completed
+[ERROR] System.InvalidOperationException: No valid next state found.
+   at MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.ConditionalBranchState.GetNextState(Creature _, Rng __)
+   at MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.MonsterMoveStateMachine.FindNextMoveState(IEnumerable`1 targets, Creature owner, Rng rng, Boolean logMove)
+   at MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.MonsterMoveStateMachine.RollMove(IEnumerable`1 targets, Creature owner, Rng rng)
+   at MegaCrit.Sts2.Core.Models.MonsterModel.RollMove(IEnumerable`1 targets)
+   at MegaCrit.Sts2.Core.Combat.CombatManager.AfterCreatureAdded(Creature creature, CombatState state)
+   at MegaCrit.Sts2.Core.Combat.CombatManager.StartCombatInternal(CombatTurnState turnState)
 ```
 
-## 源码依据与候选根因（未修复）
+**原因已定位**（以下反编译路径相对decompiled/sts2，仅转述）：
 
-以下反编译路径相对decompiled/sts2，只用自己的话转述：
+- MegaCrit.Sts2.Core.Models.Monsters/Exoskeleton.cs:52–74，GenerateMoveStateMachine的初始条件分支只接受Creature.SlotName为first、second、third、fourth；没有默认分支。
+- MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine/ConditionalBranchState.cs:44–53，条件全部不满足时抛No valid next state found。
+- mod/TowerMaster/Test1bMixedEncounter.cs:236–245，MixMonstersCore生成每只怪的(MonsterModel,string)二元组时统一把slot置null。
+- 当前双端生成日志证实Exoskeleton槽位null，因此初始行动无法选择；错误发生在StartCombatInternal/AfterCreatureAdded，尚未发能量抽牌。
 
-1. MegaCrit.Sts2.Core.Nodes.Rooms/NTreasureRoom.cs:219–237：本地OpenChest流程依次DoNormalRewards、DoExtraRewardsIfNeeded、初始化遗物与焦点。未在该端打开宝箱UI，就可能不执行其额外奖励建立步骤。
-2. MegaCrit.Sts2.Core.Rooms/TreasureRoom.cs:66起：DoExtraRewardsIfNeeded遍历所有玩家、GenerateForRoomEnd并Offer奖励组，即使内容为空也有建立奖励集合的流程。
-3. MegaCrit.Sts2.Core.Multiplayer.Game/RewardsSetSynchronizer.cs:108–109：BeginRewardsSet赋值当前玩家nextId后递增；空奖励组也会消费编号。
-4. mod/TowerMaster/Test3MasterAutoPilot.cs:49、185起：奖励自动跳过发生在BeginRewardsSet之后，不能让未创建组的另一端补建；248附近宝箱自动SkipRelicLocally也不等于执行整个OpenChest/额外奖励流程。
-5. 新BlockTreasureGold只拦DoLocalTreasureRoomRewards（mod/TowerMaster/Test3MasterAutoPilot.cs:225起），它不会主动同步或建立ExtraRewards。
+开发建议：跨遭遇候选需记录怪物的槽位/遭遇上下文要求，或针对具槽位依赖的怪物做兼容处理；不能假设所有怪物都支持null槽位。临时过滤此类怪物与正式适配的取舍由Claude决定，未实施。
 
-**高可信候选原因：塔主自动跳遗物后无需打开本地宝箱，但爬塔玩家打开宝箱时会为所有玩家建立空奖励集合，造成两端奖励序号不同。** 本次日志直接证明集合创建分叉；尚未增加UI探针记录“用户是否点开第二个宝箱”，因此具体未调用OpenChest的触发动作仍需Claude确认，不能说新增金币拦截本身已被证明是唯一根因。
+## 阻塞2：Boss召唤物illusion缺少场景槽位
 
-建议把宝箱奖励集合创建放到每端都一致执行的同步流程，明确一次性/重复打开/空奖励/存档恢复；仅忽略校验、将异常吞掉或只同步余额不能修复奖励序号。保持塔主不拿金币/遗物，同时确保爬塔玩家正常领取继续。未实施任何修复。
-
-## 重连黑屏
-
-用户：爬塔玩家断线后连接回来一直黑屏。日志确认：
-
-- 房主收到100002重新连接与ClientRejoinRequestMessage，之后收到sync player message。
-- 爬塔玩家已连接房主、收到ClientRejoinResponseMessage并登记运行消息，位置恢复到act1 coord(3,11)，完成角色和Hive资源预加载。
-- 此后没有新的进房完成/战斗运行记录，用户退出两端。不是握手一直失败的同一情况。
-
-**具体黑屏根因未确诊。** 需要检查恢复入房时的CombatStateSynchronizer屏障、期待玩家/RNG数据、房主重连响应和淡入完成。RunManager.cs:692–754、887–921、1025–1046都有await WaitForSync/进入房间/淡入链；CombatStateSynchronizer.cs:128–139、178起等待所有lobby玩家数据及rngSet。现有日志没有足够信号确定卡在哪个await，不把它写成已证实的同一根因。
-
-## 本轮已确认与未覆盖
-
-- 账本日志实际恢复：读档召唤点18，已打5场。该值与0.0.10退出前账本18一致，真实新进程加载已验证。
-- 一次第二幕普通召唤：ThievingHopper+Ovicopter，花费9，18→9；收入5（基础5、节约0、战果0），9→14，上限45。双端收到清单/替换/生成一致，开局塔主0血死亡、爬塔人数1。
-- 07:25:17.977实际记录“测试3 宝箱：塔主不拿开箱金币，已跳过”；不同步转储两端塔主金币均325。没有开箱前金币快照，不能只凭当前325证明金币数前后不变。
-- 普通/精英/Boss面板截图、外观意见、按原版出场、超时、不同精英、Boss标准0等本轮没有完成验收；本次被阻塞中止，不迁移上一轮通过结论。
-- 两端TowerMaster日志未见ERROR/WARN。StateDivergence发生在游戏日志，不能据mod日志无ERROR宣布通过。
-
-## 错误原文摘录
-
-只摘相关报错与连接状态，不提交原始日志全文或状态转储全文。爬塔玩家启动早期还有ID Collision，之后已正常连接，与运行期StateDivergence区别记录：
+早于当前房间，两端还记录战斗循环死亡：
 
 ```text
-[ERROR] [DirectClient] Handshake rejected: ID Collision (100002)
-[INFO] [RunLobby] Disconnected. Reason: StateDivergence
+[ERROR] Combat #5 turn loop died while its combat is in progress; the combat is stuck until the room is restarted: System.InvalidOperationException: Creature Creature 利齿之眼 has slot name 'illusion' but NCombatRoom.EncounterSlots is null.
 ```
 
-重连日志关键行：
+后续重复异常为 `Creature Creature 利齿之眼 has slot name 'illusion' but NCombatRoom.EncounterSlots is null.`。对应VantomBoss附近日志，用户仍继续到后面房间，但不能把这个Boss判正常通过。
+
+源码定位：MegaCrit.Sts2.Core.Nodes.Rooms/NCombatRoom.cs:344–361，槽位容器依赖房间视觉Encounter.CreateScene结果；没有场景槽位容器却加入有名slot生物会抛错。此处证明运行时视觉上下文不满足召唤物要求；为何选中Boss的视觉/Encounter没有建立槽位还需Claude继续检查实际替换与载体房间的一致性，不能只删slot名规避而忽略布局/机制。
+
+## 重连后恢复原版怪物
+
+用户明确观察重连后房间怪物变回原版。塔主日志07:49:48与07:50:53有“没有收到召唤清单（读档、重连？），按原版遭遇VineShamblerNormal”的WARN。这些WARN支持清单恢复路径缺失的方向，但没有完整UI前后截图/独立断线时刻探针，不能逐一断定两条WARN都对应同一次恢复。
+
+mod/TowerMaster/Test1bMixedEncounter.cs:207起，BeforeGenerate依靠Encounter对象缓存或本地持久化清单重新绑定，再Validate；这只覆盖生成钩子，重连房间重建、规范遭遇、序列/楼层缓存匹配和已有MonstersWithSlots恢复需要一并检查。**最终根因尚未确诊，不自动修。**
+
+## 宝箱及覆盖
+
+- 新的一局有两个“塔主自动开箱”记录（07:46:36、07:47:23），可以确认自动开箱补丁实际触发。
+- 应继续对照RewardsSet Id/Owner全序列和每端恢复边界；本次多次重连/战斗异常使全程验收中止，未宣称全部编号序列一致。
+- 用户尚未提供本轮普通、精英、Boss召唤面板截图和外观意见；此次保存的是卡住截图，不能代替三张面板截图。
+- “按原版出场”两次日志有扣费3和7；超时尚无证据。流水原文见下方，余额为0时的原版放行也需遵循实际扣到0规则。
+- 本轮现有日志StateDivergence有无以本次扫描计数为准，列在下方；战斗异常本身已足够判不通过。
+
+## 召唤点流水及全部TowerMaster ERROR/WARN摘录
+
+以下保留本次塔主阶段开始/扣费/收入/账本行，便于Claude复查，未将原始日志全文提交。初始化10点；异常终场#7扣6后剩0，没有胜利收入，不能补记胜利。完整逐场验收因故障中止。
 
 ```text
-[INFO] [DirectClient] Connected to host 100001
-[DEBUG] [RunLocationTargetedMessageBuffer] Run location changed to act 1 coord (3, 11) room 0 (previously at: act 1 coord (3, 10) room 0), checking if we have enqueued messages
-[DEBUG] [RunLocationTargetedMessageBuffer] Run location changed to act 1 coord (3, 11) room 0 (previously at: act 1 coord (3, 11) room 0), checking if we have enqueued messages
-[INFO] [DirectClient] Connected to host 100001
-[INFO] [JoinFlow] Sending ClientRequestRejoinMessage and waiting for rejoin response message
-[INFO] [NetMessageBus] Received message MegaCrit.Sts2.Core.Multiplayer.Messages.Lobby.ClientRejoinResponseMessage, sending to 1 handlers
-[DEBUG] [RunLocationTargetedMessageBuffer] Run location changed to act 1 coord (3, 11) room  (previously at: act 0 coord (null) room ), checking if we have enqueued messages
+[07:45:11.461] INFO 塔主账本：新的一局，召唤点 10
+[07:45:11.473] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 10，标准开销 3（开局保护），扣住移动
+[07:45:23.069] INFO 召唤阶段：确认 TwigSlimeM+TwigSlimeS，花费 3，剩余 7
+[07:45:38.266] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 11/30；玩家掉血 5，击倒 []，有奖励 []
+[07:45:47.959] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 11，标准开销 3（开局保护），扣住移动
+[07:46:11.393] INFO 召唤阶段：放弃，按原版出场，花费 3，剩余 8
+[07:46:28.561] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 12/30；玩家掉血 0，击倒 []，有奖励 []
+[07:46:43.737] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 12，标准开销 3（开局保护），扣住移动
+[07:46:57.610] INFO 召唤阶段：确认 TwigSlimeM+TwigSlimeS，花费 3，剩余 9
+[07:47:09.941] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 13/30；玩家掉血 5，击倒 []，有奖励 []
+[07:47:32.047] INFO 召唤阶段：Elite 房，幕 Overgrowth，召唤点 13，标准开销 9，扣住移动
+[07:47:43.857] INFO 召唤阶段：确认 PhrogParasiteElite，花费 11，剩余 2
+[07:48:50.348] INFO 召唤阶段：战斗收入 +8（基础 4，节约 0，战果 4），召唤点 10/30；玩家掉血 48，击倒 []，有奖励 []
+[07:49:08.239] INFO 召唤阶段：Monster 房，幕 Overgrowth，召唤点 10，标准开销 5，扣住移动
+[07:49:13.183] INFO 召唤阶段：确认 Fogmog+Mawler，花费 7，剩余 3
+[07:50:55.090] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 7/30；玩家掉血 0，击倒 []，有奖励 []
+[07:50:59.338] INFO 召唤阶段：Elite 房，幕 Overgrowth，召唤点 7，标准开销 9，扣住移动
+[07:51:05.698] INFO 召唤阶段：放弃，按原版出场，花费 7，剩余 0
+[07:51:13.667] INFO 召唤阶段：战斗收入 +5（基础 4，节约 1，战果 0），召唤点 5/30；玩家掉血 0，击倒 []，有奖励 []
+[07:51:22.929] INFO 召唤阶段：Boss 房，幕 Overgrowth，召唤点 5，标准开销 0，扣住移动
+[07:51:27.523] INFO 召唤阶段：确认 VantomBoss，花费 0，剩余 5
+[07:51:36.118] INFO 召唤阶段：战斗收入 +4（基础 4，节约 0，战果 0），召唤点 9/30；玩家掉血 0，击倒 []，有奖励 []
+[07:51:47.529] INFO 塔主账本：进入第 2 幕，上限 45
+[07:51:47.530] INFO 召唤阶段：Monster 房，幕 Hive，召唤点 9，标准开销 6，扣住移动
+[07:51:53.233] INFO 召唤阶段：确认 LouseProgenitor+Chomper，花费 9，剩余 0
+[07:52:11.337] INFO 召唤阶段：战斗收入 +6（基础 5，节约 0，战果 1），召唤点 6/45；玩家掉血 14，击倒 []，有奖励 []
+[07:52:22.362] INFO 召唤阶段：Monster 房，幕 Hive，召唤点 6，标准开销 6，扣住移动
+[07:52:29.904] INFO 召唤阶段：确认 Ovicopter+Exoskeleton，花费 6，剩余 0
 ```
 
-游戏退出另有Godot RID/shader/resource泄漏ERROR，与发生不同步的奖励编号差异不是同一证据；未改游戏资源。原始日志已在本机工作目录备份，尚未提交。
+所有TowerMaster ERROR/WARN：
+
+```text
+--- 塔主 ---
+[07:46:12.016] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 NibbitsWeak
+[07:49:48.804] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
+[07:50:53.252] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
+[07:54:53.360] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 ExoskeletonsWeak
+--- 爬塔玩家 ---
+[07:46:12.004] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 NibbitsWeak
+[07:49:48.826] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
+[07:50:53.272] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 VineShamblerNormal
+[07:54:53.379] WARN 测试1b：进普通房前没有收到召唤清单（读档、重连？），这一场按原版遭遇 ExoskeletonsWeak
+```
+
+塔主游戏日志StateDivergence文本命中：0。
+
+爬塔玩家游戏日志StateDivergence文本命中：0。
+
+本轮报告完成后可交Claude修复；不继续推进卡住房间，不提交原始日志或反编译方法体。
