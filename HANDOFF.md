@@ -1,4 +1,9 @@
-## 第 2 步：召唤阶段第一版 + 宝箱修复（2026-10-06，0.0.9，待实测）
+## 第 2 步：召唤阶段第一版 + 宝箱修复（2026-10-06，0.0.10，待实测）
+
+**0.0.9 加载失败**（`docs/summon-phase-result.md`）：游戏 `ModManager.TryLoadMod` 在调用入口前就 `GetTypes()`。新代码有规则库的枚举（值类型）字段，枚举类型时就要加载 TowerMaster.Core.dll，而入口里注册的依赖解析还没执行。
+- 0.0.10：规则库源码直接编进 TowerMaster.dll（csproj 的 `Compile Include="..\TowerMaster.Core\*.cs"`），不再单独出 Core DLL；测试守住「主程序集不引用 TowerMaster.Core」。
+- **以后不要再给 mod 加单独的依赖 DLL**，除非在入口之前就能解析到。
+- GameReflection 取游戏程序集时优先取同一加载上下文里的 sts2。
 
 测试 3 第二轮（`docs/test3-round2-result.md`）：
 - 禁止塔主选路、领奖励、用商店、拿宝箱遗物都通过。

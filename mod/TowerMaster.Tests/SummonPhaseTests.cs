@@ -55,6 +55,7 @@ public class SummonPhaseTests
         SummonPhase.Configure(new TowerMasterConfig(), prices);
         SummonPhase.Apply(new Harmony("towermaster.summon"), new TowerMasterConfig(), prices); // 已挂过，只打开开关
         SummonPhase.UiFactory = s => new FakeUi(s);
+        Test1FixedEncounter.SetEnabled(false); // 同一进程里测试 1a 的补丁也挂着，关掉免得它再换一次遭遇
         SummonPhase.Toast = Toasts.Add;
         Shown.Clear();
         Toasts.Clear();

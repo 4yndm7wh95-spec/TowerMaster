@@ -49,7 +49,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TowerMaster.Core\TowerMaster.Core.csproj" />
+    <!--
+      规则库的源码直接编译进 TowerMaster.dll，不单独出 TowerMaster.Core.dll。
+      游戏加载 mod 时先枚举 TowerMaster.dll 的全部类型、再调用入口；类型里有规则库的枚举（值类型）字段时，
+      枚举阶段就要加载规则库，而这时入口还没机会注册去 mod 目录找依赖，单独的 DLL 会加载失败（0.0.9 实测）。
+    -->
+    <Compile Include="..\TowerMaster.Core\*.cs" Exclude="..\TowerMaster.Core\obj\**;..\TowerMaster.Core\bin\**" LinkBase="Core" />
     <None Include="..\..\data\price_book.json" Link="price_book.data" CopyToOutputDirectory="PreserveNewest" />
     <None Include="TowerMaster.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="towermaster.test.json" CopyToOutputDirectory="PreserveNewest" />
@@ -58,9 +63,11 @@
   <!-- dotnet build -p:Install=true 时复制到游戏的 mod 目录 -->
   <Target Name="InstallMod" AfterTargets="Build" Condition="'$(Install)' == 'true' And '$(HasGame)' == 'true'">
     <ItemGroup>
-      <ModFiles Include="$(OutDir)TowerMaster.dll;$(OutDir)TowerMaster.Core.dll;$(OutDir)price_book.data;$(OutDir)TowerMaster.json;$(OutDir)towermaster.test.json" />
+      <ModFiles Include="$(OutDir)TowerMaster.dll;$(OutDir)price_book.data;$(OutDir)TowerMaster.json;$(OutDir)towermaster.test.json" />
       <ModFiles Include="$(OutDir)0Harmony.dll" Condition="'$(HasGameHarmony)' != 'true'" />
     </ItemGroup>
+    <!-- 0.0.9 及以前单独安装的规则库，现在已编进主 DLL -->
+    <Delete Files="$(ModsDir)\TowerMaster\TowerMaster.Core.dll" />
     <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(ModsDir)\TowerMaster" />
     <!-- 游戏递归扫描所有 JSON，清理旧价格表以免被误认成 manifest。 -->
     <Delete Files="$(ModsDir)\TowerMaster\price_book.json" />

@@ -17,7 +17,7 @@ public static class ModEntry
 
     public static void Init()
     {
-        // 先挂依赖解析，再碰 TowerMaster.Core 里的类型（Start 不内联，保证这之后才加载 Core）。
+        // 规则库已编进本程序集；依赖解析留着兜底其他放在 mod 目录里的程序集（如 nuget 版 0Harmony）。
         AppDomain.CurrentDomain.AssemblyResolve += ResolveFromModDir;
         Log.Init();
         try { Start(); }

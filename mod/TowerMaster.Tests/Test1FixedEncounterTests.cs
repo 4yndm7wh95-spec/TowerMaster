@@ -15,7 +15,7 @@ public class Test1FixedEncounterTests
     {
         lock (InitLock)
         {
-            if (_initialized) return;
+            if (_initialized) { Test1FixedEncounter.SetEnabled(true); return; }
             _ = typeof(CombatRoom).Assembly; // 确保假 sts2 已加载
             Log.Init();
             GameProbe.Run();

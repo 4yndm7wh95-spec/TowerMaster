@@ -14,8 +14,15 @@ internal static class GameReflection
     private static Assembly? _game;
     private static Type[]? _types;
 
-    public static Assembly Game => _game ??= AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "sts2")
-                                            ?? throw new InvalidOperationException("没找到游戏程序集 sts2");
+    /// <summary>
+    /// 游戏程序集：优先取和本 mod 同一个加载上下文里的 sts2（游戏把 mod 加载进自己的上下文），
+    /// 进程里有别的 sts2 副本时（例如其他工具另行加载）不会挂错地方。
+    /// </summary>
+    public static Assembly Game => _game ??=
+        System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(typeof(GameReflection).Assembly)?.Assemblies
+            .FirstOrDefault(a => a.GetName().Name == "sts2")
+        ?? AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "sts2")
+        ?? throw new InvalidOperationException("没找到游戏程序集 sts2");
 
     public static Type[] Types
     {

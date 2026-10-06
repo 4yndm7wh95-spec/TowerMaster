@@ -1,4 +1,9 @@
-# 召唤阶段第一版 + 宝箱修复（mod 0.0.9）
+# 召唤阶段第一版 + 宝箱修复（mod 0.0.10）
+
+> 0.0.9 启动加载失败（`docs/summon-phase-result.md`）：游戏在调用 mod 入口前就枚举 TowerMaster.dll 的全部类型，
+> 新代码里有规则库的枚举字段，枚举阶段要加载单独的 TowerMaster.Core.dll，而这时还没人告诉它去 mod 目录找。
+> 0.0.10 把规则库源码直接编进 TowerMaster.dll，**不再有 TowerMaster.Core.dll**（安装时会删掉旧的）。
+> 测试流程和下面一样。
 
 开发顺序第 2 步的前半：塔主用召唤点选怪。代码：
 - `mod/TowerMaster/SummonPhase.cs`：流程；

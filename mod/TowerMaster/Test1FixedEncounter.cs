@@ -13,6 +13,9 @@ namespace TowerMaster;
 internal static class Test1FixedEncounter
 {
     private static TestSettings _settings = new();
+
+    /// <summary>开关替换（补丁挂上后不能卸，测试里用它在同一进程中切换 1a、1b）。</summary>
+    internal static void SetEnabled(bool enabled) => _settings.Test1FixedEncounter = enabled;
     private static PriceBook? _prices;
     private static int _combats;
 

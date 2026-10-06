@@ -40,6 +40,7 @@ public class Test1bMixedEncounterTests
         Test1bMixedEncounter.Configure(Settings(), Prices());
         PlanStore.Clear();
         SummonPhase.Disable(); // 召唤阶段的测试会打开它；这里测的是固定清单
+        Test1FixedEncounter.SetEnabled(false); // 同一进程里测试 1a 的补丁也挂着，关掉免得它再换一次遭遇
     }
     private static SummonPlan Plan() => new(1, 1, 123, "Overgrowth", 0, ["Mawler", "Flyconid"]);
     private static EncounterModel Generate()
@@ -128,6 +129,8 @@ public class Test1bMixedEncounterTests
         Test1bMixedEncounter.Receive(payload, 100001); // 同一份清单收到两次：忽略，不报错
     }
 
+    private static string LogTail() => string.Join("\n", File.ReadAllLines(Path.Combine(Log.ModDir, "TowerMaster.log")).TakeLast(15));
+
     private static string[] Names(EncounterModel encounter) =>
         encounter.MonstersWithSlots.Select(m => m.Monster.GetType().Name).ToArray();
 
@@ -168,13 +171,16 @@ public class Test1bMixedEncounterTests
     {
         Init();
         Test1bMixedEncounter.Receive(JsonSerializer.Serialize(Plan()), 100001);
-        Assert.Equal(new[] { "Mawler", "Flyconid" }, Names(Generate()));
+        var first = Names(Generate());
+        Assert.True(first.SequenceEqual(new[] { "Mawler", "Flyconid" }), string.Join(",", first) + "\n" + LogTail());
 
         // 读档：游戏从存档恢复同一楼层的载体遭遇，没有经过选遭遇和清单动作。
         var state = RunManager.Instance.State;
         var reloaded = ModelDb.Encounter<CultistsNormal>().ToMutable();
         new CombatRoom(reloaded, state).StartCombat();
-        Assert.Equal(new[] { "Mawler", "Flyconid" }, Names(reloaded));
+        Assert.True(Names(reloaded).SequenceEqual(new[] { "Mawler", "Flyconid" }),
+            $"{string.Join(",", Names(reloaded))} floor={state.TotalFloor} file={PlanStore.FilePath} exists={File.Exists(PlanStore.FilePath)} " +
+            $"content={(File.Exists(PlanStore.FilePath) ? File.ReadAllText(PlanStore.FilePath) : "")}\n{LogTail()}");
 
         // 别的楼层的载体遭遇（没有清单）保持原样。
         state.TotalFloor++;
