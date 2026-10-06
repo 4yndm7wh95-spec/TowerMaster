@@ -1,0 +1,194 @@
+using System.Collections;
+using System.Reflection;
+using HarmonyLib;
+
+namespace TowerMaster;
+
+/// <summary>
+/// 测试 3：非战斗环节替塔主自动操作，爬塔玩家不用等塔主。
+/// 塔主 = 房主，所以全部在房主自己的客户端上做：用游戏原有的本地接口或动作队列提交「塔主自己的」选择，
+/// 走原版同步通道，不改别的玩家的票（依据见 docs/test2-round2-result.md「测试 3 只读调研」）。
+///
+/// | 环节 | 触发 | 塔主做什么 |
+/// | 选路 | 爬塔玩家的投票执行后 | 入队一张同目的地的塔主投票（VoteForMapCoordAction） |
+/// | 战斗奖励 | 奖励集合建立后 | SkipLocalRewardsSet（塔主不领奖励） |
+/// | 宝箱 | BeginRelicPicking 后 | SkipRelicLocally |
+/// | 共享事件 | 爬塔玩家对某页投票后 | ChooseLocalOption 投同一选项 |
+/// | 休息处 | BeginRestSite 后 | BeforeLocalRestSiteExited（跳过） |
+/// | 换幕 | 爬塔玩家准备后 | SetLocalPlayerReady |
+///
+/// 多名爬塔玩家时塔主跟随「最近一个投票的爬塔玩家」，会让这名玩家的票多一份权重；技术验证先这样，正式版再定。
+/// 每一步都只记日志不抛异常，失败时退回「需要塔主手动操作」。
+/// </summary>
+internal static class Test3MasterAutoPilot
+{
+    private static string? _lastMapVote;
+    private static string? _lastEventVote;
+    private static string? _lastActReady;
+
+    internal static void Apply(Harmony harmony)
+    {
+        _lastMapVote = _lastEventVote = _lastActReady = null;
+        Postfix(harmony, "PlayerVotedForMapCoord", "MapSelectionSynchronizer", nameof(AfterMapVote));
+        Postfix(harmony, "BeginRewardsSet", "RewardsSetSynchronizer", nameof(AfterBeginRewards));
+        Postfix(harmony, "BeginRelicPicking", "TreasureRoomRelicSynchronizer", nameof(AfterBeginRelicPicking));
+        Postfix(harmony, "PlayerVotedForSharedOptionIndex", "EventSynchronizer", nameof(AfterSharedEventVote));
+        Postfix(harmony, "BeginRestSite", "RestSiteSynchronizer", nameof(AfterBeginRestSite));
+        Postfix(harmony, "OnPlayerReady", "ActChangeSynchronizer", nameof(AfterActReady));
+    }
+
+    private static void Postfix(Harmony harmony, string method, string type, string callback)
+    {
+        var target = GameReflection.FindMethod(method, type);
+        if (target == null) { Log.Warn($"测试3：找不到 {type}.{method}，这一环节仍要塔主手动操作"); return; }
+        try
+        {
+            harmony.Patch(target, postfix: new HarmonyMethod(typeof(Test3MasterAutoPilot).GetMethod(callback, GameReflection.All)!));
+            Log.Info($"测试3：已挂到 {GameReflection.Describe(target)}");
+        }
+        catch (Exception e) { Log.Error($"测试3：挂 {type}.{method} 失败", e); }
+    }
+
+    // ---------------------------------------------------------------- 身份
+
+    /// <summary>本机就是塔主（房主）。</summary>
+    internal static bool LocalIsMaster
+    {
+        get
+        {
+            try { return GameReflection.Get(GameReflection.Get(Test1bMixedEncounter.Run, "NetService")!, "Type")?.ToString() == "Host"; }
+            catch { return false; }
+        }
+    }
+
+    private static bool IsMaster(object? player) =>
+        Test2MasterOffField.MasterId is { } master && Test2MasterOffField.NetIdOf(player) == master;
+
+    /// <summary>当前楼层，用来区分不同房间里同样编号的选项。</summary>
+    private static string Floor() =>
+        GameReflection.Dump(GameReflection.Get(GameReflection.Get(Test1bMixedEncounter.Run, "State")!, "TotalFloor"));
+
+    private static object? MasterPlayer()
+    {
+        var master = Test2MasterOffField.MasterId;
+        var players = GameReflection.Get(GameReflection.Get(Test1bMixedEncounter.Run, "State")!, "Players") as IEnumerable;
+        return players?.Cast<object>().FirstOrDefault(p => Test2MasterOffField.NetIdOf(p) == master);
+    }
+
+    /// <summary>在对象（一层）上找某个类型名的成员值。</summary>
+    private static object? FindMemberOfType(object owner, string typeName)
+    {
+        for (var t = owner.GetType(); t != null; t = t.BaseType)
+        {
+            foreach (var f in t.GetFields(GameReflection.All | BindingFlags.DeclaredOnly))
+                if (!f.IsStatic && f.FieldType.Name == typeName && f.GetValue(owner) is { } v) return v;
+            foreach (var p in t.GetProperties(GameReflection.All | BindingFlags.DeclaredOnly))
+                if (p.PropertyType.Name == typeName && p.GetIndexParameters().Length == 0 && p.GetMethod is { IsStatic: false }
+                    && p.GetValue(owner) is { } v) return v;
+        }
+        return null;
+    }
+
+    private static void CallLocal(object synchronizer, string method, params object?[] args)
+    {
+        RuntimeNetAction.Call(synchronizer, method, args);
+    }
+
+    // ---------------------------------------------------------------- 选路
+
+    private static void AfterMapVote(object __instance, object[] __args)
+    {
+        try
+        {
+            if (!LocalIsMaster) return;
+            var (player, source, destination) = (__args[0], __args[1], __args.Length > 2 ? __args[2] : null);
+            if (IsMaster(player)) return; // 塔主自己的票执行时不再跟投
+            var key = $"{GameReflection.Dump(source)}→{GameReflection.Dump(destination)}";
+            if (key == _lastMapVote) return;
+
+            var master = MasterPlayer() ?? throw new InvalidOperationException("找不到塔主的 Player");
+            var queue = FindMemberOfType(Test1bMixedEncounter.Run, "ActionQueueSynchronizer")
+                        ?? throw new InvalidOperationException("找不到 ActionQueueSynchronizer");
+            var actionType = RuntimeNetAction.Required("VoteForMapCoordAction");
+            var ctor = actionType.GetConstructors(GameReflection.All).First(c => c.GetParameters().Length == 3);
+            var action = ctor.Invoke([master, source, destination]);
+            _lastMapVote = key;
+            RuntimeNetAction.Call(queue, "RequestEnqueue", action);
+            Log.Info($"测试3 选路：跟随玩家 {Test2MasterOffField.NetIdOf(player)} 投票 {key}");
+        }
+        catch (Exception e) { Log.Error("测试3 选路：自动投票失败，需要塔主手动选路", e); }
+    }
+
+    // ---------------------------------------------------------------- 战斗奖励
+
+    private static void AfterBeginRewards(object __instance)
+    {
+        try
+        {
+            if (!LocalIsMaster) return;
+            CallLocal(__instance, "SkipLocalRewardsSet");
+            Log.Info("测试3 奖励：塔主跳过本次奖励");
+        }
+        catch (Exception e) { Log.Error("测试3 奖励：自动跳过失败，塔主可以手动跳过", e); }
+    }
+
+    // ---------------------------------------------------------------- 宝箱
+
+    private static void AfterBeginRelicPicking(object __instance)
+    {
+        try
+        {
+            if (!LocalIsMaster) return;
+            CallLocal(__instance, "SkipRelicLocally");
+            Log.Info("测试3 宝箱：塔主跳过遗物");
+        }
+        catch (Exception e) { Log.Error("测试3 宝箱：自动跳过失败，需要塔主手动跳过", e); }
+    }
+
+    // ---------------------------------------------------------------- 共享事件
+
+    private static void AfterSharedEventVote(object __instance, object[] __args)
+    {
+        try
+        {
+            if (!LocalIsMaster) return;
+            var (player, option, page) = (__args[0], Convert.ToInt32(__args[1]), Convert.ToInt32(__args[2]));
+            if (IsMaster(player)) return;
+            var key = $"{Floor()}:{page}:{option}";
+            if (key == _lastEventVote) return;
+            _lastEventVote = key;
+            CallLocal(__instance, "ChooseLocalOption", option);
+            Log.Info($"测试3 事件：跟随玩家 {Test2MasterOffField.NetIdOf(player)} 投第 {page} 页选项 {option}");
+        }
+        catch (Exception e) { Log.Error("测试3 事件：自动投票失败，需要塔主手动选择", e); }
+    }
+
+    // ---------------------------------------------------------------- 休息处
+
+    private static void AfterBeginRestSite(object __instance)
+    {
+        try
+        {
+            if (!LocalIsMaster) return;
+            CallLocal(__instance, "BeforeLocalRestSiteExited");
+            Log.Info("测试3 休息处：塔主跳过");
+        }
+        catch (Exception e) { Log.Error("测试3 休息处：自动跳过失败，需要塔主手动选择", e); }
+    }
+
+    // ---------------------------------------------------------------- 换幕
+
+    private static void AfterActReady(object __instance, object[] __args)
+    {
+        try
+        {
+            if (!LocalIsMaster || IsMaster(__args[0])) return;
+            var key = GameReflection.Dump(__args[1]);
+            if (key == _lastActReady) return;
+            _lastActReady = key;
+            CallLocal(__instance, "SetLocalPlayerReady");
+            Log.Info($"测试3 换幕：跟随玩家 {Test2MasterOffField.NetIdOf(__args[0])} 准备，第 {__args[1]} 幕");
+        }
+        catch (Exception e) { Log.Error("测试3 换幕：自动准备失败，需要塔主手动继续", e); }
+    }
+}

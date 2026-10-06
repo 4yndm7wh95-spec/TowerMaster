@@ -1,3 +1,20 @@
+## 测试 3 第一版（2026-10-06，0.0.6，待实测）
+
+测试 2 第二轮实测通过（`docs/test2-round2-result.md`）：动态程序集登记后 ERROR 消失，人数改写 19 个，新增 5 项都带 ★，回归正常。Codex 的只读调研给出了各同步器的等待逻辑和挂点。
+
+据此实现测试 3（`mod/TowerMaster/Test3MasterAutoPilot.cs`）：塔主 = 房主，全部在房主自己的客户端上，用原有接口提交塔主自己的选择。
+- 选路：B 的投票执行后入队同目的地的塔主 `VoteForMapCoordAction`。
+- 奖励：`SkipLocalRewardsSet`。
+- 宝箱：`SkipRelicLocally`。
+- 共享事件：`ChooseLocalOption` 跟投。
+- 休息处：`BeforeLocalRestSiteExited`。
+- 换幕：`SetLocalPlayerReady`。
+- 每步只记日志不抛异常，失败时退回手动。
+- 已知限制：
+  - 多名爬塔玩家时，塔主跟随最近一个投票的人，会给这个人的票多一份权重。
+  - 非共享事件不自动选。
+- 假同步器上 4 个新测试通过（共 57 个）。测试步骤见 `docs/test3-plan.md`。
+
 ## 测试 2 实测结果与第二轮（2026-10-06，0.0.5）
 
 **第一轮实测（0.0.4，详见 `docs/test2-result.md`）通过**：塔主每场开局生命 0、死亡；爬塔人数 1；暗港怪物血量等于单人；B 死亡两边都判负；回合不等 A；怪物只打 B；无 StateDivergence。全游戏共 122 个方法读玩家人数，改写 14 个。

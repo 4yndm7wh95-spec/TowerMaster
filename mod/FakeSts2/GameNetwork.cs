@@ -85,6 +85,7 @@ namespace MegaCrit.Sts2.Core.Runs
         public static RunManager Instance { get; } = new();
         public RunState State { get; set; } = new();
         public FakeService NetService { get; set; } = new();
+        public MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer? ActionQueueSynchronizer { get; set; }
     }
 }
 namespace MegaCrit.Sts2.Core.Modding
@@ -104,5 +105,82 @@ namespace MegaCrit.Sts2.Core.Modding
         public static IReadOnlyList<Mod> LoadedMods => _loadedMods;
 
         public static void AssociateAssemblyWithMod(System.Reflection.Assembly assembly, Mod mod) => AssemblyToMod[assembly] = mod;
+    }
+}
+namespace MegaCrit.Sts2.Core.Map
+{
+    public sealed record MapLocation(int Row, int Col);
+    public readonly record struct MapVote(int Row, int Col);
+}
+namespace MegaCrit.Sts2.Core.GameActions
+{
+    public sealed class VoteForMapCoordAction(
+        MegaCrit.Sts2.Core.Entities.Players.Player player,
+        MegaCrit.Sts2.Core.Map.MapLocation source,
+        MegaCrit.Sts2.Core.Map.MapVote? destination) : GameAction
+    {
+        public MegaCrit.Sts2.Core.Entities.Players.Player Player { get; } = player;
+        public override ulong OwnerId => Player.NetId;
+        public override MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType ActionType => MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType.NonCombat;
+        protected override Task ExecuteAction()
+        {
+            MegaCrit.Sts2.Core.Multiplayer.Game.MapSelectionSynchronizer.Instance.PlayerVotedForMapCoord(Player, source, destination);
+            return Task.CompletedTask;
+        }
+        public override INetAction ToNetAction() => throw new NotSupportedException();
+    }
+}
+namespace MegaCrit.Sts2.Core.Multiplayer.Game
+{
+    using MegaCrit.Sts2.Core.Entities.Players;
+
+    public sealed class MapSelectionSynchronizer
+    {
+        public static MapSelectionSynchronizer Instance { get; set; } = new();
+        public Dictionary<ulong, MegaCrit.Sts2.Core.Map.MapVote?> Votes { get; } = new();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void PlayerVotedForMapCoord(Player player, MegaCrit.Sts2.Core.Map.MapLocation source, MegaCrit.Sts2.Core.Map.MapVote? destination) =>
+            Votes[player.NetId] = destination;
+    }
+
+    public sealed class RewardsSetSynchronizer
+    {
+        public int Skipped { get; private set; }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public Task BeginRewardsSet(object set) => Task.CompletedTask;
+        public void SkipLocalRewardsSet() => Skipped++;
+    }
+
+    public sealed class TreasureRoomRelicSynchronizer
+    {
+        public int Skipped { get; private set; }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void BeginRelicPicking() { }
+        public void SkipRelicLocally() => Skipped++;
+    }
+
+    public sealed class EventSynchronizer
+    {
+        public List<int> LocalChoices { get; } = new();
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void PlayerVotedForSharedOptionIndex(Player player, uint optionIndex, uint pageIndex) { }
+        public void ChooseLocalOption(int index) => LocalChoices.Add(index);
+    }
+
+    public sealed class RestSiteSynchronizer
+    {
+        public int Skipped { get; private set; }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void BeginRestSite() { }
+        public void BeforeLocalRestSiteExited() => Skipped++;
+    }
+
+    public sealed class ActChangeSynchronizer
+    {
+        public int LocalReady { get; private set; }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void OnPlayerReady(Player player, int actIndex) { }
+        public void SetLocalPlayerReady() => LocalReady++;
     }
 }

@@ -18,5 +18,6 @@
       "Seapunk"
     ]
   },
-  "test2_master_off_field": true
+  "test2_master_off_field": true,
+  "test3_master_autopilot": true
 }
