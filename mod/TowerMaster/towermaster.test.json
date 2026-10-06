@@ -1,0 +1,13 @@
+{
+  // 测试 1a：所有普通房间（类名以 Normal / Weak 结尾的遭遇）换成下面这个本幕固定遭遇。
+  // 两边装同一份文件，看替换后两边是否一致、是否报不同步。
+  "test1_fixed_encounter": true,
+  "fixed_encounters": {
+    "Overgrowth": "NibbitsNormal",
+    "Underdocks": "CultistsNormal",
+    "Hive": "MytesNormal",
+    "Glory": "AxebotsNormal"
+  },
+  // 启动时把 HANDOFF 里记的类和方法签名写进 TowerMaster.log
+  "probe": true
+}

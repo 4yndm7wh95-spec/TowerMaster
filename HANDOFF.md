@@ -24,6 +24,20 @@
 - 单只加力量超上限时**拒绝且不扣点**；陷阱给的力量自动截断到上限；全体加力量跳过已到上限的怪，全满时拒绝。
 - 回血量 = 最大生命 × 10% 向下取整，至少 1；人数系数乘完向下取整（第二幕 2 人 5×1.25=6）。
 
+### 测试 1a 的 mod（`mod/TowerMaster/`，已写好，待本机实测）
+- **做什么**：所有普通房间（遭遇类名以 Normal/Weak 结尾）在 `CombatRoom.StartCombat` 执行前，把房间里的遭遇换成 `towermaster.test.json` 里本幕的固定遭遇（密林 NibbitsNormal、暗港 CultistsNormal、蜂巢 MytesNormal、荣耀 AxebotsNormal）。两边按同一份文件替换，**不需要联机消息**，只检验「替换后是否同步」。
+- **全用反射**：按名字找类和方法，不写死命名空间。只有入口 `[ModInitializer]` 是按 GAME 条件编译的猜测写法。
+- **探针**：启动时把 HANDOFF 记的类和方法在当前版本里的签名写进 mod 目录的 `TowerMaster.log`，`ModelDb`、`INetAction`、`INetMessage`、`ModInitializerAttribute` 会列出全部成员。缺什么会写 WARN。
+- **云端验证**：`mod/FakeSts2` 是按 HANDOFF 结构仿造的假 `sts2` 程序集，`mod/TowerMaster.Tests` 用真 Harmony 把补丁打上去跑了一遍（3 个测试通过）。**真游戏的结构可能不同，以探针日志为准。**
+- **编译安装**：`cd mod && dotnet build TowerMaster -p:GameDir="<游戏目录>" -p:Install=true`。
+  - 会复制到 `<游戏目录>\mods\TowerMaster`；mod 目录不对就加 `-p:ModsDir=...`。
+  - `TowerMaster.json`（manifest）是猜的格式，照「IP直连」mod 的 manifest 改。
+- **可能要在本机修的地方**（对照 `decompiled/`）：
+  1. `ModEntry.cs` 的 `[ModInitializer]` 写法和命名空间。
+  2. `Test1FixedEncounter.GetEncounterModel`：猜的是 `ModelDb.Encounter<T>()`，以及可变副本用 `IsMutable`/`ToMutable()`。
+  3. 如果怪物不是在 `StartCombat` 里生成的（日志里「生成 …」那行出现在「测试1 #n」之前），就要换挂点，比如 `Act.PullNextEncounter` 的返回值。
+- **判定通过**：两台电脑 `TowerMaster.log` 里每场的「已替换」「生成 …」行一致，画面上怪物、血量、意图一致，连打几场不报 `StateDivergence`。
+
 ### 下一步（需要在装了游戏的本机做）
 1. 第 1 步技术验证，按下面「第 1 步建议的验证顺序」。mod 工程另建 `mod/TowerMaster/`，引用游戏的 `sts2.dll`、GodotSharp、0Harmony 和 `TowerMaster.Core`；目标框架要跟游戏一致（先查 `sts2.dll` 的 TargetFramework，Core 现在是 net8.0，必要时改）。
 2. 用 Core 接上：召唤清单广播（自定义 `INetAction`）→ 各客户端 `SummonRules.Quote` 校验 → `SummonWallet.Spend`；战斗结束 `SettleBattle`；候选 Boss 用游戏的种子随机数调 `PickBossCandidates`。
