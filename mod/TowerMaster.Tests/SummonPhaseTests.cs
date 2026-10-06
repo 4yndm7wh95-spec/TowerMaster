@@ -91,19 +91,20 @@ public class SummonPhaseTests
         var session = Assert.Single(Shown).Session;
         Assert.Equal(RoomKind.Monster, session.Room.Room);
         Assert.True(session.IsOpeningProtected); // 第一幕第一场：开局保护
-        Assert.All(session.MonsterOptions, o => Assert.Contains(o.Id, new[] { "FuzzyWurmCrawler", "Nibbit", "ShrinkerBeetle", "LeafSlimeM", "LeafSlimeS", "TwigSlimeM", "TwigSlimeS" }));
+        Assert.All(session.MonsterOptions, o => Assert.True(o.HomeAct == 1 && !o.IsElite, o.Id)); // 只能用本幕普通怪
+        Assert.Contains(session.MonsterOptions, o => o.Id == "Mawler");                      // 不再只限简单遭遇
 
         session.Click("Nibbit");
         Assert.True(session.Quote.Ok, string.Join(",", session.Quote.Violations)); // 开局保护标准开销 3，小啃兽 2
         session.Click("LeafSlimeS");
-        Assert.False(session.Confirm()); // 2 + 1 + 税 1 = 4 > 3
+        Assert.False(session.Confirm()); // 2 + 1 + 税 1 = 4 > 3 × 1.3
         session.RemoveAt(1);
         Assert.True(session.Confirm());
 
         Assert.Equal(2, queue.Queued.Count);
         Assert.Equal(RuntimeNetAction.ActionType, queue.Queued[0].GetType()); // 清单先于移动
         Assert.IsType<MoveToMapCoordAction>(queue.Queued[1]);
-        Assert.Equal(8, MasterLedger.Wallet!.Points); // 10 − 2
+        Assert.Equal(10, MasterLedger.Wallet!.Points); // 12 − 2
 
         var encounter = await RunQueueAndEnter(queue, RoomType.Monster);
         Assert.IsType<CultistsNormal>(encounter);
@@ -122,7 +123,7 @@ public class SummonPhaseTests
         Assert.Empty(queue.Queued);
         session.UseVanilla();
         Assert.IsType<MoveToMapCoordAction>(Assert.Single(queue.Queued)); // 没有清单，只放行移动
-        Assert.Equal(7, MasterLedger.Wallet!.Points); // 开局保护标准开销 3
+        Assert.Equal(9, MasterLedger.Wallet!.Points); // 12 − 开局保护标准开销 3
         Assert.IsNotType<CultistsNormal>(await RunQueueAndEnter(queue, RoomType.Monster)); // 没有混搭（同进程里测试 1a 可能换掉原版遭遇）
     }
 
@@ -151,7 +152,7 @@ public class SummonPhaseTests
         Assert.Equal(7, session.MonsterOptions.Single(o => o.Id == "Byrdonis").Price); // 七折
         session.Click("Byrdonis");
         Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
-        Assert.Equal(3, MasterLedger.Wallet!.Points); // 10 − 7
+        Assert.Equal(5, MasterLedger.Wallet!.Points); // 12 − 7
         var elite = await RunQueueAndEnter(queue, RoomType.Elite);
         Assert.IsType<BygoneEffigyElite>(elite);      // 精英载体：无专用场景的精英遭遇，房间类型、奖励仍是精英
         Assert.Equal(new[] { "Byrdonis" }, Names(elite));
@@ -169,7 +170,7 @@ public class SummonPhaseTests
         session.Click(other);
         session.Click("LeafSlimeS"); // 另加：1 点 + 税 1
         Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
-        Assert.Equal(1, MasterLedger.Wallet!.Points);
+        Assert.Equal(3, MasterLedger.Wallet!.Points);
         var boss = await RunQueueAndEnter(queue, RoomType.Boss);
         Assert.Equal(other, boss.GetType().Name);
         Assert.Equal(new[] { "Mawler", "LeafSlimeS" }, Names(boss)); // Boss 本体（假游戏里是蛮兽）+ 另加的怪
@@ -192,15 +193,15 @@ public class SummonPhaseTests
         run.Players[1].Creature.Damage(23);
         manager.Win(null!);
 
-        // 收入 = 基础 4 + 节约 0 + 战果 2（掉 23 血）= 6；10 − 2 + 6 = 14
-        Assert.Equal(14, MasterLedger.Wallet!.Points);
+        // 收入 = 基础 5 + 节约 0 + 战果 2（掉 23 血）= 7；12 − 2 + 7 = 17
+        Assert.Equal(17, MasterLedger.Wallet!.Points);
         Assert.Equal(1, MasterLedger.BattlesFought);
-        Assert.Contains("战斗收入 +6", Assert.Single(Toasts));
+        Assert.Contains("战斗收入 +7", Assert.Single(Toasts));
 
         // 读档：换一个进程状态，从文件恢复
         MasterLedger.Configure(new TowerMasterConfig());
         var wallet = MasterLedger.For(run.Rng.Seed, 1);
-        Assert.Equal(14, wallet.Points);
+        Assert.Equal(17, wallet.Points);
         Assert.Equal(1, MasterLedger.BattlesFought);
     }
 

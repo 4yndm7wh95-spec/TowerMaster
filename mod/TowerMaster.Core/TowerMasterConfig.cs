@@ -11,10 +11,10 @@ public sealed class TowerMasterConfig
 {
     // ---------------------------------------------------------------- 召唤点
     /// <summary>开局召唤点。</summary>
-    public int StartingSummonPoints { get; set; } = 10;
+    public int StartingSummonPoints { get; set; } = 12;
 
-    /// <summary>每场战斗后的基础收入（按幕）。</summary>
-    public int[] BaseIncome { get; set; } = [4, 5, 6];
+    /// <summary>每场战斗后的基础收入（按幕）。和各幕普通战平均标准开销大致持平：照原版强度出怪不亏。</summary>
+    public int[] BaseIncome { get; set; } = [5, 6, 7];
 
     /// <summary>基础收入的人数系数，下标 0/1/2 对应 1/2/3 名爬塔玩家。乘完向下取整。</summary>
     public double[] ClimberIncomeFactor { get; set; } = [1.0, 1.25, 1.5];
@@ -71,8 +71,11 @@ public sealed class TowerMasterConfig
     /// <summary>每个房间最多几只精英类怪物（防止精英房折扣叠精英）。</summary>
     public int MaxEliteMonstersPerRoom { get; set; } = 1;
 
-    /// <summary>开局保护：第一幕前几场战斗只能用简单遭遇的怪物、花费不超过标准开销、不能盖陷阱。</summary>
+    /// <summary>开局保护：第一幕前几场战斗只能用本幕的普通怪（不跨幕、不要精英）、花费有上限、不能盖陷阱。</summary>
     public int OpeningProtectionBattles { get; set; } = 3;
+
+    /// <summary>开局保护期间单场花费上限 = 标准开销 × 该值。</summary>
+    public double OpeningSpendCapMultiplier { get; set; } = 1.3;
 
     // ---------------------------------------------------------------- 陷阱
     public int MaxTrapsPerBattle { get; set; } = 2;

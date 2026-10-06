@@ -35,7 +35,7 @@ internal sealed class SummonSession
 
         MonsterOptions = rules.Prices.AllMonsters
             .Where(m => rules.IsSummonable(m.Key) && (allowMonster?.Invoke(m.Key) ?? true)
-                        && (!opening || act.Monsters.TryGetValue(m.Key, out var local) && local.WeakPool))
+                        && (!opening || rules.OpeningAllows(room.ActId, m.Key)))
             .Select(m => new SummonOption(m.Key, m.Value.NameZh, rules.SummonPrice(m.Key, act.ActNo, room.Room),
                 m.Value.HomeAct, m.Value.Role == MonsterRole.Elite, rules.HpFactor(m.Key, act.ActNo)))
             // 本幕的怪排前面，然后按幕；同一幕里普通怪在前、按价格
@@ -156,8 +156,8 @@ internal sealed class SummonSession
         SummonViolation.WrongEncounterRoom => "遭遇类型和房间不符",
         SummonViolation.BossNotCandidate => "不是本幕的候选 Boss",
         SummonViolation.EmptyRoom => "至少召唤一只怪物",
-        SummonViolation.OpeningProtectionMonster => "开局保护：只能用本幕简单遭遇的怪物",
-        SummonViolation.OpeningProtectionCost => "开局保护：花费不能超过标准开销",
+        SummonViolation.OpeningProtectionMonster => "开局保护：只能用本幕的普通怪",
+        SummonViolation.OpeningProtectionCost => "开局保护：花费超过本场上限",
         SummonViolation.OpeningProtectionTraps => "开局保护：不能盖陷阱",
         SummonViolation.TooManyMonsters => "场上怪物太多",
         SummonViolation.TooManySameMonster => "同名怪物太多",

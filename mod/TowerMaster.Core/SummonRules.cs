@@ -130,6 +130,10 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
         && Prices.Act(room.ActId).ActNo == 1
         && room.BattlesBeforeInRun < Config.OpeningProtectionBattles;
 
+    /// <summary>开局保护期间能用的怪：本幕的普通怪（不跨幕、不要精英）。</summary>
+    public bool OpeningAllows(string actId, string monster) =>
+        Prices.Act(actId).Monsters.TryGetValue(monster, out var local) && local.Role == MonsterRole.Normal;
+
     /// <summary>超时未确认：按原版组合出场，花费按标准开销（不够就扣到 0）。</summary>
     public SummonQuote Fallback(RoomContext room)
     {
@@ -175,13 +179,13 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
         int std = StandardCostOf(room);
         bool opening = IsOpeningProtected(room);
 
-        // 怪物本身：任何幕的普通、精英怪；开局保护时只能用本幕简单遭遇的怪
+        // 怪物本身：任何幕的普通、精英怪；开局保护时只能用本幕的普通怪
         int price = 0, elites = 0;
         foreach (var m in plan.Monsters)
         {
             if (!Prices.AllMonsters.TryGetValue(m, out var info)) { errors.Add(SummonViolation.UnknownMonster); continue; }
             if (!IsSummonable(m)) { errors.Add(SummonViolation.MonsterNotSummonable); continue; }
-            if (opening && !(act.Monsters.TryGetValue(m, out var local) && local.WeakPool)) errors.Add(SummonViolation.OpeningProtectionMonster);
+            if (opening && !OpeningAllows(room.ActId, m)) errors.Add(SummonViolation.OpeningProtectionMonster);
             if (info.Role == MonsterRole.Elite) elites++;
             price += SummonPrice(m, act.ActNo, room.Room);
         }
@@ -216,7 +220,7 @@ public sealed class SummonRules(TowerMasterConfig config, PriceBook prices)
         // 花费上限
         double cap = room.Room switch
         {
-            RoomKind.Monster => opening ? std : std * Config.NormalSpendCapMultiplier,
+            RoomKind.Monster => std * (opening ? Config.OpeningSpendCapMultiplier : Config.NormalSpendCapMultiplier),
             RoomKind.Elite => std * Config.EliteSpendCapMultiplier,
             _ => act.AverageNormalStandardCost * Config.BossExtraSpendCapMultiplier,
         };

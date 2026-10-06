@@ -57,29 +57,35 @@ internal sealed class SummonPanel : ISummonUi
         backdrop.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
         _layer.AddChild(backdrop);
 
-        var center = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-        center.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
-        _layer.AddChild(center);
+        // 面板固定占满窗口高度（留边），中间只有怪物列表滚动；底部的阵容、花费、按钮永远看得见
+        var screen = Tree.Root.GetVisibleRect().Size;
+        float width = Math.Min(1400, screen.X - 60);
+        var panel = new G.PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 3, 14, 22, shadow: 24));
+        panel.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
+        panel.OffsetLeft = (screen.X - width) / 2;
+        panel.OffsetRight = -(screen.X - width) / 2;
+        panel.OffsetTop = 24;
+        panel.OffsetBottom = -24;
+        _layer.AddChild(panel);
 
-        var panel = new G.PanelContainer { CustomMinimumSize = new G.Vector2(1400, 0) };
-        panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 3, 14, 28, shadow: 24));
-        center.AddChild(panel);
-
-        // 内容放进滚动区：高度跟内容走，最多到窗口高度减边距（Boss 房内容多时可以滚动，内容少时不留空白）
-        var outer = new G.ScrollContainer { HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled };
-        panel.AddChild(outer);
-        var box = new G.VBoxContainer { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 14);
-        outer.AddChild(box);
-        box.Resized += () =>
-        {
-            float maxHeight = Tree.Root.GetVisibleRect().Size.Y - 140;
-            outer.CustomMinimumSize = new G.Vector2(0, Math.Min(box.Size.Y, maxHeight));
-        };
+        var box = new G.VBoxContainer();
+        box.AddThemeConstantOverride("separation", 12);
+        panel.AddChild(box);
 
         BuildHeader(box);
         box.AddChild(Divider());
-        BuildOptions(box);
+        var scroll = new G.ScrollContainer
+        {
+            HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled,
+            SizeFlagsVertical = G.Control.SizeFlags.ExpandFill,
+        };
+        var options = new G.VBoxContainer { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
+        options.AddThemeConstantOverride("separation", 12);
+        scroll.AddChild(options);
+        box.AddChild(scroll);
+        BuildOptions(options);
+        box.AddChild(Divider());
         BuildChosenTray(box);
         BuildSummary(box);
         BuildButtons(box);
@@ -149,7 +155,7 @@ internal sealed class SummonPanel : ISummonUi
         if (room.Room == RoomKind.Elite)
             chips.AddChild(Chip("全场七折", new G.Color(0.30f, 0.14f, 0.10f), new G.Color(1f, 0.75f, 0.55f), new G.Color(0.6f, 0.35f, 0.25f)));
         if (_session.IsOpeningProtected)
-            chips.AddChild(Chip("开局保护：只能用本幕简单怪，不超过标准开销", new G.Color(0.12f, 0.24f, 0.18f), Good, new G.Color(0.25f, 0.45f, 0.30f)));
+            chips.AddChild(Chip("开局保护：只能用本幕普通怪，花费上限较低", new G.Color(0.12f, 0.24f, 0.18f), Good, new G.Color(0.25f, 0.45f, 0.30f)));
         box.AddChild(chips);
     }
 
@@ -159,27 +165,20 @@ internal sealed class SummonPanel : ISummonUi
         if (room == RoomKind.Boss)
         {
             box.AddChild(Text("选择 Boss（免费）", 21, Gold));
-            box.AddChild(OptionGrid(_session.EncounterOptions, 3, new G.Vector2(400, 130), 0));
+            box.AddChild(OptionGrid(_session.EncounterOptions, 3, new G.Vector2(400, 150)));
             box.AddChild(Text("另加怪物（可选；有专用场景的 Boss 不能另加）", 21, Gold));
         }
-        box.AddChild(OptionGrid(_session.MonsterOptions, 5, new G.Vector2(230, 130), room == RoomKind.Boss ? 260 : 460));
+        box.AddChild(OptionGrid(_session.MonsterOptions, 5, new G.Vector2(230, 150)));
     }
 
-    /// <summary>一组卡片：滚动区 + 网格。height 为 0 时不滚动、按内容高度。</summary>
-    private G.Control OptionGrid(IReadOnlyList<SummonOption> options, int columns, G.Vector2 portraitSize, float height)
+    /// <summary>一组卡片网格（外面整个选项区一起滚动）。</summary>
+    private G.Control OptionGrid(IReadOnlyList<SummonOption> options, int columns, G.Vector2 portraitSize)
     {
         var grid = new G.GridContainer { Columns = columns, SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
         grid.AddThemeConstantOverride("h_separation", 12);
         grid.AddThemeConstantOverride("v_separation", 12);
         foreach (var option in options) grid.AddChild(OptionCard(option, portraitSize));
-        if (height <= 0) return grid;
-        var scroll = new G.ScrollContainer
-        {
-            CustomMinimumSize = new G.Vector2(0, height),
-            HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled,
-        };
-        scroll.AddChild(grid);
-        return scroll;
+        return grid;
     }
 
     private G.Button OptionCard(SummonOption option, G.Vector2 portraitSize)
@@ -261,13 +260,14 @@ internal sealed class SummonPanel : ISummonUi
             };
             viewport.AddChild(visuals);
 
-            // 按 Bounds（模型的点击框）缩放到视口的 85%，再把 Bounds 中心放到视口中心
+            // Bounds 是模型的点击框，高个子、带特效的怪画出来常比它高。所以只把点击框缩到视口高度的 62%、宽度的 80%，
+            // 脚底（点击框下沿）贴在视口底部附近、水平居中，上面留出空间给超出点击框的头、角、特效
             if (GameReflection.Get(visuals, "Bounds") is G.Control bounds && bounds.Size.X > 1 && bounds.Size.Y > 1)
             {
-                float scale = Math.Min(size.X * 0.85f / bounds.Size.X, size.Y * 0.85f / bounds.Size.Y);
+                float scale = Math.Min(size.X * 0.80f / bounds.Size.X, size.Y * 0.62f / bounds.Size.Y);
                 visuals.Scale = new G.Vector2(scale, scale);
-                var center = bounds.Position + bounds.Size / 2;
-                visuals.Position = size / 2 - center * scale;
+                var feet = new G.Vector2(bounds.Position.X + bounds.Size.X / 2, bounds.Position.Y + bounds.Size.Y);
+                visuals.Position = new G.Vector2(size.X / 2, size.Y * 0.95f) - feet * scale;
             }
             else
             {
@@ -350,17 +350,21 @@ internal sealed class SummonPanel : ISummonUi
             box.AddChild(_capBar);
         }
 
-        _status = Text("", 21, Good);
-        box.AddChild(_status);
-        _problems = new G.VBoxContainer();
-        _problems.AddThemeConstantOverride("separation", 4);
-        box.AddChild(_problems);
     }
 
     private void BuildButtons(G.VBoxContainer box)
     {
-        var buttons = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.End };
+        var buttons = new G.HBoxContainer();
         buttons.AddThemeConstantOverride("separation", 16);
+        // 左边是规则提示，右边是按钮，省一行高度
+        var notes = new G.VBoxContainer { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill, Alignment = G.BoxContainer.AlignmentMode.Center };
+        notes.AddThemeConstantOverride("separation", 2);
+        _status = Text("", 21, Good);
+        notes.AddChild(_status);
+        _problems = new G.VBoxContainer();
+        _problems.AddThemeConstantOverride("separation", 2);
+        notes.AddChild(_problems);
+        buttons.AddChild(notes);
         var vanilla = MakeButton("按原版出场", CardBg, CardHover, CardBorder, TextMain, new G.Vector2(220, 60));
         vanilla.Pressed += () => _session.UseVanilla();
         _confirm = MakeButton("确认召唤", Teal, TealHover, Gold, TextMain, new G.Vector2(280, 60), 26);

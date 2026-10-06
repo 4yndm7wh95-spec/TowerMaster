@@ -133,7 +133,8 @@ public class SummonRulesTests
         var room = Normal(original: ["Nibbit"], battlesBefore: 0);
         Assert.True(rules.IsOpeningProtected(room));
         Assert.True(rules.Quote(room, new SummonPlan(null, ["ShrinkerBeetle"])).Ok);
-        Assert.Contains(SummonViolation.OpeningProtectionMonster, rules.Quote(room, new SummonPlan(null, ["Inklet"])).Violations);
+        Assert.True(rules.Quote(room, new SummonPlan(null, ["Inklet"])).Ok); // 本幕普通怪都能用
+        Assert.Contains(SummonViolation.OpeningProtectionMonster, rules.Quote(room, new SummonPlan(null, ["Byrdonis"])).Violations); // 精英不行
         Assert.Contains(SummonViolation.OpeningProtectionCost, rules.Quote(room, new SummonPlan(null, ["Nibbit", "LeafSlimeS"])).Violations);
         Assert.Contains(SummonViolation.OpeningProtectionTraps, rules.Quote(room, new SummonPlan(null, ["Nibbit"], 1)).Violations);
 
@@ -245,11 +246,11 @@ public class EconomyTests
         new(RoomKind.Monster, std, spend, dmg, down);
 
     [Theory]
-    [InlineData(1, 1, 4)]
-    [InlineData(1, 2, 5)]
-    [InlineData(1, 3, 6)]
-    [InlineData(2, 2, 6)] // 5 × 1.25 = 6.25 → 6
-    [InlineData(3, 3, 9)]
+    [InlineData(1, 1, 5)]
+    [InlineData(1, 2, 6)] // 5 × 1.25 = 6.25 → 6
+    [InlineData(1, 3, 7)]
+    [InlineData(2, 2, 7)]
+    [InlineData(3, 3, 10)]
     public void BaseIncomeByActAndClimbers(int act, int climbers, int expected)
     {
         Assert.Equal(expected, new SummonWallet(Fixture.Config(), act).BaseIncome(climbers));
@@ -272,9 +273,9 @@ public class EconomyTests
         var w = new SummonWallet(Fixture.Config());
         w.Spend(3);
         var income = w.SettleBattle(Battle(std: 5, spend: 1, dmg: 27, down: 7), climbers: 1, out var rewarded);
-        Assert.Equal(new IncomeBreakdown(4, 2, 2, 5, 0), income);
+        Assert.Equal(new IncomeBreakdown(5, 2, 2, 5, 0), income);
         Assert.Equal(new[] { 7UL }, rewarded);
-        Assert.Equal(10 - 3 + 13, w.Points);
+        Assert.Equal(12 - 3 + 14, w.Points);
     }
 
     [Fact]
@@ -308,9 +309,9 @@ public class EconomyTests
         var config = Fixture.Config();
         config.SavingsCap = [30, 20, 60];
         var w = new SummonWallet(config);
-        w.Gain(18); // 28
-        var income = w.SettleBattle(Battle(dmg: 30), 1, out _); // 4 + 3 = 7，只能进 2
-        Assert.Equal(5, income.Wasted);
+        w.Gain(16); // 28
+        var income = w.SettleBattle(Battle(dmg: 30), 1, out _); // 5 + 3 = 8，只能进 2
+        Assert.Equal(6, income.Wasted);
         Assert.Equal(2, income.Credited);
         Assert.Equal(30, w.Points);
         Assert.Equal(10, w.EnterAct(2));
@@ -417,7 +418,7 @@ public class ConfigTests
         Assert.Equal(new[] { 5, 6, 7 }, config.BaseIncome);
         Assert.Equal(3, config.Threat.StrengthCapPerAct);
         Assert.Equal(2, config.Threat.StrengthCost);
-        Assert.Equal(10, config.StartingSummonPoints);
+        Assert.Equal(12, config.StartingSummonPoints);
 
         var again = TowerMasterConfig.FromJson(config.ToJson());
         Assert.Equal(config.ToJson(), again.ToJson());
