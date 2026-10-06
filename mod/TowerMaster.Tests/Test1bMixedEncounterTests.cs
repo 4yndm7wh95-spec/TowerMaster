@@ -68,6 +68,14 @@ public class Test1bMixedEncounterTests
     }
 
     [Fact]
+    public void DynamicAssemblyIsAssociatedWithOurMod()
+    {
+        Init();
+        var mod = MegaCrit.Sts2.Core.Modding.ModManager.AssemblyToMod[RuntimeNetAction.NetType.Assembly];
+        Assert.Equal("TowerMaster", mod.manifest!.id);
+    }
+
+    [Fact]
     public async Task HostQueuesPlanBeforeMovementAndGeneratesDistinctMutableMonsters()
     {
         Init();

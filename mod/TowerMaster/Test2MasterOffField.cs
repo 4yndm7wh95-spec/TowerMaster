@@ -175,11 +175,12 @@ internal static class Test2MasterOffField
         return list;
     }
 
-    /// <summary>缩放公式本身的参数打一次日志：看传进来的人数对不对。</summary>
+    /// <summary>血量缩放公式的参数打日志：看传进来的人数对不对。</summary>
     private static void LogScalingArguments(Harmony harmony)
     {
         var prefix = new HarmonyMethod(typeof(Test2MasterOffField).GetMethod(nameof(ArgsPrefix), GameReflection.All)!);
-        foreach (var name in new[] { "ScaleHpForMultiplayer", "ScaleMonsterHpForMultiplayer", "ModifyBlockMultiplicative", "GetScaledAmountForMultiplayer" })
+        // 只记血量公式。格挡、能力层数公式也会被卡牌预览等本地界面调用，两边次数不同，记下来反而误导对照。
+        foreach (var name in new[] { "ScaleHpForMultiplayer", "ScaleMonsterHpForMultiplayer" })
         foreach (var method in GameReflection.MembersNamed(name).OfType<MethodInfo>().Where(m => !m.IsAbstract && m.GetMethodBody() != null))
         {
             try { harmony.Patch(method, prefix: prefix); }

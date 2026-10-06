@@ -55,6 +55,8 @@ public static class RuntimeNetAction
             Forward(at, method, bridge, false);
         }
         ActionType = at.CreateType()!;
+        // 动态程序集要登记到本 mod 名下，否则游戏给联机类型排序时报错（测试 2 实测）。
+        ModAssociation.Associate(NetType.Assembly);
 
         // ReflectionHelper 只扫描 mod 的静态程序集，在其类型清单中补入动态接口实现。
         var getter = Required("ReflectionHelper").GetProperty("ModTypes", GameReflection.All)?.GetMethod

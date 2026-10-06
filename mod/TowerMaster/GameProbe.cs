@@ -50,7 +50,12 @@ internal static class GameProbe
         "ModelDb", "INetAction", "INetMessage", "IPacketSerializable", "ModInitializerAttribute",
         // 测试 2：塔主退场、胜负、复活、人数缩放要用
         "Player", "Creature", "CombatState", "CombatManager", "MultiplayerScalingModel", "CreatureCmd", "LocalContext",
+        // 动态程序集登记
+        "ModManager",
     ];
+
+    /// <summary>测试 3：名字以这些结尾的类型全部导出（各种「等所有玩家」的同步器）。</summary>
+    private static readonly string[] DumpAllWithSuffix = ["Synchronizer"];
 
     public static void Run()
     {
@@ -73,6 +78,13 @@ internal static class GameProbe
 
         foreach (var typeName in DumpAllMembers)
         foreach (var t in GameReflection.TypesNamed(typeName))
+        {
+            Log.Info($"----- {t.FullName} 全部成员 -----");
+            foreach (var m in t.GetMembers(GameReflection.All | System.Reflection.BindingFlags.DeclaredOnly))
+                Log.Info("  " + GameReflection.Describe(m));
+        }
+
+        foreach (var t in GameReflection.Types.Where(t => DumpAllWithSuffix.Any(sfx => t.Name.EndsWith(sfx))).OrderBy(t => t.FullName))
         {
             Log.Info($"----- {t.FullName} 全部成员 -----");
             foreach (var m in t.GetMembers(GameReflection.All | System.Reflection.BindingFlags.DeclaredOnly))

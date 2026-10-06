@@ -31,6 +31,10 @@ internal sealed class TestSettings
         "ScaleMonsterHpForMultiplayer",
         "ModifyBlockMultiplicative",
         "GetScaledAmountForMultiplayer",
+        // 内容按单人给：不能把药水扔给（已死的）塔主，卡牌奖励、遗物池不出多人专用内容
+        "PotionModel.CanThrowAtAlly",
+        "CardFactory.FilterForPlayerCount",
+        "MegaCrit.Sts2.Core.Models.Relics",
     ];
 
     public static TestSettings Load()

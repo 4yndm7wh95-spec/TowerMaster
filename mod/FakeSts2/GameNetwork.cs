@@ -87,3 +87,22 @@ namespace MegaCrit.Sts2.Core.Runs
         public FakeService NetService { get; set; } = new();
     }
 }
+namespace MegaCrit.Sts2.Core.Modding
+{
+    public sealed class ModManifest { public string? id { get; init; } public string? name { get; init; } }
+    public sealed class Mod { public ModManifest? manifest { get; init; } public System.Reflection.Assembly? assembly { get; set; } }
+
+    /// <summary>仿造：游戏按程序集查 mod，动态程序集要手动登记。</summary>
+    public static class ModManager
+    {
+        private static readonly List<Mod> _loadedMods =
+        [
+            new() { manifest = new() { id = "DirectConnectIP", name = "IP直连" } },
+            new() { manifest = new() { id = "TowerMaster", name = "塔主" } },
+        ];
+        public static Dictionary<System.Reflection.Assembly, Mod> AssemblyToMod { get; } = new();
+        public static IReadOnlyList<Mod> LoadedMods => _loadedMods;
+
+        public static void AssociateAssemblyWithMod(System.Reflection.Assembly assembly, Mod mod) => AssemblyToMod[assembly] = mod;
+    }
+}

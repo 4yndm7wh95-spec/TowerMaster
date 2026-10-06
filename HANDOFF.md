@@ -1,3 +1,15 @@
+## 测试 2 实测结果与第二轮（2026-10-06，0.0.5）
+
+**第一轮实测（0.0.4，详见 `docs/test2-result.md`）通过**：塔主每场开局生命 0、死亡；爬塔人数 1；暗港怪物血量等于单人；B 死亡两边都判负；回合不等 A；怪物只打 B；无 StateDivergence。全游戏共 122 个方法读玩家人数，改写 14 个。
+- 塔主战后被原版复活（1 血 + 铁甲战士被动），下一场再退场。用户认为不影响游玩，先不处理。
+- 选路、领奖励要等 A 操作：留给测试 3（塔主自动投票）。
+
+**第二轮改动（0.0.5，待实测，见 `docs/test2-round2-plan.md`）**
+- 动态程序集调用 `ModManager.AssociateAssemblyWithMod` 登记到本 mod（`mod/TowerMaster/ModAssociation.cs`），消除「not associated with any mod」ERROR。签名未知，按参数类型现场拼。
+- 参数日志只记血量公式：格挡公式的「两边参数不一致」来自本地卡牌预览，不是不同步。
+- 改写范围加 `PotionModel.CanThrowAtAlly`、`CardFactory.FilterForPlayerCount`、遗物命名空间。
+- 探针导出 `ModManager` 和全部 *Synchronizer 类型，并请 Codex 用文字描述各同步器的等待逻辑，供测试 3 使用。
+
 ## 测试 2 第一版（2026-10-06，云端，0.0.4，待实测）
 
 塔主 = 房主。战斗初始化后各客户端把塔主角色生命写成 0，借用游戏现成的「死亡玩家」处理：自动准备结束回合、不被选为目标、判负变成只看爬塔玩家。人数缩放：在配置范围内，用 Harmony 改写把「读玩家人数」换成只数爬塔玩家。启动日志列出全游戏所有读玩家人数的方法，下一轮按实测调整范围（`towermaster.test.json` 的 `test2_scaling_scope`）。代码在 `mod/TowerMaster/Test2MasterOffField.cs`，假游戏程序集上 4 个新测试通过（共 52 个）。
