@@ -718,7 +718,7 @@ internal static class TestBridge
                 master_card = MasterCards.DefOf(c)?.Key,
             }).ToList(),
         }).ToList();
-        return new { registered = MasterCards.Enabled, types = MasterCards.Types.Count, players = cards };
+        return new { registered = MasterCards.Enabled, fail_reason = MasterCards.FailReason, types = MasterCards.Types.Count, players = cards };
     }
 
     /// <summary>塔主战斗中的手牌（塔主牌模式）：能量、是否塔主回合、每张牌能不能打。</summary>

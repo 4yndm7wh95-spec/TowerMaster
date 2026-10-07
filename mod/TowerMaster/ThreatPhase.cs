@@ -54,6 +54,7 @@ internal static class ThreatPhase
     private static object? _subscribed;
     private static int _sent;
     private static bool _pausedByUs;
+    private static bool _warnedNoCards;
     private static IThreatUi? _ui;
 
     public static bool Enabled { get; private set; }
@@ -206,6 +207,11 @@ internal static class ThreatPhase
             Log.Info($"塔主回合：第 {Round} 回合开始，可用威胁点 {Session.Points}（本场还剩 {Session.Remaining}）");
             _ui = UiFactory();
             _ui.Show();
+            if (!MasterCards.Enabled && MasterCards.FailReason is { } why && !_warnedNoCards)
+            {
+                _warnedNoCards = true;
+                SummonPhase.Toast($"原版手牌没开启（{why}），本局用旧的塔主回合面板");
+            }
         }
         catch (Exception e)
         {

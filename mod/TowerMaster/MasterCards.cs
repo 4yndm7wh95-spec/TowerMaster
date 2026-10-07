@@ -36,6 +36,9 @@ public static class MasterCards
 
     /// <summary>塔主牌模式开着（注册成功后为真；测试里可以关掉，注册本身不能撤销）。</summary>
     internal static bool Enabled { get; set; }
+
+    /// <summary>没开成塔主牌的原因（设置关着或注册失败），塔主回合面板上直接显示，免得悄悄退回旧面板。</summary>
+    internal static string? FailReason { get; set; }
     internal static IReadOnlyCollection<Type> Types => _types;
     internal static MasterCardDef? DefOf(object? card) => card != null && ByType.TryGetValue(card.GetType(), out var d) ? d : null;
     public static Type? TypeOf(string key) => ByKey.GetValueOrDefault(key);

@@ -49,10 +49,16 @@ public static class ModEntry
         else if (settings.SummonPhase) Log.Warn("召唤阶段需要 test1b_mixed_encounter 开着（复用它的清单通道），没有启用");
         if (settings.MasterTurn && settings.SummonPhase && settings.Test1bMixedEncounter) ThreatPhase.Apply(harmony, config, prices);
         else if (settings.MasterTurn) Log.Warn("塔主回合需要 summon_phase 和 test1b_mixed_encounter 开着，没有启用");
+        Log.Info($"塔主牌（原版手牌出牌）：设置 master_cards={settings.MasterCards}");
+        if (!settings.MasterCards) MasterCards.FailReason = "towermaster.test.json 里 master_cards 是 false";
         if (settings.MasterCards)
         {
             try { MasterCards.Register(harmony, config); }
-            catch (Exception e) { Log.Error("塔主牌注册失败，塔主仍用英雄牌", e); }
+            catch (Exception e)
+            {
+                MasterCards.FailReason = e.InnerException?.Message ?? e.Message;
+                Log.Error("塔主牌注册失败，塔主仍用英雄牌和旧的塔主回合面板", e);
+            }
         }
         if (settings.SummonPhase && settings.Test1bMixedEncounter)
         {

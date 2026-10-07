@@ -153,7 +153,8 @@ internal sealed class ThreatPanel : IThreatUi
         side.AddThemeConstantOverride("separation", 8);
         _points = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.Center };
         side.AddChild(_points);
-        _status = P.Text(MasterCards.Enabled ? "拖动手牌出牌" : "选一张行动卡", 14, P.TextDim);
+        _status = P.Text(MasterCards.Enabled ? "拖动手牌出牌"
+            : MasterCards.FailReason is { } why ? $"原版手牌没开启：{why}" : "选一张行动卡", 14, MasterCards.Enabled || MasterCards.FailReason == null ? P.TextDim : P.Bad);
         _status.HorizontalAlignment = G.HorizontalAlignment.Center;
         _status.AutowrapMode = G.TextServer.AutowrapMode.WordSmart;
         _status.CustomMinimumSize = new G.Vector2(170, 0);
