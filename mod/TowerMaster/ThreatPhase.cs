@@ -10,8 +10,9 @@ namespace TowerMaster;
 /// <param name="Op">begin、end、block、heal、strength、strength_all、weak、vulnerable、frail、dazed。</param>
 /// <param name="Monster">怪物在 CombatState.Enemies 里的下标；<paramref name="MonsterId"/> 用来核对是不是同一只。</param>
 /// <param name="Amount">房主算好的数值（格挡量、回血量、力量、层数），客户端照做不再计算。</param>
+/// <param name="Amounts">和 <paramref name="Monsters"/> 一一对应的数值（陷阱力量按上限截断后每只可能不同）。</param>
 internal sealed record ThreatCommand(int Version, int Sequence, ulong Seed, int Round, string Op,
-    int Monster = -1, string? MonsterId = null, ulong Player = 0, int Amount = 0, int[]? Monsters = null);
+    int Monster = -1, string? MonsterId = null, ulong Player = 0, int Amount = 0, int[]? Monsters = null, int[]? Amounts = null);
 
 /// <summary>塔主回合面板；测试里替换。</summary>
 internal interface IThreatUi
@@ -124,9 +125,11 @@ internal static class ThreatPhase
             var actNo = _prices!.Acts.TryGetValue(GameReflection.Get(state, "Act")!.GetType().Name, out var act) ? act.ActNo : 1;
             var room = RoomOf(state);
             TrapPhase.CombatSetUp();
-            Session = new ThreatSession(_config, actNo, room, Climbers(state).Count);
-            BalanceLog.CombatStarted(state, null, Session.Points);
-            Log.Info($"塔主回合：本场 {room} 房，第 {actNo} 幕，威胁点 {Session.Points}");
+            Keys.Clear();
+            bool opening = actNo == 1 && room == RoomKind.Monster && MasterLedger.BattlesFought < _config.OpeningProtectionBattles;
+            Session = new ThreatSession(_config, actNo, room, Climbers(state).Count, opening);
+            BalanceLog.CombatStarted(state, null, Session.Total);
+            Log.Info($"塔主回合：本场 {room} 房，第 {actNo} 幕{(opening ? "（开局保护）" : "")}，威胁点共 {Session.Total}，第 1 回合可用 {Session.Points}");
         }
         catch (Exception e) { Log.Error("塔主回合：战斗开始时初始化失败，本场没有塔主回合", e); }
     }
@@ -172,12 +175,12 @@ internal static class ThreatPhase
             catch (Exception e) { Log.Warn($"陷阱：回合开始检查失败：{e.Message}"); }
             if (Session == null) return;
             if (Round > 1) Session.NextTurn();
-            if (Session.Points <= 0) { Log.Info($"塔主回合：第 {Round} 回合没有威胁点了，跳过"); return; }
+            if (Session.Points <= 0) { Log.Info($"塔主回合：第 {Round} 回合没有可用的威胁点（本场还剩 {Session.Remaining}），跳过"); return; }
             if (TurnOpen) { Log.Warn("塔主回合：上一个塔主回合还没结束，又开始新回合，先结束上一个"); EndTurn("新回合开始"); }
             TurnOpen = true;
             SecondsLeft = _config.MasterTurnSeconds;
             Send(new ThreatCommand(1, 0, 0, Round, "begin"));
-            Log.Info($"塔主回合：第 {Round} 回合开始，威胁点 {Session.Points}");
+            Log.Info($"塔主回合：第 {Round} 回合开始，可用威胁点 {Session.Points}（本场还剩 {Session.Remaining}）");
             _ui = UiFactory();
             _ui.Show();
         }
@@ -237,20 +240,22 @@ internal static class ThreatPhase
             int pointsBefore = Session.Points;
             string? monsterId = null;
             object? creature = null;
+            int key = -1;
             if (op is "block" or "heal" or "strength")
             {
                 creature = AliveEnemy(combat, monster) ?? throw new ArgumentException($"没有第 {monster} 只活着的怪物");
                 monsterId = MonsterId(creature);
+                key = KeyOf(creature);
             }
             if (op is "weak" or "vulnerable" or "frail" or "dazed" && ClimberCreature(combat, player) == null)
                 return (false, $"没有活着的玩家 {player}");
 
             result = op switch
             {
-                "block" => Session.Block(monster),
-                "heal" => Session.Heal(monster, Convert.ToInt32(GameReflection.Get(creature!, "MaxHp"))),
-                "strength" => Session.Strength(monster),
-                "strength_all" => Session.StrengthAll(AliveEnemyIndexes(combat)),
+                "block" => Session.Block(key),
+                "heal" => Session.Heal(key, Convert.ToInt32(GameReflection.Get(creature!, "MaxHp"))),
+                "strength" => Session.Strength(key),
+                "strength_all" => Session.StrengthAll(AliveEnemyIndexes(combat).Select(i => KeyOf(Enemies(combat)[i]))),
                 "weak" => Session.Debuff(player, PlayerDebuff.Weak),
                 "vulnerable" => Session.Debuff(player, PlayerDebuff.Vulnerable),
                 "frail" => Session.Debuff(player, PlayerDebuff.Frail),
@@ -261,7 +266,7 @@ internal static class ThreatPhase
             BalanceLog.ThreatUsed(op, pointsBefore - Session.Points);
 
             Send(new ThreatCommand(1, 0, 0, Round, op, monster, monsterId, player, result.Amount,
-                op == "strength_all" ? result.Monsters?.ToArray() : null));
+                op == "strength_all" ? IndexesOf(combat, result.Monsters) : null));
             var message = $"{OpName(op)}{(monsterId != null ? $" → {NameOf(monsterId)}" : player != 0 ? $" → 玩家 {player}" : "")}（剩余威胁点 {Session.Points}）";
             Log.Info($"塔主回合：{message}");
             if (Session.Points <= 0) EndTurn("威胁点用完");
@@ -348,8 +353,10 @@ internal static class ThreatPhase
                     MasterPresence.Cast();
                     break;
                 case "trap_info":
-                    Log.Info($"{tag}：塔主手里有 {command.Amount} 张陷阱");
-                    if (!Test3MasterAutoPilot.LocalIsMaster) SummonPhase.Toast($"塔主手里有 {command.Amount} 张陷阱");
+                    // Amount = 本场盖下几张（公开张数、不公开内容，空陷阱才有诈唬的意义），Monster = 塔主手里还剩几张
+                    Log.Info($"{tag}：塔主盖下 {command.Amount} 张陷阱，手里还有 {Math.Max(0, command.Monster)} 张");
+                    if (!Test3MasterAutoPilot.LocalIsMaster)
+                        SummonPhase.Toast(command.Amount > 0 ? $"塔主盖下了 {command.Amount} 张陷阱" : "塔主这场没有盖陷阱");
                     break;
                 case "trap_dodge":
                     await DodgeReward(command, tag);
@@ -437,6 +444,10 @@ internal static class ThreatPhase
             case TrapEffect.BlockAllEnemies:
                 foreach (var e in enemies) await GainBlock(e, amount);
                 break;
+            case TrapEffect.StrengthAllEnemies when c.Monsters != null && c.Amounts != null:
+                for (int i = 0; i < c.Monsters.Length && i < c.Amounts.Length; i++)
+                    if (AliveEnemy(combat, c.Monsters[i]) is { } e) await ApplyPower("StrengthPower", action, e, c.Amounts[i]);
+                break;
             case TrapEffect.StrengthAllEnemies:
                 foreach (var e in enemies) await ApplyPower("StrengthPower", action, e, amount);
                 break;
@@ -464,10 +475,11 @@ internal static class ThreatPhase
         var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
         if (state == null) return;
         var gain = Static("PlayerCmd", "GainGold", m => m.GetParameters().Length == 3 && m.GetParameters()[0].ParameterType == typeof(decimal));
-        foreach (var p in Climbers(state))
-            await (Task)gain.Invoke(null, [(decimal)c.Amount, p, false])!;
-        Log.Info($"{tag}：躲过陷阱 {c.MonsterId}，每名玩家 +{c.Amount} 金币");
-        SummonPhase.Toast($"躲过陷阱：{c.MonsterId} · 每人 +{c.Amount} 金币");
+        if (c.Amount > 0)
+            foreach (var p in Climbers(state))
+                await (Task)gain.Invoke(null, [(decimal)c.Amount, p, false])!;
+        Log.Info($"{tag}：陷阱翻开 {c.MonsterId}，每名玩家 +{c.Amount} 金币");
+        SummonPhase.Toast(c.Amount > 0 ? $"躲过陷阱：{c.MonsterId} · 每人 +{c.Amount} 金币" : $"陷阱翻开：{c.MonsterId}（空陷阱，没有金币）");
     }
 
     /// <summary>还有爬塔玩家活着、敌人都死了（或跑了）。</summary>
@@ -555,6 +567,46 @@ internal static class ThreatPhase
 
     private static string? MonsterId(object creature) => GameReflection.Get(creature, "Monster")?.GetType().Name;
 
+    /// <summary>
+    /// 本场每只怪的固定编号（房主记账用）。原版死掉的怪会从 Enemies 里移除，下标会变，
+    /// 所以力量上限、回血次数按这个编号记，发给各端的指令仍用当时的下标。
+    /// </summary>
+    private static readonly List<object> Keys = new();
+
+    internal static int KeyOf(object creature)
+    {
+        int i = Keys.FindIndex(k => ReferenceEquals(k, creature));
+        if (i >= 0) return i;
+        Keys.Add(creature);
+        return Keys.Count - 1;
+    }
+
+    private static int[]? IndexesOf(object combat, IReadOnlyList<int>? keys)
+    {
+        if (keys == null) return null;
+        var enemies = Enemies(combat);
+        return keys.Select(k => enemies.FindIndex(e => k < Keys.Count && ReferenceEquals(e, Keys[k]))).Where(i => i >= 0).ToArray();
+    }
+
+    /// <summary>
+    /// 陷阱指令（房主，发送时才算数值）：加力量的陷阱和塔主行动给的力量合计不超过上限，
+    /// 所以按每只怪截断，Monsters/Amounts 带上每只实际加多少。
+    /// </summary>
+    internal static ThreatCommand TrapCommand(TrapCard card, ulong player, int round)
+    {
+        int amount = card.Def.Amount(card.Tier);
+        int[]? monsters = null, amounts = null;
+        if (card.Def.Effect == TrapEffect.StrengthAllEnemies && Session != null && CombatState() is { } combat)
+        {
+            var pairs = AliveEnemyIndexes(combat).Select(i => (i, a: Session.AddTrapStrength(KeyOf(Enemies(combat)[i]), amount)))
+                .Where(x => x.a > 0).ToList();
+            monsters = pairs.Select(x => x.i).ToArray();
+            amounts = pairs.Select(x => x.a).ToArray();
+        }
+        return new ThreatCommand(1, 0, 0, round, "trap", MonsterId: card.ToString(), Player: player, Amount: amount,
+            Monsters: monsters, Amounts: amounts);
+    }
+
     private static List<object> Climbers(object state) =>
         (GameReflection.Get(state, "Players") as IEnumerable)?.Cast<object>()
         .Where(p => Test2MasterOffField.NetIdOf(p) != Test2MasterOffField.MasterId).ToList() ?? [];
@@ -581,7 +633,7 @@ internal static class ThreatPhase
         {
             var id = MonsterId(x.c) ?? "?";
             return new MonsterView(x.i, id, NameOf(id), Int(x.c, "CurrentHp"), Int(x.c, "MaxHp"), Int(x.c, "Block"),
-                PowerAmount(x.c, "StrengthPower"), Session?.StrengthOf(x.i) ?? 0, Session?.HealsLeft(x.i) ?? 0);
+                PowerAmount(x.c, "StrengthPower"), Session?.StrengthOf(KeyOf(x.c)) ?? 0, Session?.HealsLeft(KeyOf(x.c)) ?? 0);
         }).ToList();
         var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
         var players = (state == null ? [] : Climbers(state)).Select(p =>
@@ -644,7 +696,7 @@ internal static class ThreatPhase
         "weak" => "虚弱",
         "vulnerable" => "易伤",
         "frail" => "脆弱",
-        "dazed" => "塞眩晕",
+        "dazed" => "塞晕眩",
         _ => op,
     };
 
@@ -653,7 +705,7 @@ internal static class ThreatPhase
         ThreatViolation.NotEnoughThreat => "威胁点不够",
         ThreatViolation.HealLimit => "这只怪本场回血次数用完了",
         ThreatViolation.DebuffLimit => "这名玩家本回合已经上过减益",
-        ThreatViolation.DazedLimit => "本场塞眩晕次数用完了",
+        ThreatViolation.DazedLimit => "本场塞晕眩次数用完了",
         ThreatViolation.StrengthCap => "这只怪的力量到上限了",
         ThreatViolation.StrengthAllLimit => "全体加力量本场已经用过",
         ThreatViolation.NoTarget => "没有能加力量的怪",

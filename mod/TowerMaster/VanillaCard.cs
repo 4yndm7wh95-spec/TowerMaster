@@ -65,6 +65,33 @@ internal static class VanillaCard
         }
     }
 
+    /// <summary>卡面关键词高亮（原版卡牌说明里关键词是金色）。</summary>
+    public static string Kw(string word) => $"[color=#efc851]{word}[/color]";
+
+    /// <summary>
+    /// 像原版手牌一样：鼠标移到卡上时放大、抬起、盖在相邻卡上面，移开复原（小卡上的字也能看清）。
+    /// trigger 是接收鼠标的按钮，holder 是 <see cref="Create"/> 返回的容器。
+    /// </summary>
+    public static void HoverZoom(G.Control trigger, G.Control holder, float zoom, float lift = 0)
+    {
+        if (holder.GetChildCount() == 0 || holder.GetChild(0) is not G.Control card) return;
+        var baseScale = card.Scale;
+        var basePos = card.Position;
+        G.Tween? tween = null;
+        void To(G.Vector2 scale, G.Vector2 position, int z)
+        {
+            if (!G.GodotObject.IsInstanceValid(card) || !card.IsInsideTree()) return;
+            tween?.Kill();
+            holder.ZIndex = z;
+            tween = card.CreateTween().SetParallel();
+            tween.TweenProperty(card, "scale", scale, 0.08);
+            tween.TweenProperty(card, "position", position, 0.08);
+        }
+        float up = (zoom - 1) * holder.CustomMinimumSize.Y / 2 + lift;
+        trigger.MouseEntered += () => To(baseScale * zoom, basePos - new G.Vector2(0, up), 20);
+        trigger.MouseExited += () => To(baseScale, basePos, 0);
+    }
+
     private static void Populate(G.Control card, CardFace face, bool setModel = true)
     {
         try

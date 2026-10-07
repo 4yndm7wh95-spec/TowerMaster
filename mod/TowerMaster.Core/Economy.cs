@@ -81,8 +81,8 @@ public sealed class SummonWallet
         return saved <= 0 ? 0 : Math.Min(_config.SavingsBonusMax, saved / _config.SavingsBonusDivisor);
     }
 
-    /// <summary>战果奖励：所有玩家合计每掉 10 点血 +1。</summary>
-    public int DamageBonus(int damageTaken) => Math.Max(0, damageTaken) / _config.DamagePerBonusPoint;
+    /// <summary>战果奖励：所有玩家合计每掉 15 点血 +1，每场最多 +2。</summary>
+    public int DamageBonus(int damageTaken) => Math.Min(_config.DamageBonusMax, Math.Max(0, damageTaken) / _config.DamagePerBonusPoint);
 
     /// <summary>
     /// 本场哪些击倒给奖励：同一玩家连续两场被击倒时，第二次不给。

@@ -31,7 +31,7 @@ public class ThreatPhaseTests
 
     private sealed record Setup(ActionQueueSynchronizer Queue, CombatManager Manager, CombatState Combat, Player Climber);
 
-    private static Setup Init(NetGameType type = NetGameType.Host, int threat = 10, Action? beforeSetUp = null)
+    private static Setup Init(NetGameType type = NetGameType.Host, int threat = 10, Action? beforeSetUp = null, int[]? release = null, int opening = 99)
     {
         var run = new RunState();
         run.Players.Add(new Player(100001));
@@ -44,7 +44,7 @@ public class ThreatPhaseTests
         var queue = new ActionQueueSynchronizer(RunManager.Instance.NetService);
         RunManager.Instance.ActionQueueSynchronizer = queue;
         var prices = PriceBook.Load(Path.Combine(Log.ModDir, "price_book.data"));
-        var config = new TowerMasterConfig { ThreatPerBattle = [threat, threat, threat], MasterTurnSeconds = 20 };
+        var config = new TowerMasterConfig { ThreatPerBattle = [threat, threat, threat], MasterTurnSeconds = 20, ThreatFirstTurnRelease = release ?? [0, 0, 0], OpeningThreatPoints = opening };
         if (!_patched)
         {
             Log.Init();
@@ -174,38 +174,47 @@ public class ThreatPhaseTests
     public async Task TrapsFireThroughTheCommandChannelAndUnfiredOnesPayDodgeGold()
     {
         MasterLedger.Clear();
-        var s = Init(threat: 3, beforeSetUp: () => TrapPhase.Place(
-            [new TrapCard("harden", 1), new TrapCard("frenzy", 1), new TrapCard("bluff", 1)], handLeft: 2));
-        Assert.Equal(3, TrapPhase.Tracker!.Placed.Count);
+        var s = Init(threat: 10, beforeSetUp: () => TrapPhase.Place(
+            [new TrapCard("harden", 1), new TrapCard("frenzy", 1), new TrapCard("bluff", 1), new TrapCard("mend", 1)], handLeft: 2));
+        Assert.Equal(4, TrapPhase.Tracker!.Placed.Count);
 
         s.Manager.StartTurn(CombatSide.Player, 1);
-        Assert.Contains("trap_info", RuntimeNetAction.Payload(s.Queue.Queued[0])); // 塔主手里 2 + 3 = 5 张
-        Assert.Contains("\"Amount\":5", RuntimeNetAction.Payload(s.Queue.Queued[0]));
+        Assert.Contains("trap_info", RuntimeNetAction.Payload(s.Queue.Queued[0])); // 公开盖了 4 张，手里还剩 2 张
+        Assert.Contains("\"Amount\":4", RuntimeNetAction.Payload(s.Queue.Queued[0]));
+        Assert.Contains("\"Monster\":2", RuntimeNetAction.Payload(s.Queue.Queued[0]));
         Assert.Equal(GameActionType.CombatPlayPhaseOnly, s.Queue.Queued[0].ActionType);
         Assert.Contains("begin", RuntimeNetAction.Payload(s.Queue.Queued[1]));
+
+        // 塔主先给蛮兽（下标 1）加满力量（第一幕上限 2）
+        Assert.True(ThreatPhase.Act("strength", 1).Ok);
+        Assert.True(ThreatPhase.Act("strength", 1).Ok);
+        Assert.False(ThreatPhase.Act("strength", 1).Ok);
 
         // 塔主回合中触发的陷阱要等塔主回合结束后再发（排在 end 后面，不被暂停挡住）
         Play(s, new Strike());
         Play(s, new Strike());
         Play(s, new Strike());
-        Assert.Equal(2, s.Queue.Queued.Count);
-        ThreatPhase.EndTurn();
-        Assert.Contains("end", RuntimeNetAction.Payload(s.Queue.Queued[2]));
-        Assert.Contains("harden@1", RuntimeNetAction.Payload(s.Queue.Queued[3]));
-        Assert.Equal(GameActionType.CombatPlayPhaseOnly, s.Queue.Queued[3].ActionType);
-
-        // 技能牌不算攻击；有怪死了（还有活的）触发狂怒
-        Play(s, new Defend());
         Assert.Equal(4, s.Queue.Queued.Count);
+        ThreatPhase.EndTurn();
+        Assert.Contains("end", RuntimeNetAction.Payload(s.Queue.Queued[4]));
+        Assert.Contains("harden@1", RuntimeNetAction.Payload(s.Queue.Queued[5]));
+        Assert.Equal(GameActionType.CombatPlayPhaseOnly, s.Queue.Queued[5].ActionType);
+        await Run(s.Queue);
+
+        // 技能牌不算攻击；有怪死了（还有活的）触发狂怒。小啃兽死后蛮兽的下标变成 0，但力量上限仍按同一只算：狂怒对它加 0
+        Play(s, new Defend());
+        Assert.Equal(6, s.Queue.Queued.Count);
         s.Combat.Enemies[0].Damage(999);
         s.Combat.Enemies.RemoveAt(0); // 原版：死掉的怪从 Enemies 里移除（0.0.22 实测狂怒因此没触发）
         Play(s, new Defend());
-        Assert.Contains("frenzy@1", RuntimeNetAction.Payload(s.Queue.Queued[4]));
-        await Run(s.Queue);
-        Assert.Equal(5, s.Combat.Enemies[0].Block);
+        var frenzy = RuntimeNetAction.Payload(s.Queue.Queued[6]);
+        Assert.Contains("frenzy@1", frenzy);
+        Assert.Contains("\"Amounts\":[]", frenzy);
+        await Run(s.Queue, 6);
+        Assert.Equal(4, s.Combat.Enemies[0].Block);
         Assert.Equal(2, s.Combat.Enemies[0].Powers.OfType<StrengthPower>().Single().Amount);
 
-        // 胜利：空陷阱没触发，收回手里，玩家拿 15 金币
+        // 胜利：没触发的再生翻开给 10 金币；空陷阱翻开不给
         int gold = s.Climber.Gold;
         s.Combat.Enemies[0].Damage(999);
         s.Manager.Win(null!);
@@ -213,11 +222,33 @@ public class ThreatPhaseTests
         Assert.Contains("trap_dodge", RuntimeNetAction.Payload(dodge));
         Assert.Equal(GameActionType.NonCombat, dodge.ActionType);
         await dodge.Execute();
-        Assert.Equal(gold + 15, s.Climber.Gold);
+        Assert.Equal(gold + 10, s.Climber.Gold);
         Assert.Contains(MasterLedger.Traps, t => t.Id == "bluff");
         Assert.Null(TrapPhase.Tracker);
         s.Manager.End(null!); // 之后的 CombatEnded 不再重复结算
         Assert.Single(MasterLedger.Traps, t => t.Id == "bluff");
+    }
+
+    [Fact]
+    public async Task ThreatPointsAreReleasedEachTurn()
+    {
+        var s = Init(threat: 4, release: [2, 2, 2]);
+        Assert.Equal((2, 4), (ThreatPhase.Session!.Points, ThreatPhase.Session.Remaining));
+        s.Manager.StartTurn(CombatSide.Player, 1);
+        Assert.True(ThreatPhase.Act("block", 0).Ok);
+        Assert.True(ThreatPhase.Act("block", 0).Ok);
+        Assert.False(ThreatPhase.TurnOpen); // 这回合能用的用完了，自动结束
+        await Run(s.Queue);
+        s.Manager.StartTurn(CombatSide.Player, 2);
+        Assert.True(ThreatPhase.TurnOpen); // 下一回合又解锁 1 点
+        Assert.Equal((1, 2), (ThreatPhase.Session.Points, ThreatPhase.Session.Remaining));
+    }
+
+    [Fact]
+    public void OpeningBattlesGetFewerThreatPoints()
+    {
+        Init(threat: 5, opening: 2); // 第一幕第 1 场普通战（假游戏里已打 0 场）
+        Assert.Equal(2, ThreatPhase.Session!.Total);
     }
 
     [Fact]

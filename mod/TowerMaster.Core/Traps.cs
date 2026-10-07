@@ -36,60 +36,81 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
 {
     public int Amount(int tier) => Amounts[Math.Clamp(tier, 1, Amounts.Length) - 1];
 
-    /// <summary>中文说明，例如「一回合打出第 3 张攻击牌 → 所有敌人 +5 格挡」。</summary>
-    public string Describe(int tier)
+    /// <summary>
+    /// 原版卡牌风格的完整说明（用户要求「学原版的表述」），例如
+    /// 「当一名玩家在一个回合内打出第 3 张技能牌时，给予该玩家 2 层脆弱。」
+    /// <paramref name="keyword"/> 把关键词包起来（卡面传 BBCode 高亮，纯文本不传）。
+    /// </summary>
+    public string Describe(int tier, Func<string, string>? keyword = null)
     {
+        var k = keyword ?? (w => w);
         string when = Trigger switch
         {
-            TrapTrigger.RoundStart => $"第 {Threshold} 回合开始",
-            TrapTrigger.AttacksInTurn => $"玩家一回合打出第 {Threshold} 张攻击牌",
-            TrapTrigger.SkillsInTurn => $"玩家一回合打出第 {Threshold} 张技能牌",
-            TrapTrigger.CardsInTurn => $"玩家一回合打出第 {Threshold} 张牌",
-            TrapTrigger.EnemyDied => "任意敌人死亡",
-            _ => "永不触发",
+            TrapTrigger.RoundStart => $"第 {Threshold} 回合开始时，",
+            TrapTrigger.AttacksInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张攻击牌时，",
+            TrapTrigger.SkillsInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张技能牌时，",
+            TrapTrigger.CardsInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张牌时，",
+            TrapTrigger.EnemyDied => "当一名敌人死亡且场上还有其他敌人时，",
+            _ => "",
         };
         int a = Amount(tier);
+        string target = Trigger == TrapTrigger.RoundStart ? "每名玩家" : "该玩家";
         string what = Effect switch
         {
-            TrapEffect.BlockAllEnemies => $"所有敌人 +{a} 格挡",
-            TrapEffect.StrengthAllEnemies => $"所有敌人 +{a} 力量",
-            TrapEffect.HealAllEnemiesPercent => $"所有敌人回复 {a}% 最大生命",
-            TrapEffect.WeakPlayer => $"{Subject} {a} 层虚弱",
-            TrapEffect.VulnerablePlayer => $"{Subject} {a} 层易伤",
-            TrapEffect.FrailPlayer => $"{Subject} {a} 层脆弱",
-            TrapEffect.DazedPlayer => $"{Subject}抽牌堆塞 {a} 张眩晕",
-            _ => "没有效果（诈唬）",
+            TrapEffect.BlockAllEnemies => $"所有敌人获得 {a} 点{k("格挡")}。",
+            TrapEffect.StrengthAllEnemies => $"所有敌人获得 {a} 点{k("力量")}。",
+            TrapEffect.HealAllEnemiesPercent => $"所有敌人回复 {a}% 最大生命值。",
+            TrapEffect.WeakPlayer => $"给予{target} {a} 层{k("虚弱")}。",
+            TrapEffect.VulnerablePlayer => $"给予{target} {a} 层{k("易伤")}。",
+            TrapEffect.FrailPlayer => $"给予{target} {a} 层{k("脆弱")}。",
+            TrapEffect.DazedPlayer => $"将 {a} 张{k("晕眩")}放入{target}的抽牌堆。",
+            _ => "没有任何效果。",
         };
-        return $"{when} → {what}";
+        return when + what;
     }
 
-    private string Subject => Trigger == TrapTrigger.RoundStart ? "每名玩家" : "该玩家";
+    /// <summary>悬停提示里补充的规则说明（卡面放不下的）。</summary>
+    public string Rules(int dodgeGold)
+    {
+        var lines = new List<string>();
+        if (Effect == TrapEffect.None)
+            lines.Add("玩家只知道你盖了几张陷阱，不知道这张是空的。战斗结束翻开时不给玩家金币。");
+        else
+        {
+            lines.Add("每场战斗只触发一次。");
+            if (Trigger is TrapTrigger.AttacksInTurn or TrapTrigger.SkillsInTurn or TrapTrigger.CardsInTurn)
+                lines.Add("每名玩家分开计数，每回合重新计数。");
+            if (Effect == TrapEffect.StrengthAllEnemies) lines.Add("和塔主行动给的力量合计，不超过本幕的力量上限。");
+            lines.Add($"如果战斗胜利时还没触发，陷阱翻开，每名玩家获得 {dodgeGold} 金币。");
+        }
+        return string.Join("\n", lines);
+    }
 
-    /// <summary>界面上的短条件，例如「3 张攻击」「第 2 回合」。</summary>
+    /// <summary>界面上的短条件（小卡、日志用）。</summary>
     public string ShortWhen => Trigger switch
     {
         TrapTrigger.RoundStart => $"第 {Threshold} 回合",
-        TrapTrigger.AttacksInTurn => $"一回合 {Threshold} 攻击",
-        TrapTrigger.SkillsInTurn => $"一回合 {Threshold} 技能",
-        TrapTrigger.CardsInTurn => $"一回合 {Threshold} 张牌",
+        TrapTrigger.AttacksInTurn => $"第 {Threshold} 张攻击",
+        TrapTrigger.SkillsInTurn => $"第 {Threshold} 张技能",
+        TrapTrigger.CardsInTurn => $"第 {Threshold} 张牌",
         TrapTrigger.EnemyDied => "敌人死亡",
         _ => "不触发",
     };
 
-    /// <summary>界面上的短效果，例如「敌 +5 格挡」。</summary>
+    /// <summary>界面上的短效果（小卡、提示用）。</summary>
     public string ShortWhat(int tier)
     {
         int a = Amount(tier);
         return Effect switch
         {
-            TrapEffect.BlockAllEnemies => $"敌 +{a} 格挡",
-            TrapEffect.StrengthAllEnemies => $"敌 +{a} 力量",
-            TrapEffect.HealAllEnemiesPercent => $"敌回血 {a}%",
-            TrapEffect.WeakPlayer => $"虚弱 {a}",
-            TrapEffect.VulnerablePlayer => $"易伤 {a}",
-            TrapEffect.FrailPlayer => $"脆弱 {a}",
-            TrapEffect.DazedPlayer => $"眩晕 ×{a}",
-            _ => "诈唬",
+            TrapEffect.BlockAllEnemies => $"敌人 {a} 格挡",
+            TrapEffect.StrengthAllEnemies => $"敌人 {a} 力量",
+            TrapEffect.HealAllEnemiesPercent => $"敌人回复 {a}%",
+            TrapEffect.WeakPlayer => $"{a} 层虚弱",
+            TrapEffect.VulnerablePlayer => $"{a} 层易伤",
+            TrapEffect.FrailPlayer => $"{a} 层脆弱",
+            TrapEffect.DazedPlayer => $"{a} 张晕眩",
+            _ => "空陷阱",
         };
     }
 }
@@ -99,9 +120,9 @@ public sealed record TrapCard(string Id, int Tier)
 {
     public TrapDef Def => TrapCatalog.Get(Id);
     public string Name => Tier > 1 ? $"{Def.NameZh}+{Tier - 1}" : Def.NameZh;
-    public string Describe() => Def.Describe(Tier);
-    /// <summary>「条件 → 效果」短文本。</summary>
-    public string Short => $"{Def.ShortWhen} → {Def.ShortWhat(Tier)}";
+    public string Describe(Func<string, string>? keyword = null) => Def.Describe(Tier, keyword);
+    /// <summary>「条件：效果」短文本（小卡、日志用）。</summary>
+    public string Short => $"{Def.ShortWhen}：{Def.ShortWhat(Tier)}";
     public override string ToString() => $"{Id}@{Tier}";
 }
 
@@ -116,14 +137,14 @@ public static class TrapCatalog
 {
     public static readonly IReadOnlyList<TrapDef> All =
     [
-        new("harden", "硬化", TrapTrigger.AttacksInTurn, 3, TrapEffect.BlockAllEnemies, [5, 8, 11], 2),
+        new("harden", "硬化", TrapTrigger.AttacksInTurn, 3, TrapEffect.BlockAllEnemies, [4, 6, 8], 2),
         new("brittle", "碎甲", TrapTrigger.SkillsInTurn, 3, TrapEffect.FrailPlayer, [1, 2, 2], 1),
-        new("stifle", "窒息", TrapTrigger.CardsInTurn, 6, TrapEffect.WeakPlayer, [2, 2, 3], 1),
-        new("rally", "鼓舞", TrapTrigger.RoundStart, 3, TrapEffect.StrengthAllEnemies, [1, 2, 2], 2),
-        new("frenzy", "狂怒", TrapTrigger.EnemyDied, 1, TrapEffect.StrengthAllEnemies, [2, 3, 3], 3),
+        new("stifle", "窒息", TrapTrigger.CardsInTurn, 5, TrapEffect.WeakPlayer, [2, 2, 3], 1),
+        new("rally", "鼓舞", TrapTrigger.RoundStart, 3, TrapEffect.StrengthAllEnemies, [1, 1, 2], 2),
+        new("frenzy", "狂怒", TrapTrigger.EnemyDied, 1, TrapEffect.StrengthAllEnemies, [1, 2, 2], 3),
         new("mire", "泥沼", TrapTrigger.RoundStart, 2, TrapEffect.DazedPlayer, [2, 2, 3], 1),
         new("mend", "再生", TrapTrigger.RoundStart, 4, TrapEffect.HealAllEnemiesPercent, [15, 20, 25], 2),
-        new("countdown", "倒计时", TrapTrigger.RoundStart, 6, TrapEffect.HealAllEnemiesPercent, [30, 35, 40], 1),
+        new("countdown", "倒计时", TrapTrigger.RoundStart, 5, TrapEffect.HealAllEnemiesPercent, [25, 30, 35], 1),
         new("exposed", "破绽", TrapTrigger.AttacksInTurn, 4, TrapEffect.VulnerablePlayer, [1, 2, 2], 2),
         new("bluff", "空陷阱", TrapTrigger.Never, 0, TrapEffect.None, [0, 0, 0], 0),
     ];

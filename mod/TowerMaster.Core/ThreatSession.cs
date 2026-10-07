@@ -32,28 +32,51 @@ public sealed class ThreatSession
     private readonly Dictionary<int, int> _heals = new();
     private readonly Dictionary<int, int> _strength = new();
     private readonly Dictionary<ulong, int> _debuffsThisTurn = new();
+    private readonly int _firstRelease;
+    private readonly int _releasePerTurn;
     private int _dazed;
     private int _strengthAll;
 
-    public ThreatSession(TowerMasterConfig config, int actNo, RoomKind room, int climbers)
+    /// <param name="opening">开局保护的战斗（第一幕前几场普通战）：威胁点不超过 <see cref="TowerMasterConfig.OpeningThreatPoints"/>。</param>
+    public ThreatSession(TowerMasterConfig config, int actNo, RoomKind room, int climbers, bool opening = false)
     {
         _p = config.Threat;
         ActNo = actNo;
-        Points = Allotment(config, actNo, room, climbers);
+        Total = Allotment(config, actNo, room, climbers, opening);
+        _firstRelease = TowerMasterConfig.ByAct(config.ThreatFirstTurnRelease, actNo);
+        _releasePerTurn = config.ThreatReleasePerTurn;
     }
 
     public int ActNo { get; }
-    public int Points { get; private set; }
+    /// <summary>本场威胁点总数。</summary>
+    public int Total { get; }
+    /// <summary>已经花掉的。</summary>
+    public int Spent { get; private set; }
     public int Turn { get; private set; } = 1;
 
-    /// <summary>每场威胁点：按幕 3/4/5，精英 +1，Boss +2，每多 1 名爬塔玩家 +1。</summary>
-    public static int Allotment(TowerMasterConfig config, int actNo, RoomKind room, int climbers) =>
-        TowerMasterConfig.ByAct(config.ThreatPerBattle, actNo)
-        + room switch { RoomKind.Elite => config.ThreatEliteBonus, RoomKind.Boss => config.ThreatBossBonus, _ => 0 }
-        + Math.Max(0, climbers - 1) * config.ThreatPerExtraClimber;
+    /// <summary>
+    /// 到这个回合为止解锁了多少（像原版能量一样逐回合放出来，不能第一回合一口气砸光）：
+    /// 第 1 回合解锁 2/3/3（按幕），之后每回合再解锁 1，直到总数。没花的留到后面的回合。
+    /// </summary>
+    public int Released => _firstRelease <= 0 ? Total : Math.Min(Total, _firstRelease + (Turn - 1) * _releasePerTurn);
 
-    /// <summary>每只怪物累计力量上限 = 幕数 × 2。</summary>
-    public int StrengthCap => ActNo * _p.StrengthCapPerAct;
+    /// <summary>现在能花的威胁点（已解锁 − 已花）。</summary>
+    public int Points => Math.Max(0, Released - Spent);
+
+    /// <summary>本场还剩多少（含后面回合才解锁的）。</summary>
+    public int Remaining => Math.Max(0, Total - Spent);
+
+    /// <summary>每场威胁点：按幕 3/4/5，精英 +1，Boss +2，每多 1 名爬塔玩家 +1；开局保护的战斗最多 2。</summary>
+    public static int Allotment(TowerMasterConfig config, int actNo, RoomKind room, int climbers, bool opening = false)
+    {
+        int points = TowerMasterConfig.ByAct(config.ThreatPerBattle, actNo)
+                     + room switch { RoomKind.Elite => config.ThreatEliteBonus, RoomKind.Boss => config.ThreatBossBonus, _ => 0 }
+                     + Math.Max(0, climbers - 1) * config.ThreatPerExtraClimber;
+        return opening ? Math.Min(points, config.OpeningThreatPoints) : points;
+    }
+
+    /// <summary>每只怪物累计力量上限（按幕 2/3/4；威胁点和陷阱给的合并计算）。</summary>
+    public int StrengthCap => TowerMasterConfig.ByAct(_p.StrengthCap, ActNo);
 
     public int StrengthOf(int monster) => _strength.GetValueOrDefault(monster);
 
@@ -70,7 +93,7 @@ public sealed class ThreatSession
     private bool Pay(int cost)
     {
         if (Points < cost) return false;
-        Points -= cost;
+        Spent += cost;
         return true;
     }
 

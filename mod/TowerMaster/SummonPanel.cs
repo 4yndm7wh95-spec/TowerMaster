@@ -462,7 +462,7 @@ internal sealed class SummonPanel : ISummonUi
         {
             FocusMode = G.Control.FocusModeEnum.None,
             CustomMinimumSize = new G.Vector2(width, width * 1.3f),
-            TooltipText = $"{card.Name}\n{card.Describe()}",
+            TooltipText = $"{card.Name}\n{card.Describe()}\n{card.Def.Rules(ModEntry.Active.DodgeRewardGold)}",
         };
         StyleCard(button, false);
         var col = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };

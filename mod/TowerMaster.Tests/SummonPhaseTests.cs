@@ -150,10 +150,10 @@ public class SummonPhaseTests
         queue.RequestEnqueue(MoveTo(MapPointType.Elite));
         var session = Shown.Single().Session;
         Assert.Empty(session.EncounterOptions);                       // 精英房不再选遭遇
-        Assert.Equal(7, session.MonsterOptions.Single(o => o.Id == "Byrdonis").Price); // 七折
+        Assert.Equal(8, session.MonsterOptions.Single(o => o.Id == "Byrdonis").Price); // 八五折
         session.Click("Byrdonis");
         Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
-        Assert.Equal(5, MasterLedger.Wallet!.Points); // 12 − 7
+        Assert.Equal(4, MasterLedger.Wallet!.Points); // 12 − 8
         var elite = await RunQueueAndEnter(queue, RoomType.Elite);
         Assert.IsType<BygoneEffigyElite>(elite);      // 精英载体：无专用场景的精英遭遇，房间类型、奖励仍是精英
         Assert.Equal(new[] { "Byrdonis" }, Names(elite));
@@ -171,7 +171,7 @@ public class SummonPhaseTests
         session.Click(other);
         session.Click("LeafSlimeS"); // 另加：1 点 + 税 1
         Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
-        Assert.Equal(3, MasterLedger.Wallet!.Points);
+        Assert.Equal(2, MasterLedger.Wallet!.Points);
         var boss = await RunQueueAndEnter(queue, RoomType.Boss);
         Assert.Equal(other, boss.GetType().Name);
         Assert.Equal(new[] { "Mawler", "LeafSlimeS" }, Names(boss)); // Boss 本体（假游戏里是蛮兽）+ 另加的怪
@@ -199,15 +199,15 @@ public class SummonPhaseTests
         Assert.Contains("\"damage_taken\":23", line);
         Assert.Contains("\"summon\":\"confirmed\"", line);
 
-        // 收入 = 基础 5 + 节约 0 + 战果 2（掉 23 血）= 7；12 − 2 + 7 = 17
-        Assert.Equal(17, MasterLedger.Wallet!.Points);
+        // 收入 = 基础 5 + 节约 0 + 战果 1（掉 23 血，每 15 点 +1）= 6；12 − 2 + 6 = 16
+        Assert.Equal(16, MasterLedger.Wallet!.Points);
         Assert.Equal(1, MasterLedger.BattlesFought);
-        Assert.Contains("战斗收入 +7", Assert.Single(Toasts));
+        Assert.Contains("战斗收入 +6", Assert.Single(Toasts));
 
         // 读档：换一个进程状态，从文件恢复
         MasterLedger.Configure(new TowerMasterConfig());
         var wallet = MasterLedger.For(run.Rng.Seed, 1);
-        Assert.Equal(17, wallet.Points);
+        Assert.Equal(16, wallet.Points);
         Assert.Equal(1, MasterLedger.BattlesFought);
     }
 

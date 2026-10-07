@@ -7,6 +7,8 @@ public class Fixture
 {
     public static readonly PriceBook Prices = PriceBook.Load(Path.Combine(AppContext.BaseDirectory, "price_book.json"));
     public static TowerMasterConfig Config() => new();
+    /// <summary>威胁点一开始全给（不逐回合解锁），老测试按这个算。</summary>
+    public static TowerMasterConfig AllAtOnce() => new() { ThreatFirstTurnRelease = [0, 0, 0] };
     public static SummonRules Rules() => new(Config(), Prices);
 }
 
@@ -146,11 +148,12 @@ public class SummonRulesTests
     public void EliteRoomIsADiscountRoomWithOneElite()
     {
         var rules = Fixture.Rules();
-        var room = new RoomContext("Overgrowth", RoomKind.Elite, 2, 10, ["BygoneEffigy"], 30); // 标准开销 8，上限 12
+        var room = new RoomContext("Overgrowth", RoomKind.Elite, 2, 10, ["BygoneEffigy"], 30); // 标准开销 8，上限 10.4
 
         Assert.Equal(9, rules.SummonPrice("Byrdonis", 1, RoomKind.Monster));
-        Assert.Equal(7, rules.SummonPrice("Byrdonis", 1, RoomKind.Elite)); // 打七折：9.6 × 0.7 ≈ 6.7 → 7
-        var plan = rules.Quote(room, new SummonPlan(null, ["Byrdonis", "Mawler"])); // 7 + 2 + 税 1 = 10
+        Assert.Equal(8, rules.SummonPrice("Byrdonis", 1, RoomKind.Elite)); // 八五折：9.6 × 0.85 ≈ 8.2 → 8
+        var plan = rules.Quote(room, new SummonPlan(null, ["Byrdonis", "Inklet"])); // 8 + 1 + 税 1 = 10
+        Assert.Contains(SummonViolation.OverSpendCap, rules.Quote(room, new SummonPlan(null, ["Byrdonis", "Mawler"])).Violations); // 8 + 3 + 1 > 10.4
         Assert.True(plan.Ok, string.Join(",", plan.Violations));
         Assert.Equal(10, plan.Total);
 
@@ -188,12 +191,12 @@ public class SummonRulesTests
         Assert.True(free.Ok);
         Assert.Equal(0, free.Total);
 
-        // 本幕（密林）普通战平均标准开销 ≈ 4.96，额外召唤上限 ≈ 9.9。
-        var extras = rules.Quote(room, new SummonPlan("CeremonialBeastBoss", ["Mawler", "Fogmog"])); // 6 + 税3 = 9
+        // 本幕（密林）普通战平均标准开销 ≈ 4.96，额外召唤上限 = 1 场普通战 ≈ 4.96。
+        var extras = rules.Quote(room, new SummonPlan("CeremonialBeastBoss", ["Mawler"])); // 3 + 税1 = 4
         Assert.True(extras.Ok, string.Join(",", extras.Violations));
-        Assert.Equal(9, extras.Total);
+        Assert.Equal(4, extras.Total);
         Assert.Contains(SummonViolation.OverBossExtraCap,
-            rules.Quote(room with { Climbers = 3 }, new SummonPlan("CeremonialBeastBoss", ["Mawler", "Fogmog", "Nibbit"])).Violations);
+            rules.Quote(room with { Climbers = 3 }, new SummonPlan("CeremonialBeastBoss", ["Mawler", "Fogmog"])).Violations);
 
         // Boss 遭遇整体算 1 个单位：同族小队本身 3 只，单人时（上限 3）还能另加 2 只，第 3 只超限。
         Assert.DoesNotContain(SummonViolation.TooManyMonsters, rules.Quote(room, new SummonPlan("TheKinBoss", ["Nibbit", "Nibbit"])).Violations);
@@ -273,10 +276,11 @@ public class EconomyTests
     {
         var w = new SummonWallet(Fixture.Config());
         w.Spend(3);
-        var income = w.SettleBattle(Battle(std: 5, spend: 1, dmg: 27, down: 7), climbers: 1, out var rewarded);
-        Assert.Equal(new IncomeBreakdown(5, 2, 2, 5, 0), income);
+        var income = w.SettleBattle(Battle(std: 5, spend: 1, dmg: 31, down: 7), climbers: 1, out var rewarded);
+        Assert.Equal(new IncomeBreakdown(5, 2, 2, 3, 0), income); // 掉血 31 → 每 15 点 +1；击倒 +3
         Assert.Equal(new[] { 7UL }, rewarded);
-        Assert.Equal(12 - 3 + 14, w.Points);
+        Assert.Equal(12 - 3 + 12, w.Points);
+        Assert.Equal(2, w.DamageBonus(200)); // 每场最多 +2
     }
 
     [Fact]
@@ -311,8 +315,8 @@ public class EconomyTests
         config.SavingsCap = [30, 20, 60];
         var w = new SummonWallet(config);
         w.Gain(16); // 28
-        var income = w.SettleBattle(Battle(dmg: 30), 1, out _); // 5 + 3 = 8，只能进 2
-        Assert.Equal(6, income.Wasted);
+        var income = w.SettleBattle(Battle(dmg: 30), 1, out _); // 5 + 2 = 7，只能进 2
+        Assert.Equal(5, income.Wasted);
         Assert.Equal(2, income.Credited);
         Assert.Equal(30, w.Points);
         Assert.Equal(10, w.EnterAct(2));
@@ -333,9 +337,31 @@ public class ThreatSessionTests
     }
 
     [Fact]
+    public void PointsAreReleasedTurnByTurnAndOpeningIsCapped()
+    {
+        var s = new ThreatSession(Fixture.Config(), 1, RoomKind.Boss, 1); // 共 5，第 1 回合 2，之后每回合 +1
+        Assert.Equal((5, 2, 5), (s.Total, s.Points, s.Remaining));
+        Assert.True(s.Block(1).Ok);
+        Assert.True(s.Block(1).Ok);
+        Assert.Equal(ThreatViolation.NotEnoughThreat, s.Block(1).Violation);
+        s.NextTurn();
+        Assert.Equal((1, 3), (s.Points, s.Remaining));
+        s.NextTurn();
+        Assert.Equal(2, s.Points); // 没花的留着
+        s.NextTurn();
+        s.NextTurn();
+        Assert.Equal(3, s.Points); // 不超过总数
+
+        Assert.Equal(2, new ThreatSession(Fixture.Config(), 1, RoomKind.Monster, 3, opening: true).Total);
+        Assert.Equal(5, new ThreatSession(Fixture.Config(), 1, RoomKind.Monster, 3).Total);
+        Assert.Equal(3, new ThreatSession(Fixture.Config(), 2, RoomKind.Monster, 1).Points);
+        Assert.Equal(new[] { 2, 3, 4 }, new[] { 1, 2, 3 }.Select(a => new ThreatSession(Fixture.Config(), a, RoomKind.Monster, 1).StrengthCap));
+    }
+
+    [Fact]
     public void BlockScalesWithActAndSpendsPoints()
     {
-        var s = new ThreatSession(Fixture.Config(), 2, RoomKind.Monster, 1);
+        var s = new ThreatSession(Fixture.AllAtOnce(), 2, RoomKind.Monster, 1);
         Assert.Equal(9, s.Block(1).Amount);
         Assert.Equal(3, s.Points);
     }
@@ -343,7 +369,7 @@ public class ThreatSessionTests
     [Fact]
     public void HealTwicePerMonster()
     {
-        var s = new ThreatSession(Fixture.Config(), 3, RoomKind.Monster, 1);
+        var s = new ThreatSession(Fixture.AllAtOnce(), 3, RoomKind.Monster, 1);
         Assert.Equal(14, s.Heal(1, 145).Amount);
         Assert.True(s.Heal(1, 145).Ok);
         Assert.Equal(ThreatViolation.HealLimit, s.Heal(1, 145).Violation);
@@ -354,7 +380,7 @@ public class ThreatSessionTests
     [Fact]
     public void DebuffOncePerPlayerPerTurn()
     {
-        var s = new ThreatSession(Fixture.Config(), 1, RoomKind.Monster, 2);
+        var s = new ThreatSession(Fixture.AllAtOnce(), 1, RoomKind.Monster, 2);
         Assert.True(s.Debuff(10, PlayerDebuff.Weak).Ok);
         Assert.Equal(ThreatViolation.DebuffLimit, s.Debuff(10, PlayerDebuff.Frail).Violation);
         Assert.True(s.Debuff(11, PlayerDebuff.Vulnerable).Ok);
@@ -369,7 +395,7 @@ public class ThreatSessionTests
     [Fact]
     public void DazedThreePerBattle()
     {
-        var config = Fixture.Config();
+        var config = Fixture.AllAtOnce();
         config.ThreatPerBattle = [10, 10, 10];
         var s = new ThreatSession(config, 1, RoomKind.Monster, 1);
         for (int i = 0; i < 3; i++) Assert.True(s.Dazed(1).Ok);
@@ -379,8 +405,10 @@ public class ThreatSessionTests
     [Fact]
     public void StrengthCapCombinesThreatAndTraps()
     {
-        var config = Fixture.Config();
+        var config = Fixture.AllAtOnce();
         config.ThreatPerBattle = [20, 20, 20];
+        config.Threat.StrengthAmount = [1, 2, 2];
+        config.Threat.StrengthCap = [2, 4, 6];
         var s = new ThreatSession(config, 2, RoomKind.Monster, 1); // 上限 4，单次 +2
         Assert.Equal(1, s.AddTrapStrength(1, 1));
         Assert.True(s.Strength(1).Ok); // 3
@@ -397,7 +425,7 @@ public class ThreatSessionTests
     [Fact]
     public void StrengthAllNeedsATarget()
     {
-        var s = new ThreatSession(Fixture.Config(), 1, RoomKind.Boss, 1); // 5 点，上限 2
+        var s = new ThreatSession(Fixture.AllAtOnce(), 1, RoomKind.Boss, 1); // 5 点，上限 2
         s.AddTrapStrength(1, 2);
         Assert.Equal(ThreatViolation.NoTarget, s.StrengthAll([1]).Violation);
         Assert.Equal(5, s.Points);
@@ -413,11 +441,11 @@ public class ConfigTests
         {
           // 注释和尾逗号都允许
           "base_income": [5, 6, 7],
-          "threat": { "strength_cap_per_act": 3 },
+          "threat": { "strength_cap": [3, 4, 5] },
         }
         """);
         Assert.Equal(new[] { 5, 6, 7 }, config.BaseIncome);
-        Assert.Equal(3, config.Threat.StrengthCapPerAct);
+        Assert.Equal(new[] { 3, 4, 5 }, config.Threat.StrengthCap);
         Assert.Equal(2, config.Threat.StrengthCost);
         Assert.Equal(12, config.StartingSummonPoints);
 

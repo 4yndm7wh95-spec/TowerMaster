@@ -13,7 +13,11 @@ public class TrapTests
         Assert.All(act1, p => Assert.InRange(p.Cards.Count, 4, 5));
         Assert.All(act1.SelectMany(p => p.Cards), c => Assert.Equal(1, c.Tier));
         Assert.All(TrapCatalog.PacksFor(3).SelectMany(p => p.Cards), c => Assert.Equal(3, c.Tier));
-        Assert.Equal("所有敌人 +11 格挡", TrapCatalog.Get("harden").Describe(3).Split(" → ")[1]);
+        Assert.Equal("当一名玩家在一个回合内打出第 3 张攻击牌时，所有敌人获得 8 点格挡。", TrapCatalog.Get("harden").Describe(3));
+        Assert.Equal("当一名玩家在一个回合内打出第 3 张技能牌时，给予该玩家 2 层[脆弱]。", TrapCatalog.Get("brittle").Describe(2, w => $"[{w}]"));
+        Assert.Equal("第 2 回合开始时，将 2 张晕眩放入每名玩家的抽牌堆。", TrapCatalog.Get("mire").Describe(1));
+        Assert.Equal("没有任何效果。", TrapCatalog.Get("bluff").Describe(1));
+        Assert.DoesNotContain("金币", TrapCatalog.Get("bluff").Rules(10).Replace("不给玩家金币", ""));
         Assert.Equal("硬化+2", new TrapCard("harden", 3).Name);
         Assert.DoesNotContain(TrapCatalog.PoolFor(1), c => c.Id == "bluff");
         Assert.Equal(new TrapCard("mire", 2), TrapCatalog.Parse("mire@2"));

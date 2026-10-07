@@ -17,19 +17,51 @@ internal sealed class ThreatPanel : IThreatUi
 {
     private enum Target { Monster, Player, None }
 
-    private sealed record ActionDef(string Op, string Name, string Icon, Target Target, Func<ThreatPrices, int> Cost, Func<ThreatPrices, int, string> Effect, string Tip);
+    /// <param name="Text">原版卡牌风格的卡面说明（关键词用 k 包起来高亮）。</param>
+    /// <param name="Rules">悬停提示里补充的限制。</param>
+    private sealed record ActionDef(string Op, string Name, string Icon, Target Target, Func<ThreatPrices, int> Cost,
+        Func<ThreatPrices, int, Func<string, string>, string> Text, Func<ThreatPrices, string> Rules);
 
     private static readonly ActionDef[] Actions =
     [
-        new("block", "格挡", "act_block", Target.Monster, p => p.BlockCost, (p, act) => $"+{TowerMasterConfig.ByAct(p.BlockAmount, act)} 格挡", "给一只怪加格挡"),
-        new("heal", "回血", "act_heal", Target.Monster, p => p.HealCost, (p, _) => $"回血 {p.HealPercent}%", "一只怪回复最大生命的一部分；每只每场有次数"),
-        new("strength", "力量", "act_strength", Target.Monster, p => p.StrengthCost, (p, act) => $"+{TowerMasterConfig.ByAct(p.StrengthAmount, act)} 力量", "一只怪加力量；每只有累计上限"),
-        new("strength_all", "全体力量", "act_strength_all", Target.None, p => p.StrengthAllCost, (p, _) => $"全体 +{p.StrengthAllAmount} 力量", "所有怪加力量；每场一次"),
-        new("weak", "虚弱", "act_weak", Target.Player, p => p.DebuffCost, (p, _) => $"虚弱 {p.DebuffStacks}", "玩家造成的伤害降低；同一玩家每回合只能上一次减益"),
-        new("vulnerable", "易伤", "act_vulnerable", Target.Player, p => p.DebuffCost, (p, _) => $"易伤 {p.DebuffStacks}", "玩家受到的伤害提高；同一玩家每回合只能上一次减益"),
-        new("frail", "脆弱", "act_frail", Target.Player, p => p.DebuffCost, (p, _) => $"脆弱 {p.DebuffStacks}", "玩家获得的格挡降低；同一玩家每回合只能上一次减益"),
-        new("dazed", "眩晕", "act_dazed", Target.Player, p => p.DazedCost, (_, _) => "塞 1 张眩晕", "往玩家抽牌堆塞一张眩晕；每场有次数"),
+        new("block", "加固", "act_block", Target.Monster, p => p.BlockCost,
+            (p, act, k) => $"选择一名敌人，使其获得 {TowerMasterConfig.ByAct(p.BlockAmount, act)} 点{k("格挡")}。",
+            _ => "格挡在敌人的下个回合开始时消失。"),
+        new("heal", "治疗", "act_heal", Target.Monster, p => p.HealCost,
+            (p, _, k) => $"选择一名敌人，使其回复 {p.HealPercent}% 最大生命值。",
+            p => $"每名敌人每场战斗最多被治疗 {p.HealPerMonsterPerBattle} 次。"),
+        new("strength", "激励", "act_strength", Target.Monster, p => p.StrengthCost,
+            (p, act, k) => $"选择一名敌人，使其获得 {TowerMasterConfig.ByAct(p.StrengthAmount, act)} 点{k("力量")}。",
+            p => $"每名敌人从塔主获得的力量（含陷阱）不超过本幕上限：{string.Join(" / ", p.StrengthCap)}。"),
+        new("strength_all", "战吼", "act_strength_all", Target.None, p => p.StrengthAllCost,
+            (p, _, k) => $"所有敌人获得 {p.StrengthAllAmount} 点{k("力量")}。",
+            p => $"每场战斗限 {p.StrengthAllPerBattle} 次。已到力量上限的敌人不受影响。"),
+        new("weak", "虚弱", "act_weak", Target.Player, p => p.DebuffCost,
+            (p, _, k) => $"给予一名玩家 {p.DebuffStacks} 层{k("虚弱")}。",
+            p => $"虚弱：造成的攻击伤害减少 25%。同一名玩家每回合最多被塔主施加 {p.DebuffPerPlayerPerTurn} 次减益。"),
+        new("vulnerable", "易伤", "act_vulnerable", Target.Player, p => p.DebuffCost,
+            (p, _, k) => $"给予一名玩家 {p.DebuffStacks} 层{k("易伤")}。",
+            p => $"易伤：受到的攻击伤害增加 50%。同一名玩家每回合最多被塔主施加 {p.DebuffPerPlayerPerTurn} 次减益。"),
+        new("frail", "脆弱", "act_frail", Target.Player, p => p.DebuffCost,
+            (p, _, k) => $"给予一名玩家 {p.DebuffStacks} 层{k("脆弱")}。",
+            p => $"脆弱：从卡牌获得的格挡减少 25%。同一名玩家每回合最多被塔主施加 {p.DebuffPerPlayerPerTurn} 次减益。"),
+        new("dazed", "晕眩", "act_dazed", Target.Player, p => p.DazedCost,
+            (_, _, k) => $"将 1 张{k("晕眩")}放入一名玩家的抽牌堆。",
+            p => $"每场战斗最多 {p.DazedPerBattle} 次。"),
     ];
+
+    /// <summary>目标按钮上的短效果。</summary>
+    private static string Short(ActionDef a, ThreatPrices p, int act) => a.Op switch
+    {
+        "block" => $"+{TowerMasterConfig.ByAct(p.BlockAmount, act)} 格挡",
+        "heal" => $"回复 {p.HealPercent}%",
+        "strength" => $"+{TowerMasterConfig.ByAct(p.StrengthAmount, act)} 力量",
+        "strength_all" => $"全体 +{p.StrengthAllAmount} 力量",
+        "weak" => $"虚弱 {p.DebuffStacks}",
+        "vulnerable" => $"易伤 {p.DebuffStacks}",
+        "frail" => $"脆弱 {p.DebuffStacks}",
+        _ => "+1 晕眩",
+    };
 
     private G.CanvasLayer? _layer;
     private G.Control _targets = null!;
@@ -163,7 +195,9 @@ internal sealed class ThreatPanel : IThreatUi
         foreach (var child in _points.GetChildren()) child.QueueFree();
         if (Art.Icon("icon_threat_point", 30) is { } icon) _points.AddChild(icon);
         _points.AddChild(P.Text($"{points}", 30, P.Gold));
-        _points.TooltipText = "威胁点（整场共用）";
+        int later = (session?.Remaining ?? 0) - points;
+        if (later > 0) _points.AddChild(P.Text($"+{later}", 16, P.TextDim));
+        _points.TooltipText = $"现在能用 {points} 威胁点" + (later > 0 ? $"；还有 {later} 点在之后的回合解锁（每回合 +{ModEntry.Active.ThreatReleasePerTurn}）" : "") + "\n没用完的点数留到之后的回合。";
 
         foreach (var child in _hand.GetChildren()) child.QueueFree();
         var (monsters, _) = ThreatPhase.Snapshot();
@@ -218,7 +252,7 @@ internal sealed class ThreatPanel : IThreatUi
             FocusMode = G.Control.FocusModeEnum.None,
             CustomMinimumSize = new G.Vector2(96, 132),
             Disabled = points < cost,
-            TooltipText = $"{a.Name}：{a.Effect(prices, act)}\n{a.Tip}\n花费 {cost} 威胁点",
+            TooltipText = $"{a.Name}（{cost} 威胁点）\n{a.Text(prices, act, w => w)}\n{a.Rules(prices)}",
         };
         var bg = selected ? new G.Color(0.24f, 0.19f, 0.10f) : P.CardBg;
         card.AddThemeStyleboxOverride("normal", P.Box(bg, selected ? P.Gold : P.CardBorder, selected ? 3 : 1, 10, 0));
@@ -228,9 +262,10 @@ internal sealed class ThreatPanel : IThreatUi
         card.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
 
         // 原版卡框（失败就用下面的自绘小卡）
-        var face = new CardFace(a.Name, a.Effect(prices, act) + (a.Target == Target.Monster ? "\n选一只怪" : a.Target == Target.Player ? "\n选一名玩家" : ""), "塔主", $"{cost}", a.Icon);
-        if (VanillaCard.Create(face, 0.40f) is { } vanilla)
+        var face = new CardFace(a.Name, a.Text(prices, act, VanillaCard.Kw), "塔主", $"{cost}", a.Icon);
+        if (VanillaCard.Create(face, 0.46f) is { } vanilla)
         {
+            if (!card.Disabled) VanillaCard.HoverZoom(card, vanilla, 1.6f, 10);
             card.CustomMinimumSize = vanilla.CustomMinimumSize + new G.Vector2(8, 8);
             vanilla.Position = new G.Vector2(4, selected ? -14 : 4); // 选中的卡抬起来
             card.AddChild(vanilla);
@@ -308,7 +343,7 @@ internal sealed class ThreatPanel : IThreatUi
                 int index = enemies.FindIndex(e => ReferenceEquals(e, entity));
                 var view = monsters.FirstOrDefault(m => m.Index == index);
                 if (index < 0 || view == null) continue;
-                string label = _selected.Op == "heal" ? $"+{Math.Max(1, view.MaxHp * prices.HealPercent / 100)} 生命" : _selected.Effect(prices, act);
+                string label = _selected.Op == "heal" ? $"+{Math.Max(1, view.MaxHp * prices.HealPercent / 100)} 生命" : Short(_selected, prices, act);
                 bool usable = _selected.Op != "heal" || view.HealsLeft > 0;
                 AddTarget(node, label, usable, () => Do(_selected!.Op, monster: index));
             }
@@ -318,7 +353,7 @@ internal sealed class ThreatPanel : IThreatUi
                 var id = player == null ? null : Test2MasterOffField.NetIdOf(player);
                 if (id == null || players.All(p => p.NetId != id)) continue;
                 ulong netId = id.Value;
-                AddTarget(node, _selected.Effect(prices, act), true, () => Do(_selected!.Op, player: netId));
+                AddTarget(node, Short(_selected, prices, act), true, () => Do(_selected!.Op, player: netId));
             }
         }
         P.ApplyGameFont(_targets);

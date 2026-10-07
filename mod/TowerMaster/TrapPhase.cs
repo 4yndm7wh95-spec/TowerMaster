@@ -47,13 +47,15 @@ internal sealed class TrapDraftChoice(TrapDraft draft)
 /// 陷阱（设计文档「陷阱牌」）。只有房主知道盖了什么：
 /// 召唤确认时从手里拿走（<see cref="Place"/>），战斗开始时布置（<see cref="CombatSetUp"/>），
 /// 房主看到触发条件满足（回合开始、玩家出牌、敌人死亡）就经塔主回合的联机通道发一条 trap 指令，各端施加效果。
-/// 战斗胜利后没触发的陷阱翻开、收回手里，每张给每名爬塔玩家 15 金币（trap_dodge 指令，各端用 PlayerCmd.GainGold）。
+/// 战斗胜利后没触发的陷阱翻开、收回手里，每张（空陷阱除外）给每名爬塔玩家 10 金币（trap_dodge 指令，各端用 PlayerCmd.GainGold）。
+/// 第 1 回合公开本场盖了几张（不公开是什么），空陷阱靠这个起诈唬作用。
 /// 击倒奖励从本幕牌池抽 1 张。
 /// </summary>
 internal static class TrapPhase
 {
     private static List<TrapCard> _pending = new();
-    private static int _handAtEntry;
+    private static int _placed;
+    private static int _handLeft;
     private static bool _infoSent;
     private static bool _patched;
     private static readonly List<TrapFire> Deferred = new();
@@ -76,7 +78,8 @@ internal static class TrapPhase
     internal static void Reset()
     {
         _pending = new();
-        _handAtEntry = 0;
+        _placed = 0;
+        _handLeft = 0;
         _infoSent = false;
         Known.Clear();
         CountedDead.Clear();
@@ -88,7 +91,8 @@ internal static class TrapPhase
     internal static void Place(IReadOnlyList<TrapCard> cards, int handLeft)
     {
         _pending = cards.ToList();
-        _handAtEntry = handLeft + cards.Count;
+        _placed = cards.Count;
+        _handLeft = handLeft;
         MasterLedger.SetLastPlaced(cards.Select(c => c.Id));
         if (cards.Count > 0) Log.Info($"塔主陷阱：盖下 {string.Join("、", cards.Select(c => c.Name))}（只有塔主知道）");
     }
@@ -113,7 +117,7 @@ internal static class TrapPhase
         if (!_infoSent)
         {
             _infoSent = true;
-            if (_handAtEntry > 0) ThreatPhase.Send(new ThreatCommand(1, 0, 0, round, "trap_info", Amount: _handAtEntry));
+            if (_placed + _handLeft > 0) ThreatPhase.Send(new ThreatCommand(1, 0, 0, round, "trap_info", Monster: _handLeft, Amount: _placed));
         }
         CheckDeaths(round);
         Fire(Tracker.RoundStarted(round), round);
@@ -169,10 +173,8 @@ internal static class TrapPhase
         {
             Log.Info($"塔主陷阱：{fire.Card.Name} 触发（{fire.Card.Describe()}）{(fire.Player != 0 ? $"，玩家 {fire.Player}" : "")}");
             BalanceLog.TrapFired(fire.Card);
-            var command = new ThreatCommand(1, 0, 0, round, "trap", MonsterId: fire.Card.ToString(), Player: fire.Player,
-                Amount: fire.Card.Def.Amount(fire.Card.Tier));
             if (ThreatPhase.TurnOpen) Deferred.Add(fire); // 塔主回合里玩家队列暂停着，等塔主回合结束再发（指令要排在 end 后面）
-            else ThreatPhase.Send(command);
+            else ThreatPhase.Send(ThreatPhase.TrapCommand(fire.Card, fire.Player, round));
         }
     }
 
@@ -182,8 +184,7 @@ internal static class TrapPhase
         var fires = Deferred.ToList();
         Deferred.Clear();
         foreach (var fire in fires)
-            ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "trap", MonsterId: fire.Card.ToString(), Player: fire.Player,
-                Amount: fire.Card.Def.Amount(fire.Card.Tier)));
+            ThreatPhase.Send(ThreatPhase.TrapCommand(fire.Card, fire.Player, ThreatPhase.Round));
     }
 
     // ---------------------------------------------------------------- 战斗结束（房主）
@@ -204,8 +205,9 @@ internal static class TrapPhase
         MasterLedger.AddTraps(unfired, "没触发的陷阱收回");
         if (!won) return;
         BalanceLog.TrapsDodged(unfired);
+        int dodged = unfired.Count(c => c.Def.Effect != TrapEffect.None); // 空陷阱翻开不给金币
         ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "trap_dodge",
-            MonsterId: string.Join("、", unfired.Select(c => c.Name)), Amount: config.DodgeRewardGold * unfired.Count));
+            MonsterId: string.Join("、", unfired.Select(c => c.Name)), Amount: config.DodgeRewardGold * dodged));
     }
 
     /// <summary>击倒奖励：每名被击倒（且有奖励）的玩家，从本幕牌池抽 1 张手里没有的（手满就不给）。</summary>

@@ -15,9 +15,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DEFAULTS = {
     "starting_summon_points": 12, "base_income": [5, 6, 7], "climber_income_factor": [1.0, 1.25, 1.5],
-    "savings_bonus_divisor": 2, "savings_bonus_max": 3, "damage_per_bonus_point": 10, "savings_cap": [30, 45, 60],
-    "normal_spend_cap_multiplier": 1.6, "elite_spend_cap_multiplier": 1.5, "opening_spend_cap_multiplier": 1.3,
-    "boss_extra_spend_cap_multiplier": 2.0, "opening_protection_battles": 3, "elite_room_discount": 0.7,
+    "savings_bonus_divisor": 2, "savings_bonus_max": 3, "damage_per_bonus_point": 15, "damage_bonus_max": 2,
+    "savings_cap": [30, 45, 60],
+    "normal_spend_cap_multiplier": 1.35, "elite_spend_cap_multiplier": 1.3, "opening_spend_cap_multiplier": 1.3,
+    "boss_extra_spend_cap_multiplier": 1.0, "opening_protection_battles": 3, "elite_room_discount": 0.85,
 }
 
 
@@ -31,6 +32,7 @@ def main():
     ap.add_argument("--policy", default="standard", choices=["standard", "cap", "save"])
     ap.add_argument("--damage", type=float, default=12, help="每场玩家合计掉血（估计战果奖励）")
     ap.add_argument("--config", default=None)
+    ap.add_argument("--act1", default="Overgrowth", choices=["Overgrowth", "Underdocks"])
     a = ap.parse_args()
     cfg = dict(DEFAULTS)
     if a.config:
@@ -38,7 +40,8 @@ def main():
             cfg.update(json.load(f))
     book = json.load(open(os.path.join(ROOT, "data", "price_book.json"), encoding="utf-8"))
 
-    acts = list(book["acts"].items())[:3]
+    # 第一幕是密林或暗港（--act1 选），之后是蜂巢、荣耀
+    acts = [(k, book["acts"][k]) for k in (a.act1, "Hive", "Glory")]
     points = cfg["starting_summon_points"]
     battles = 0
     print(f"策略 {a.policy}，爬塔 {a.climbers} 人，开局 {points} 点\n")
@@ -74,7 +77,7 @@ def main():
             points -= spend
             base = math.floor(by_act(cfg["base_income"], act_no) * by_act(cfg["climber_income_factor"], a.climbers))
             saving = min(cfg["savings_bonus_max"], max(0, (std - spend) // cfg["savings_bonus_divisor"])) if room == "Monster" else 0
-            damage = math.floor(a.damage / cfg["damage_per_bonus_point"])
+            damage = min(cfg["damage_bonus_max"], math.floor(a.damage / cfg["damage_per_bonus_point"]))
             income = base + saving + damage
             credited = min(income, cap - points)
             wasted = income - credited

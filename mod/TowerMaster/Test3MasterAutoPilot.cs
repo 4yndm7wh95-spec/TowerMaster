@@ -358,7 +358,7 @@ internal static class Test3MasterAutoPilot
             if (key == _lastActReady) return;
             _lastActReady = key;
             CallLocal(__instance, "SetLocalPlayerReady");
-            Log.Info($"测试3 换幕：跟随玩家 {Test2MasterOffField.NetIdOf(__args[0])} 准备，第 {__args[1]} 幕");
+            Log.Info($"测试3 换幕：跟随玩家 {Test2MasterOffField.NetIdOf(__args[0])} 准备，原版参数 {__args[1]}（不是幕数）");
         }
         catch (Exception e) { Log.Error("测试3 换幕：自动准备失败，需要塔主手动继续", e); }
     }

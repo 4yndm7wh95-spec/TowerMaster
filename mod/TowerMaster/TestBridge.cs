@@ -757,6 +757,8 @@ internal static class TestBridge
             open = ThreatPhase.TurnOpen,
             round = ThreatPhase.Round,
             points = ThreatPhase.Session?.Points,
+            points_total = ThreatPhase.Session?.Total,
+            points_remaining = ThreatPhase.Session?.Remaining,
             seconds_left = ThreatPhase.Unlimited ? (double?)null : Math.Round(ThreatPhase.SecondsLeft, 1),
             strength_cap = ThreatPhase.Session?.StrengthCap,
             monsters = monsters.Select(m => new { index = m.Index, id = m.Id, name = m.Name, hp = m.Hp, max_hp = m.MaxHp, block = m.Block, strength = m.Strength, strength_from_master = m.StrengthFromMaster, heals_left = m.HealsLeft }),
