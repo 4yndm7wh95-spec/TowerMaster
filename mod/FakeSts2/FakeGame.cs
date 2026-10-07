@@ -41,6 +41,17 @@ namespace MegaCrit.Sts2.Core.Models
     public static class ModelDb
     {
         private static readonly Dictionary<Type, object> Cache = new();
+        private static readonly Dictionary<Type, AbstractModel> Content = new();
+
+        /// <summary>仿造：Init 时收录 mod 类型（经 ReflectionHelper.ModTypes）。</summary>
+        public static void Init()
+        {
+            foreach (var t in MegaCrit.Sts2.Core.Helpers.ReflectionHelper.ModTypes.Where(t => typeof(AbstractModel).IsAssignableFrom(t) && !t.IsAbstract))
+                Content[t] = (AbstractModel)Activator.CreateInstance(t)!;
+        }
+        private static AbstractModel Get(Type type) => Content[type];
+        public static string GetEntry(Type type) => string.Concat(type.Name.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c : c.ToString())).ToUpperInvariant();
+        public static IEnumerable<CardPoolModel> AllSharedCardPools { get; } = [new ColorlessCardPool()];
 
         public static T Monster<T>() where T : MonsterModel => Activator.CreateInstance<T>();
 

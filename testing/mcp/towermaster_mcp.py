@@ -560,6 +560,8 @@ TOOLS = [
          lambda a: call(a["instance"], "/combat/play", {k: a[k] for k in ("index", "target") if k in a})),
     tool("tm_end_turn", "本机玩家结束回合（入队原版 EndPlayerTurnAction）。", INST, ["instance"],
          lambda a: call(a["instance"], "/combat/end_turn")),
+    tool("tm_master_deck", "塔主牌（master_cards 开着时）：是否注册、类型数，以及每名玩家牌组里的卡（类型、标题、塔主牌 key）。", INST, [],
+         lambda a: call(host_or(a), "/master/deck")),
     tool("tm_traps", "塔主陷阱：手里的陷阱（序号、名字、说明）、本场盖下/没触发的、待选的陷阱包。", INST, [],
          lambda a: call(host_or(a), "/traps")),
     tool("tm_trap_draft", "每幕开头挑陷阱：picks 给候选序号（见 tm_traps 的 draft.offer）；不给就按顺序在预算内自动挑。会确认。", {**INST, "picks": {"type": "array", "items": I}}, [],

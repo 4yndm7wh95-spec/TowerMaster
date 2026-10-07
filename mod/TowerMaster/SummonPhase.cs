@@ -104,8 +104,7 @@ internal static class SummonPhase
         Draft = null;
         StartHp.Clear();
         KnockedDown.Clear();
-        _subscribedManager = null;
-        MasterLedger.Configure(_config);
+        MasterLedger.Configure(_config); // 订阅不清：CombatManager 是单例，回调一直有效
     }
 
     internal static void Configure(TowerMasterConfig config, PriceBook prices)
@@ -214,6 +213,7 @@ internal static class SummonPhase
             {
                 Draft = null;
                 MasterLedger.CompleteDraft(act.ActNo, cards);
+                MasterDeck.Publish($"第 {act.ActNo} 幕挑完陷阱");
                 OpenSummon();
             };
             try { _openUi = DraftUiFactory(choice); _openUi.Show(); }
@@ -332,6 +332,8 @@ internal static class SummonPhase
         var ev = manager.GetType().GetEvent("CombatWon", GameReflection.All);
         if (ev?.EventHandlerType == null) { Log.Warn("召唤阶段：找不到 CombatWon 事件，不结算收入"); return; }
         var handler = Delegate.CreateDelegate(ev.EventHandlerType, typeof(SummonPhase).GetMethod(nameof(AfterCombatWon), GameReflection.All)!);
+        // CombatManager 是整个进程的单例：先摘掉可能已经挂着的同一个回调再挂，免得换局后重复结算（0.0.27 实测收入执行两次）
+        ev.RemoveEventHandler(manager, handler);
         ev.AddEventHandler(manager, handler);
         _subscribedManager = manager;
         Log.Info("召唤阶段：已订阅战斗胜利事件");
@@ -392,6 +394,7 @@ internal static class SummonPhase
                 Climbers(state), out var rewarded);
             MasterLedger.CountBattle();
             if (ThreatPhase.Enabled) TrapPhase.KnockdownReward(rewarded.Count, wallet.ActNo, Seed(state), MasterLedger.BattlesFought, _config.TrapHandLimit);
+            MasterDeck.Publish("战斗结束（陷阱用掉/收回、击倒奖励）");
             MasterLedger.Save();
             BalanceLog.Finish(true, wallet.ActNo, MasterLedger.BattlesFought, StartHp, ClimberPlayers(), KnockedDown, damage, income, wallet.Points);
             var text = $"战斗收入 +{income.Credited}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +

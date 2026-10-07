@@ -18,6 +18,12 @@ namespace MegaCrit.Sts2.Core.Entities.Players
         public MegaCrit.Sts2.Core.Entities.Creatures.Creature Creature { get; }
         public PlayerCombatState PlayerCombatState { get; } = new();
         public int Gold { get; set; } = 99;
+        public MegaCrit.Sts2.Core.Entities.Cards.CardPile Deck { get; } = new();
+        private void PopulateDeck(IEnumerable<MegaCrit.Sts2.Core.Models.CardModel> cards, bool silent = false)
+        {
+            if (Deck.Cards.Count > 0) throw new InvalidOperationException("牌组不是空的");
+            foreach (var c in cards) { c.Owner = this; Deck.AddInternal(c, -1, silent); }
+        }
     }
     public sealed class PlayerCombatState
     {
@@ -70,6 +76,21 @@ namespace MegaCrit.Sts2.Core.GameActions
         public override MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType ActionType => MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType.NonCombat;
         protected override Task ExecuteAction() => Task.CompletedTask;
         public override INetAction ToNetAction() => throw new NotSupportedException();
+    }
+}
+namespace MegaCrit.Sts2.Core.Localization
+{
+    public sealed class LocTable
+    {
+        public Dictionary<string, string> Entries { get; } = new();
+        public void MergeWith(Dictionary<string, string> entries) { foreach (var (k, v) in entries) Entries[k] = v; }
+    }
+    public sealed class LocManager
+    {
+        public static LocManager Instance { get; } = new();
+        private readonly Dictionary<string, LocTable> _tables = new();
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public LocTable GetTable(string name) => _tables.TryGetValue(name, out var t) ? t : _tables[name] = new LocTable();
     }
 }
 namespace MegaCrit.Sts2.Core.Helpers

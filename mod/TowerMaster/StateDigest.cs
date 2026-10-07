@@ -37,8 +37,11 @@ internal static class StateDigest
         var pcs = GameReflection.Get(p, "PlayerCombatState");
         string piles = pcs == null ? "" : $" e{GameReflection.Get(pcs, "Energy")} h{Count(pcs, "Hand")} d{Count(pcs, "DrawPile")} x{Count(pcs, "DiscardPile")}";
         return $"{id}:{(c == null ? "-" : $"{GameReflection.Get(c, "CurrentHp")}/{GameReflection.Get(c, "MaxHp")}b{GameReflection.Get(c, "Block")}")}"
-               + $" g{GameReflection.Get(p, "Gold")}{piles}{(c == null ? "" : Powers(c))}";
+               + $" g{GameReflection.Get(p, "Gold")} k{DeckSize(p)}{piles}{(c == null ? "" : Powers(c))}";
     }
+
+    private static string DeckSize(object player) =>
+        GameReflection.Get(player, "Deck") is { } deck && GameReflection.Get(deck, "Cards") is IEnumerable cards ? cards.Cast<object>().Count().ToString() : "?";
 
     private static string Count(object pcs, string pile)
     {

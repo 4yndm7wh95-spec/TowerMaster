@@ -264,6 +264,18 @@ public class ThreatPhaseTests
     }
 
     [Fact]
+    public void SameCombatManagerAfterANewRunSubscribesOnce()
+    {
+        var s = Init();
+        RunLifecycle.Apply(new Harmony("towermaster.threat"));
+        RunManager.Instance.CleanUp();          // 换局：CombatManager 是单例，下一场还是同一个
+        s.Manager.SetUpCombat(s.Combat);        // 下一场开局又走一次订阅
+        int before = s.Queue.Queued.Count;
+        s.Manager.StartTurn(CombatSide.Player, 1);
+        Assert.Single(s.Queue.Queued.Skip(before), a => RuntimeNetAction.Payload(a).Contains("\"Op\":\"begin\""));
+    }
+
+    [Fact]
     public void OpeningBattlesGetFewerThreatPoints()
     {
         Init(threat: 5, opening: 2); // 第一幕第 1 场普通战（假游戏里已打 0 场）

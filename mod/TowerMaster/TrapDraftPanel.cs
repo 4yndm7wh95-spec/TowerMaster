@@ -98,7 +98,7 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         BuildHand();
         Refresh();
         P.ApplyGameFont(_layer);
-        P.Tree.Root.CallDeferred(G.Node.MethodName.AddChild, _layer);
+        P.AddDeferred(_layer);
     }
 
     public void Close()

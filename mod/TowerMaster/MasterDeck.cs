@@ -1,0 +1,94 @@
+using System.Collections;
+using HarmonyLib;
+using TowerMaster.Core;
+
+namespace TowerMaster;
+
+/// <summary>
+/// 塔主的牌组 = 塔主牌（<see cref="MasterCards"/>）：本幕等级的行动牌 + 手里的陷阱牌。原版牌组按钮里看到的就是这些。
+/// - 新开一局（RunManager.SetUpNewMultiplayer 之后）：各端都把塔主的英雄牌换成第一幕的行动牌（输入相同，结果相同，不用同步）。
+/// - 之后有变化（每幕挑完陷阱、陷阱触发后用掉、击倒奖励）：房主算出整副牌，发一条 deck 指令（NonCombat），各端照着换。
+/// 读档不动牌组：存档里就是塔主牌。
+/// </summary>
+internal static class MasterDeck
+{
+    private static string? _lastSent;
+    private static bool _patched;
+
+    internal static void Apply(Harmony harmony)
+    {
+        if (_patched) return;
+        _patched = true;
+        var setUp = RuntimeNetAction.Required("RunManager").GetMethods(GameReflection.All).FirstOrDefault(m => m.Name == "SetUpNewMultiplayer");
+        if (setUp == null) { Log.Warn("塔主牌组：找不到 RunManager.SetUpNewMultiplayer，新局不换牌组"); return; }
+        harmony.Patch(setUp, postfix: new HarmonyMethod(typeof(MasterDeck).GetMethod(nameof(AfterNewRun), GameReflection.All)!));
+    }
+
+    /// <summary>某一幕塔主牌组的卡（行动牌 + 陷阱牌）的 key 列表。</summary>
+    internal static List<string> Keys(int actNo, IEnumerable<TrapCard> traps) =>
+        MasterCards.StartingActions.Select(op => $"act:{op}@{Math.Clamp(actNo, 1, 3)}")
+            .Concat(traps.Select(t => $"trap:{t.Id}@{Math.Clamp(t.Tier, 1, 3)}")).ToList();
+
+    private static void AfterNewRun(object[] __args)
+    {
+        try
+        {
+            _lastSent = null;
+            if (__args.FirstOrDefault(a => a?.GetType().Name == "RunState") is not { } state) return;
+            var master = Master(state);
+            if (master == null) { Log.Warn("塔主牌组：新局里找不到塔主"); return; }
+            Replace(master, Keys(1, []), "新的一局");
+        }
+        catch (Exception e) { Log.Error("塔主牌组：新局换牌组失败（塔主仍是英雄牌）", e); }
+    }
+
+    /// <summary>房主：按账本算出整副牌，有变化就发 deck 指令。</summary>
+    internal static void Publish(string reason)
+    {
+        if (!MasterCards.Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
+        try
+        {
+            var keys = string.Join(",", Keys(MasterLedger.Wallet?.ActNo ?? 1, MasterLedger.Traps));
+            if (keys == _lastSent) return;
+            _lastSent = keys;
+            ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "deck", MonsterId: keys));
+            Log.Info($"塔主牌组：{reason}，发出新牌组（{keys.Split(',').Length} 张）");
+        }
+        catch (Exception e) { Log.Error("塔主牌组：发送失败", e); }
+    }
+
+    /// <summary>各端执行 deck 指令。</summary>
+    internal static void Execute(string? list, string tag)
+    {
+        if (!MasterCards.Enabled) { Log.Warn($"{tag}：本机没开塔主牌（master_cards），忽略牌组指令——两端设置要一致"); return; }
+        var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
+        var master = state == null ? null : Master(state);
+        if (master == null) { Log.Warn($"{tag}：找不到塔主，牌组没换"); return; }
+        Replace(master, (list ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(), tag);
+    }
+
+    private static object? Master(object state)
+    {
+        var id = Test2MasterOffField.MasterId;
+        if (id == null) return null;
+        return (GameReflection.Get(state, "Players") as IEnumerable)?.Cast<object>().FirstOrDefault(p => Test2MasterOffField.NetIdOf(p) == id);
+    }
+
+    /// <summary>清空塔主的牌组，换成这些卡（规范实例 ToMutable，经原版 Player.PopulateDeck 加入并设归属）。</summary>
+    internal static void Replace(object player, IReadOnlyList<string> keys, string reason)
+    {
+        var deck = GameReflection.Get(player, "Deck") ?? throw new InvalidOperationException("玩家没有 Deck");
+        var cardModel = GameReflection.TypesNamed("CardModel").First(t => t.IsAbstract);
+        var cards = Array.CreateInstance(cardModel, keys.Count);
+        for (int i = 0; i < keys.Count; i++)
+        {
+            var type = MasterCards.TypeOf(keys[i]) ?? throw new KeyNotFoundException($"没有塔主牌 {keys[i]}");
+            cards.SetValue(RuntimeNetAction.Call(MasterCards.Canonical(type), "ToMutable"), i);
+        }
+        RuntimeNetAction.Call(deck, "Clear", true);
+        var populate = player.GetType().GetMethods(GameReflection.All).FirstOrDefault(m => m.Name == "PopulateDeck" && m.GetParameters().Length == 2);
+        if (populate != null) populate.Invoke(player, [cards, true]);
+        else foreach (var card in cards) RuntimeNetAction.Call(deck, "AddInternal", card, -1, true);
+        Log.Info($"塔主牌组：{reason}，换成 {keys.Count} 张：{string.Join("、", keys.Select(k => MasterCards.TypeOf(k) is { } t ? MasterCards.DefOf(MasterCards.Canonical(t))?.Title : k))}");
+    }
+}

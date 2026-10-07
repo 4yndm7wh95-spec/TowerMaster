@@ -51,6 +51,16 @@ internal sealed class SummonPanel : ISummonUi
     internal static G.SceneTree Tree => (G.SceneTree)G.Engine.GetMainLoop();
 
     /// <summary>
+    /// 下一帧把界面层加到场景根上；如果在那之前界面已经关了（释放了），就不加。
+    /// 0.0.27 实测：同一帧里开了又关的面板，延迟加入时报 Godot「Parameter "p_child" is null」。
+    /// </summary>
+    internal static void AddDeferred(G.Node node) =>
+        G.Callable.From(() =>
+        {
+            if (G.GodotObject.IsInstanceValid(node) && !node.IsQueuedForDeletion() && node.GetParent() == null) Tree.Root.AddChild(node);
+        }).CallDeferred();
+
+    /// <summary>
     /// 布局：顶栏（标题、房间、召唤点）；左边是可滚动的选择区（Boss 候选 + 怪物网格）；
     /// 右边固定侧栏：本场阵容、陷阱、花费、确认按钮。说明文字都收进悬停提示，界面上只留名字和数字。
     /// </summary>
@@ -100,7 +110,7 @@ internal sealed class SummonPanel : ISummonUi
         _session.Changed += Render;
         _lastTicks = G.Time.GetTicksMsec();
         Tree.ProcessFrame += OnFrame;
-        Tree.Root.CallDeferred(G.Node.MethodName.AddChild, _layer);
+        AddDeferred(_layer);
         Render();
     }
 
@@ -869,7 +879,7 @@ internal sealed class SummonPanel : ISummonUi
         holder.AddChild(panel);
         layer.AddChild(holder);
         ApplyGameFont(layer);
-        Tree.Root.CallDeferred(G.Node.MethodName.AddChild, layer);
+        AddDeferred(layer);
         Tree.CreateTimer(seconds).Timeout += () => layer.QueueFree();
     }
 }

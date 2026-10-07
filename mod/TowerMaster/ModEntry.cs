@@ -49,6 +49,11 @@ public static class ModEntry
         else if (settings.SummonPhase) Log.Warn("召唤阶段需要 test1b_mixed_encounter 开着（复用它的清单通道），没有启用");
         if (settings.MasterTurn && settings.SummonPhase && settings.Test1bMixedEncounter) ThreatPhase.Apply(harmony, config, prices);
         else if (settings.MasterTurn) Log.Warn("塔主回合需要 summon_phase 和 test1b_mixed_encounter 开着，没有启用");
+        if (settings.MasterCards)
+        {
+            try { MasterCards.Register(harmony, config); }
+            catch (Exception e) { Log.Error("塔主牌注册失败，塔主仍用英雄牌", e); }
+        }
         if (settings.SummonPhase && settings.Test1bMixedEncounter)
         {
             try { RunLifecycle.Apply(harmony); }

@@ -27,8 +27,12 @@ namespace MegaCrit.Sts2.Core.Entities.Cards
     public enum PileType { None, Draw, Hand, Discard, Exhaust }
     public enum CardPilePosition { None, Bottom, Top, Random }
     public enum CardType { None, Attack, Skill, Power, Status, Curse }
+    public enum CardRarity { None, Basic, Common, Uncommon, Rare, Ancient, Event, Token, Status, Curse, Quest }
+    public enum TargetType { None, Self, AnyEnemy, AllEnemies, RandomEnemy, AnyPlayer, AnyAlly, AllAllies, TargetedNoCreature, Osty }
+    public enum CardKeyword { None, Exhaust, Ethereal, Innate, Unplayable, Retain, Sly, Eternal }
     public sealed class CardPlay
     {
+        public MegaCrit.Sts2.Core.Entities.Creatures.Creature? Target { get; set; }
         public CardModel Card { get; set; } = null!;
         public MegaCrit.Sts2.Core.Entities.Players.Player Player { get; set; } = null!;
         public bool IsFirstInSeries { get; set; } = true;
@@ -36,15 +40,42 @@ namespace MegaCrit.Sts2.Core.Entities.Cards
     public sealed class CardPile
     {
         public List<CardModel> Cards { get; } = new();
+        public void Clear(bool silent = false) => Cards.Clear();
+        public void AddInternal(CardModel card, int index = -1, bool silent = false) => Cards.Add(card);
     }
 }
 namespace MegaCrit.Sts2.Core.Models
 {
     public abstract class PowerModel : AbstractModel { public int Amount { get; set; } }
+    public abstract class CardPoolModel : AbstractModel { }
+    public sealed class ColorlessCardPool : CardPoolModel { }
     public abstract class CardModel : AbstractModel
     {
+        protected CardModel() { }
+        protected CardModel(int canonicalEnergyCost, MegaCrit.Sts2.Core.Entities.Cards.CardType type, MegaCrit.Sts2.Core.Entities.Cards.CardRarity rarity,
+            MegaCrit.Sts2.Core.Entities.Cards.TargetType targetType, bool shouldShowInCardLibrary = true)
+        {
+            Cost = canonicalEnergyCost; _type = type; Rarity = rarity; TargetType = targetType; ShouldShowInCardLibrary = shouldShowInCardLibrary;
+        }
+        private readonly MegaCrit.Sts2.Core.Entities.Cards.CardType _type = MegaCrit.Sts2.Core.Entities.Cards.CardType.Skill;
+        public int Cost { get; }
+        public MegaCrit.Sts2.Core.Entities.Cards.CardRarity Rarity { get; }
+        public MegaCrit.Sts2.Core.Entities.Cards.TargetType TargetType { get; }
+        public bool ShouldShowInCardLibrary { get; }
+        public static string MissingPortraitPath => "res://missing.png";
         public virtual string Title => GetType().Name;
-        public virtual MegaCrit.Sts2.Core.Entities.Cards.CardType Type => MegaCrit.Sts2.Core.Entities.Cards.CardType.Skill;
+        public virtual MegaCrit.Sts2.Core.Entities.Cards.CardType Type => _type;
+        public virtual string PortraitPath => "res://" + GetType().Name;
+        public virtual CardPoolModel Pool => throw new InvalidProgramException("不在卡池里");
+        public virtual CardPoolModel VisualCardPool => Pool;
+        public virtual IEnumerable<MegaCrit.Sts2.Core.Entities.Cards.CardKeyword> CanonicalKeywords => [];
+        public virtual bool CanBeGeneratedInCombat => true;
+        public virtual bool CanBeGeneratedByModifiers => true;
+        public virtual int MaxUpgradeLevel => 1;
+        public MegaCrit.Sts2.Core.Entities.Players.Player? Owner { get; internal set; }
+        protected virtual Task OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext, MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay) => Task.CompletedTask;
+        public Task Play(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext, MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay) => OnPlay(choiceContext, cardPlay);
+        public CardModel ToMutable() => (CardModel)MutableClone();
     }
 }
 namespace MegaCrit.Sts2.Core.Models.Powers

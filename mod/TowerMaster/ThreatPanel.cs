@@ -94,13 +94,14 @@ internal sealed class ThreatPanel : IThreatUi
         ThreatPhase.Applied += Rebuild;
         _lastTicks = G.Time.GetTicksMsec();
         P.Tree.ProcessFrame += OnFrame;
-        P.Tree.Root.CallDeferred(G.Node.MethodName.AddChild, _layer);
+        P.AddDeferred(_layer);
         Rebuild();
         P.ApplyGameFont(_layer);
     }
 
     public void Close()
     {
+        if (_layer == null) return; // 关两次时第二次不要再解绑 ProcessFrame（Godot 会报断开不存在的连接）
         if (Current == this) Current = null;
         ThreatPhase.Applied -= Rebuild;
         P.Tree.ProcessFrame -= OnFrame;
@@ -422,6 +423,6 @@ internal sealed class ThreatPanel : IThreatUi
         holder.AddChild(panel);
         _banner.AddChild(holder);
         P.ApplyGameFont(_banner);
-        P.Tree.Root.CallDeferred(G.Node.MethodName.AddChild, _banner);
+        P.AddDeferred(_banner);
     }
 }

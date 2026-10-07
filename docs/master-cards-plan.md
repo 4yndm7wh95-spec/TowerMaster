@@ -51,3 +51,27 @@
 11. 不能打出的牌、战斗开始时把某些牌移出抽牌堆（给陷阱牌用）：有没有 `Unplayable` 关键词、战斗开始的 Hook。
 12. 存档：卡牌按什么存（ModelId？）；读档时找不到类型会怎样。
 13. 参考：本机装的其它 mod（如川换皮）有没有加新内容，怎么加的。
+
+## 5. 进度（0.0.28）
+
+调研结果见 `docs/master-cards-research.md`。按调研结论分两阶段：
+
+**第一阶段（0.0.28，开关 `master_cards`，默认关，两台电脑必须一致）**
+- `MasterCards`：mod 入口里（ModelDb.Init 之前）用 Reflection.Emit 生成 54 种 CardModel 子类（行动牌 8 种 × 3 幕，陷阱 10 种 × 3 级），
+  挂进 `ReflectionHelper.ModTypes`，ModelDb.Init 和联机编号缓存就会收录（研究第 1 条：晚 Inject 不进编号缓存）。
+- 标题重写 `Title`；标题和说明在 `LocManager.GetTable("cards")` 之后 `MergeWith` 进去（每个表实例补一次，切语言后的新表会再补）。
+- 卡池借无色卡池但不加入卡池列表 → 不进 `ModelDb.AllCards`、奖励、商店；`CanBeGenerated*` = false；图鉴不显示；稀有度 Token。
+- 卡图：`PortraitPath` = 原版缺图路径（保证能加载），`NCard.UpdatePortrait` 之后换成 art/*.png（每次刷新都会换）。
+- 陷阱牌带「不能打出」。
+- `MasterDeck`：新局（`SetUpNewMultiplayer` 之后，各端相同）把塔主牌组换成第一幕行动牌 9 张；之后每幕挑完陷阱、每场战斗结束，
+  房主算出整副（本幕行动牌 + 手里陷阱），有变化就发 `deck` 指令（NonCombat），各端 `Clear` + `PopulateDeck`。读档不动。
+- 行动牌的 `OnPlay` 已经写好（加固、治疗、激励、战吼、减益、晕眩），但塔主战斗中是死亡状态，还打不出来；战斗中仍用塔主回合面板。
+
+**第二阶段（下一步）：战斗中用原版手牌出牌**
+研究第 7、8、9 条说明，关键是塔主在战斗里是「死」的（生命设 0，借用原版死亡玩家：自动准备结束回合、不被怪物选为目标、全员死才判负）。
+要用原版手牌出牌，需要二选一，等第二轮调研：
+- A. 塔主保持「死亡」，但放开：死亡玩家也抽牌、给能量、能打出牌（改 CanPlay 等）、手牌界面显示。
+- B. 塔主活着但隐藏：怪物不选他当目标、群体伤害不打他、判负只看爬塔玩家、整轮结束的准备判断、复活/血量。
+然后：只暂停爬塔玩家的队列（反射私有 ActionQueue.isPaused，各端同一动作里改）、塔主的「结束回合」当作先手结束（EndPlayerTurnAction 执行层识别塔主）、
+单人抽牌数/能量（`Hook.ModifyHandDraw`、`Hook.ModifyMaxEnergy` 只对塔主）、陷阱牌战斗中移出抽牌堆（`Player.PopulateCombatState` 之后过滤）、
+各种次数限制改成各端一致地在 `IsPlayable` / 目标校验里判断。

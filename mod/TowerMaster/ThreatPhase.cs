@@ -45,7 +45,7 @@ internal static class ThreatPhase
     /// 陷阱触发（trap）和陷阱数提示（trap_info）同理用 CombatPlayPhaseOnly；躲过奖励（trap_dodge）在战斗结束后发金币，用 NonCombat。
     internal static string ActionKind(string payload) =>
         payload.Contains("\"Op\":\"begin\"") || payload.Contains("\"Op\":\"trap\"") || payload.Contains("\"Op\":\"trap_info\"") ? "CombatPlayPhaseOnly"
-        : payload.Contains("\"Op\":\"trap_dodge\"") ? "NonCombat"
+        : payload.Contains("\"Op\":\"trap_dodge\"") || payload.Contains("\"Op\":\"deck\"") ? "NonCombat"
         : "Any";
 
     private static TowerMasterConfig _config = new();
@@ -120,7 +120,6 @@ internal static class ThreatPhase
         Session = null;
         TurnOpen = false;
         Round = 0;
-        _subscribed = null;
         Keys.Clear();
         try { Banner(false); } catch { /* 界面可能已经没了 */ }
         TrapPhase.Reset();
@@ -175,7 +174,9 @@ internal static class ThreatPhase
     {
         var ev = manager.GetType().GetEvent(name, GameReflection.All);
         if (ev?.EventHandlerType == null) { Log.Warn($"塔主回合：找不到 CombatManager.{name} 事件"); return; }
-        ev.AddEventHandler(manager, Delegate.CreateDelegate(ev.EventHandlerType, typeof(ThreatPhase).GetMethod(callback, GameReflection.All)!));
+        var handler = Delegate.CreateDelegate(ev.EventHandlerType, typeof(ThreatPhase).GetMethod(callback, GameReflection.All)!);
+        ev.RemoveEventHandler(manager, handler); // 单例上可能已经挂着（换局后重复开塔主回合，0.0.27 实测）
+        ev.AddEventHandler(manager, handler);
     }
 
     /// <summary>每个回合开始（双方都会触发）。只在房主、玩家一侧、还有威胁点时开塔主回合。</summary>
@@ -379,6 +380,9 @@ internal static class ThreatPhase
                 case "trap_dodge":
                     await DodgeReward(command, tag);
                     break;
+                case "deck":
+                    MasterDeck.Execute(command.MonsterId, tag);
+                    break;
                 default:
                     await ApplyEffect(command, action, tag);
                     MasterPresence.Cast();
@@ -512,30 +516,33 @@ internal static class ThreatPhase
 
     // ---------------------------------------------------------------- 原版命令（反射）
 
-    private static Task GainBlock(object creature, decimal amount)
+    internal static Task GainBlock(object creature, decimal amount)
     {
         var method = Static("CreatureCmd", "GainBlock", m => m.GetParameters().Length == 5 && m.GetParameters()[1].ParameterType == typeof(decimal));
         var props = Enum.ToObject(method.GetParameters()[2].ParameterType, 0); // 普通格挡，照常受能力修正
         return (Task)method.Invoke(null, [creature, amount, props, null, false])!;
     }
 
-    private static Task Heal(object creature, decimal amount)
+    internal static Task Heal(object creature, decimal amount)
     {
         var method = Static("CreatureCmd", "Heal", m => m.GetParameters().Length == 3 && m.GetParameters()[1].ParameterType == typeof(decimal));
         return (Task)method.Invoke(null, [creature, amount, true])!;
     }
 
-    private static Task ApplyPower(string power, object action, object target, decimal amount)
+    private static Task ApplyPower(string power, object action, object target, decimal amount) =>
+        ApplyPowerWith(power, Activator.CreateInstance(RuntimeNetAction.Required("GameActionPlayerChoiceContext"), action)!, target, amount);
+
+    /// <summary>用现成的选择上下文施加能力（卡牌 OnPlay 里原版给的 PlayerChoiceContext）。</summary>
+    internal static Task ApplyPowerWith(string power, object context, object target, decimal amount)
     {
         var powerType = GameReflection.TypesNamed(power).FirstOrDefault(t => IsSubclassNamed(t, "PowerModel"))
                         ?? throw new TypeLoadException(power);
         var method = Static("PowerCmd", "Apply", m => m.IsGenericMethodDefinition && m.GetParameters().Length == 6
                                                       && m.GetParameters()[1].ParameterType.Name == "Creature").MakeGenericMethod(powerType);
-        var context = Activator.CreateInstance(RuntimeNetAction.Required("GameActionPlayerChoiceContext"), action)!;
         return (Task)method.Invoke(null, [context, target, amount, null, null, false])!;
     }
 
-    private static Task AddDazed(object target)
+    internal static Task AddDazed(object target)
     {
         var card = GameReflection.TypesNamed("Dazed").FirstOrDefault(t => IsSubclassNamed(t, "CardModel")) ?? throw new TypeLoadException("Dazed");
         var method = Static("CardPileCmd", "AddToCombatAndPreview", m => m.IsGenericMethodDefinition && m.GetParameters().Length == 5

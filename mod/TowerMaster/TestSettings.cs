@@ -31,6 +31,12 @@ internal sealed class TestSettings
     /// </summary>
     [JsonPropertyName("master_stay_dead")] public bool MasterStayDead { get; set; }
 
+    /// <summary>
+    /// 塔主的真实卡牌（第一阶段）：启动时注册塔主牌，新局把塔主牌组换成塔主牌，原版牌组界面能看到。
+    /// 会往游戏的模型库里加新卡类型，两台电脑必须一致（都开或都关），否则联机编号对不上。
+    /// </summary>
+    [JsonPropertyName("master_cards")] public bool MasterCards { get; set; }
+
     [JsonPropertyName("test3_block_master_items")] public bool Test3BlockMasterItems { get; set; } = true;
 
     /// <summary>

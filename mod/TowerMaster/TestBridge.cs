@@ -211,6 +211,7 @@ internal static class TestBridge
                 "/threat" => _ => Main(Threat),
                 "/config" => _ => Main(() => System.Text.Json.Nodes.JsonNode.Parse(ModEntry.Active.ToJson())),
                 "/traps" => _ => Main(Traps),
+                "/master/deck" => _ => Main(MasterDeckView),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
                 "/combat/hand" => _ => Main(CombatHand),
@@ -700,6 +701,23 @@ internal static class TestBridge
     }
 
     // ---------------------------------------------------------------- 陷阱（塔主）
+
+    /// <summary>塔主牌：是否注册、每名玩家牌组里的卡（类型、标题、编号、本地化说明有没有）。</summary>
+    private static object MasterDeckView()
+    {
+        var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
+        var cards = state == null ? null : (GameReflection.Get(state, "Players") as System.Collections.IEnumerable)?.Cast<object>().Select(p => new
+        {
+            player = Test2MasterOffField.NetIdOf(p),
+            deck = (GameReflection.Get(GameReflection.Get(p, "Deck")!, "Cards") as System.Collections.IEnumerable)?.Cast<object>().Select(c => new
+            {
+                type = c.GetType().Name,
+                title = GameReflection.Get(c, "Title")?.ToString(),
+                master_card = MasterCards.DefOf(c)?.Key,
+            }).ToList(),
+        }).ToList();
+        return new { registered = MasterCards.Enabled, types = MasterCards.Types.Count, players = cards };
+    }
 
     private static object Traps()
     {
