@@ -37,7 +37,11 @@ public static class ModEntry
         var harmony = new Harmony(HarmonyId);
         if (settings.Test1bMixedEncounter) Test1bMixedEncounter.Apply(harmony, settings, prices);
         else Test1FixedEncounter.Apply(harmony, settings, prices);
-        if (settings.Test2MasterOffField) Test2MasterOffField.Apply(harmony, settings);
+        if (settings.Test2MasterOffField)
+        {
+            Test2MasterOffField.Apply(harmony, settings);
+            MasterPresence.Apply(harmony, settings.MasterStayDead);
+        }
         if (settings.Test3MasterAutoPilot) Test3MasterAutoPilot.Apply(harmony, settings);
         // 召唤阶段要用测试 1b 的清单通道（上面已经挂好），塔主身份沿用测试 2
         var config = new TowerMasterConfig();

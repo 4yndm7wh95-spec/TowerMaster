@@ -338,6 +338,7 @@ internal static class ThreatPhase
                     break;
                 case "trap":
                     await ApplyTrap(command, action, tag);
+                    MasterPresence.Cast();
                     break;
                 case "trap_info":
                     Log.Info($"{tag}：塔主手里有 {command.Amount} 张陷阱");
@@ -348,6 +349,7 @@ internal static class ThreatPhase
                     break;
                 default:
                     await ApplyEffect(command, action, tag);
+                    MasterPresence.Cast();
                     break;
             }
         }

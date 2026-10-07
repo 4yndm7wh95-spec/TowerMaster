@@ -39,7 +39,7 @@ internal sealed class SummonPanel : ISummonUi
     private G.CanvasLayer? _layer;
     private G.Label? _timer;
     private G.VBoxContainer _lineup = null!, _problems = null!;
-    private G.Label _emptyHint = null!, _cost = null!, _left = null!;
+    private G.Label _emptyHint = null!, _cost = null!, _left = null!, _total = null!, _breakdown = null!;
     private G.ProgressBar _capBar = null!;
     private G.Button _confirm = null!;
     private readonly Dictionary<string, (G.Button Card, G.PanelContainer Count, G.Label CountText)> _cards = new();
@@ -174,8 +174,70 @@ internal sealed class SummonPanel : ISummonUi
             box.AddChild(Grid(_session.EncounterOptions, Math.Max(1, (int)(width / (BossPortrait.X + 30))), BossPortrait));
             box.AddChild(Heading("另加怪物"));
         }
+        box.AddChild(FilterBar());
         int columns = Math.Max(3, (int)((width + 10) / (MonsterPortrait.X + 30)));
         box.AddChild(Grid(_session.MonsterOptions, columns, MonsterPortrait));
+        ApplyFilter();
+    }
+
+    // ---------------------------------------------------------------- 筛选：幕、费用、精英
+
+    private int _actFilter = -1;   // 0 = 全部；-1 = 还没定（默认本幕）
+    private int _costFilter;       // 0 = 全部，1/2/3 = 正好这么多，4 = 4 点以上
+    private bool _eliteOnly;
+    private readonly List<(G.Button Button, Func<bool> On)> _filterButtons = new();
+
+    /// <summary>幕分页 + 费用 + 精英。只是隐藏卡片，不影响已选的阵容。</summary>
+    private G.Control FilterBar()
+    {
+        var acts = _session.MonsterOptions.Select(o => o.HomeAct).Distinct().Order().ToList();
+        if (_actFilter < 0) _actFilter = acts.Contains(_session.ActNo) && acts.Count > 1 ? _session.ActNo : 0;
+        var row = new G.HFlowContainer();
+        row.AddThemeConstantOverride("h_separation", 6);
+        row.AddThemeConstantOverride("v_separation", 6);
+        if (acts.Count > 1)
+        {
+            row.AddChild(FilterButton("全部", () => _actFilter == 0, () => _actFilter = 0));
+            foreach (var a in acts)
+                row.AddChild(FilterButton($"第{"一二三"[Math.Clamp(a, 1, 3) - 1]}幕", () => _actFilter == a, () => _actFilter = a));
+            row.AddChild(new G.Control { CustomMinimumSize = new G.Vector2(14, 0) });
+        }
+        row.AddChild(Text("费用", 15, TextDim));
+        row.AddChild(FilterButton("全部", () => _costFilter == 0, () => _costFilter = 0));
+        foreach (var c in new[] { 1, 2, 3, 4 })
+            row.AddChild(FilterButton(c == 4 ? "4+" : $"{c}", () => _costFilter == c, () => _costFilter = c));
+        if (_session.MonsterOptions.Any(o => o.IsElite))
+        {
+            row.AddChild(new G.Control { CustomMinimumSize = new G.Vector2(14, 0) });
+            row.AddChild(FilterButton("只看精英", () => _eliteOnly, () => _eliteOnly = !_eliteOnly));
+        }
+        return row;
+    }
+
+    private G.Button FilterButton(string text, Func<bool> on, Action toggle)
+    {
+        var button = MakeButton(text, Sunk, CardHover, CardBorder, TextDim, new G.Vector2(0, 32), 15);
+        button.Pressed += () => { toggle(); ApplyFilter(); };
+        _filterButtons.Add((button, on));
+        return button;
+    }
+
+    private void ApplyFilter()
+    {
+        foreach (var option in _session.MonsterOptions)
+        {
+            if (!_cards.TryGetValue(option.Id, out var entry)) continue;
+            bool show = (_actFilter <= 0 || option.HomeAct == _actFilter)
+                        && (_costFilter == 0 || (_costFilter == 4 ? option.Price >= 4 : option.Price == _costFilter))
+                        && (!_eliteOnly || option.IsElite);
+            entry.Card.Visible = show;
+        }
+        foreach (var (button, on) in _filterButtons)
+        {
+            bool active = on();
+            button.AddThemeStyleboxOverride("normal", Box(active ? new G.Color(0.24f, 0.19f, 0.10f) : Sunk, active ? Gold : CardBorder, 1, 8, 10));
+            button.AddThemeColorOverride("font_color", active ? Gold : TextDim);
+        }
     }
 
     internal static G.Label Heading(string text)
@@ -319,19 +381,27 @@ internal sealed class SummonPanel : ISummonUi
         BuildTraps(col);
 
         col.AddChild(Divider());
-        var costRow = new G.HBoxContainer();
-        var costLabel = Text("花费", 17, TextDim);
-        costRow.AddChild(costLabel);
-        costRow.AddChild(Spacer());
-        _cost = Text("0 / 0", 24, TextMain);
-        costRow.AddChild(_cost);
-        col.AddChild(costRow);
-        _capBar = Bar(1, 0, Good, 8);
+        // 总花费最醒目；下面一行小字拆开；怪物花费有上限，用进度条
+        var totalRow = new G.HBoxContainer();
+        totalRow.AddChild(Text("总花费", 18, TextDim));
+        totalRow.AddChild(Spacer());
+        _total = Text("0", 30, TextMain);
+        totalRow.AddChild(_total);
+        col.AddChild(totalRow);
+        _breakdown = Text("", 14, TextDim);
+        col.AddChild(_breakdown);
+        var capRow = new G.HBoxContainer();
+        capRow.AddChild(Text("怪物上限", 14, TextDim));
+        capRow.AddChild(Spacer());
+        _cost = Text("0 / 0", 14, TextDim);
+        capRow.AddChild(_cost);
+        col.AddChild(capRow);
+        _capBar = Bar(1, 0, Good, 6);
         col.AddChild(_capBar);
         var leftRow = new G.HBoxContainer();
-        leftRow.AddChild(Text("确认后剩余", 17, TextDim));
+        leftRow.AddChild(Text("确认后剩余", 18, TextDim));
         leftRow.AddChild(Spacer());
-        _left = Text("0", 24, Gold);
+        _left = Text("0", 30, Gold);
         leftRow.AddChild(_left);
         col.AddChild(leftRow);
 
@@ -370,20 +440,39 @@ internal sealed class SummonPanel : ISummonUi
         for (int i = 0; i < _session.TrapHand.Count; i++)
         {
             var card = _session.TrapHand[i];
-            var button = MakeButton(card.Name, CardBg, CardHover, CardBorder, TextMain, new G.Vector2(0, 38), 16);
-            if (Art.Get($"trap_{card.Id}") is { } tex)
-            {
-                button.Icon = tex;
-                button.ExpandIcon = true;
-                button.AddThemeConstantOverride("icon_max_width", 26);
-            }
-            button.TooltipText = $"{card.Name}\n{card.Describe()}";
+            var button = TrapMiniCard(card);
             int index = i;
             button.Pressed += () => _session.ToggleTrap(index);
             _trapButtons.Add((button, i));
             flow.AddChild(button);
         }
         col.AddChild(flow);
+    }
+
+    /// <summary>陷阱小卡：上面图，下面名字；说明在悬停提示。选中时红框（Render 里设）。</summary>
+    internal static G.Button TrapMiniCard(TrapCard card, float width = 72)
+    {
+        var button = new G.Button
+        {
+            FocusMode = G.Control.FocusModeEnum.None,
+            CustomMinimumSize = new G.Vector2(width, width * 1.3f),
+            TooltipText = $"{card.Name}\n{card.Describe()}",
+        };
+        StyleCard(button, false);
+        var col = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
+        col.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
+        col.AddThemeConstantOverride("separation", 2);
+        var art = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, CustomMinimumSize = new G.Vector2(0, width * 0.7f) };
+        if (Art.Icon($"trap_{card.Id}", width * 0.62f) is { } icon) art.AddChild(icon);
+        else art.AddChild(Text(card.Def.NameZh[..1], (int)(width * 0.36f), Gold));
+        col.AddChild(art);
+        var name = Text(card.Name, 14, TextMain);
+        name.HorizontalAlignment = G.HorizontalAlignment.Center;
+        name.ClipText = true;
+        name.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        col.AddChild(name);
+        button.AddChild(col);
+        return button;
     }
 
     // ---------------------------------------------------------------- 刷新
@@ -420,8 +509,8 @@ internal sealed class SummonPanel : ISummonUi
         foreach (var (button, index) in _trapButtons)
         {
             bool on = _session.SelectedTraps.Contains(index);
-            button.AddThemeStyleboxOverride("normal", Box(on ? new G.Color(0.30f, 0.12f, 0.14f) : CardBg, on ? Bad : CardBorder, on ? 2 : 1, 10, 10));
-            button.AddThemeStyleboxOverride("hover", Box(on ? new G.Color(0.36f, 0.15f, 0.17f) : CardHover, on ? Bad : GoldDim, on ? 2 : 1, 10, 10));
+            button.AddThemeStyleboxOverride("normal", Box(on ? new G.Color(0.30f, 0.12f, 0.14f) : CardBg, on ? Bad : CardBorder, on ? 3 : 1, 10, 0));
+            button.AddThemeStyleboxOverride("hover", Box(on ? new G.Color(0.36f, 0.15f, 0.17f) : CardHover, on ? Bad : GoldDim, on ? 3 : 1, 10, 0));
         }
 
         foreach (var child in _lineup.GetChildren()) child.QueueFree();
@@ -439,6 +528,8 @@ internal sealed class SummonPanel : ISummonUi
 
         bool overCap = quote.MonsterSpend > quote.SpendCap + 1e-9;
         int left = _session.Room.Savings - quote.Total;
+        _total.Text = $"{quote.Total}";
+        _breakdown.Text = $"怪物 {quote.MonsterPrice} · 群体税 {quote.CrowdTax}" + (quote.TrapCost > 0 ? $" · 陷阱 {quote.TrapCost}" : "");
         _cost.Text = $"{quote.MonsterSpend} / {quote.SpendCap:0.#}";
         _cost.AddThemeColorOverride("font_color", overCap ? Bad : TextMain);
         _cost.TooltipText = $"怪物 {quote.MonsterPrice} + 群体税 {quote.CrowdTax}" + (quote.TrapCost > 0 ? $" + 陷阱 {quote.TrapCost}" : "") +

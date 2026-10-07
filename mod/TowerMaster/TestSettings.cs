@@ -25,6 +25,9 @@ internal sealed class TestSettings
     /// <summary>塔主回合（开发第 3 步）：每个玩家回合开始时塔主花威胁点。需要召唤阶段开着。</summary>
     [JsonPropertyName("master_turn")] public bool MasterTurn { get; set; }
 
+    /// <summary>塔主战后不复活（用户要求）。实测如果卡住选路、事件等流程就改成 false。</summary>
+    [JsonPropertyName("master_stay_dead")] public bool MasterStayDead { get; set; } = true;
+
     [JsonPropertyName("test3_block_master_items")] public bool Test3BlockMasterItems { get; set; } = true;
 
     /// <summary>

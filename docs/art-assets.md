@@ -39,6 +39,20 @@
 | `trap_countdown.png` | 128×128 | 陷阱「倒计时」（第 6 回合 → 敌人大回血） | An iron pocket clock with a skull face, its hand at the last mark, green life-light leaking from the case. |
 | `trap_bluff.png` | 128×128 | 空陷阱（诈唬） | An empty iron bear-trap, sprung shut on nothing, a small curl of harmless smoke; a sly feeling. |
 
+## 第二批（0.0.24 新增）
+
+| 文件名 | 尺寸 | 用在哪里 | 主体 prompt（接在风格前缀后面） |
+|---|---|---|---|
+| `master_figure.png` | 512×768（竖版） | **战斗里站在怪物身后、屏幕最右侧的塔主全身形象**（替代原来那个死掉的英雄） | Full-body standing figure of the Tower Master (same character as master_portrait: tall hooded overseer, deep-blue robes with antique-gold trim, expressionless bronze mask with two glowing amber eyes), facing LEFT toward the battlefield, holding the chained rune-lantern raised in one hand, robe hem fading into wisps of violet smoke at the feet, slightly translucent ghostly presence, imposing but calm; full body visible head to toe with margin, transparent background. |
+| `act_block.png` | 128×128 | 塔主行动卡「格挡」 | A thick iron kite shield glowing with a pale-blue protective rune. |
+| `act_heal.png` | 128×128 | 行动卡「回血」 | A dark-green monster heart wrapped in healing vines, soft green glow. |
+| `act_strength.png` | 128×128 | 行动卡「力量」 | A clenched monstrous claw fist with red veins and a rising red aura. |
+| `act_strength_all.png` | 128×128 | 行动卡「全体力量」 | Three monstrous claw fists raised together, red war-aura spreading behind them. |
+| `act_weak.png` | 128×128 | 行动卡「虚弱」 | A cracked, drooping sword with its blade wilting like a dead flower, dull grey-green tint. |
+| `act_vulnerable.png` | 128×128 | 行动卡「易伤」 | A broken breastplate with a glowing red crosshair over the crack. |
+| `act_frail.png` | 128×128 | 行动卡「脆弱」 | A thin wooden buckler splintering apart, pale shards falling. |
+| `act_dazed.png` | 128×128 | 行动卡「眩晕」 | A playing card with a dizzy violet spiral on its face, little stars circling it. |
+
 ## 验收
 
 1. 文件名、尺寸、透明背景都对（用脚本检查 PNG 有 alpha 通道、四角像素透明）。
