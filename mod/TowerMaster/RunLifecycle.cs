@@ -32,6 +32,7 @@ internal static class RunLifecycle
             Log.Info($"局开始/结束（{__originalMethod?.Name}）：清掉召唤、塔主回合、陷阱的本局状态");
             ThreatPhase.ResetRun();
             SummonPhase.ResetRun();
+            Test3MasterAutoPilot.ResetRun();
         }
         catch (Exception e) { Log.Error("局开始/结束：清理失败", e); }
     }

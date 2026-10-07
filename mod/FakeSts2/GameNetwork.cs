@@ -22,7 +22,7 @@ namespace MegaCrit.Sts2.Core.Entities.Players
         private void PopulateDeck(IEnumerable<MegaCrit.Sts2.Core.Models.CardModel> cards, bool silent = false)
         {
             if (Deck.Cards.Count > 0) throw new InvalidOperationException("牌组不是空的");
-            foreach (var c in cards) { c.Owner = this; Deck.AddInternal(c, -1, silent); }
+            foreach (var c in cards) Deck.AddInternal(c, -1, silent); // 原版也不设归属（RunState.AddCard 才设）
         }
     }
     public sealed class PlayerCombatState

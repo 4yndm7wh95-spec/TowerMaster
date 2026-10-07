@@ -116,6 +116,7 @@ internal sealed class SummonPanel : ISummonUi
 
     public void Close()
     {
+        if (_layer == null) return; // 关两次时不再解绑（Godot 报「disconnect a nonexistent connection」，0.0.29 实测塔主端还剩 2 次）
         Tree.ProcessFrame -= OnFrame;
         _layer?.QueueFree();
         _layer = null;

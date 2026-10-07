@@ -141,6 +141,20 @@ namespace MegaCrit.Sts2.Core.Runs
         public List<MegaCrit.Sts2.Core.Entities.Players.Player> Players { get; } = new();
         public MegaCrit.Sts2.Core.Map.ActMap Map { get; set; } = new();
         public MegaCrit.Sts2.Core.Map.MapCoord? CurrentMapCoord { get; set; }
+        public List<CardModel> AllCards { get; } = new();
+        public CardModel CreateCard(CardModel canonicalCard, MegaCrit.Sts2.Core.Entities.Players.Player owner)
+        {
+            var card = canonicalCard.ToMutable();
+            card.Owner = owner;
+            AllCards.Add(card);
+            return card;
+        }
+        public void RemoveCard(CardModel card) => AllCards.Remove(card);
+        /// <summary>仿原版 RunState.Contains：牌组里的牌必须有归属（0.0.29 实测空引用）。</summary>
+        public void CheckDecks()
+        {
+            foreach (var p in Players) foreach (var c in p.Deck.Cards) _ = c.Owner!.NetId;
+        }
     }
     public sealed class RunRng { public ulong Seed { get; set; } = 123; }
 }

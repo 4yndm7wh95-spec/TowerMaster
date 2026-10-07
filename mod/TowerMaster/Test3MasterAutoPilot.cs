@@ -30,6 +30,9 @@ internal static class Test3MasterAutoPilot
     private static string? _lastEventVote;
     private static string? _lastActReady;
 
+    /// <summary>换局时清掉去重缓存（0.0.29 实测：新局第一步投的格子和上一局相同时塔主不跟）。</summary>
+    internal static void ResetRun() => _lastMapVote = _lastEventVote = _lastActReady = null;
+
     private static bool _blockItems = true;
 
     internal static void Apply(Harmony harmony, TestSettings settings)

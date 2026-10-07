@@ -79,6 +79,8 @@ public class MasterCardsTests
         Assert.Equal(MasterCards.StartingActions.Length, master.Deck.Cards.Count);
         Assert.Equal("加固", master.Deck.Cards[0].Title);
         Assert.All(master.Deck.Cards, c => Assert.Same(master, c.Owner));
+        Assert.All(master.Deck.Cards, c => Assert.Contains(c, run.AllCards)); // 经 RunState.CreateCard 登记
+        run.CheckDecks();
         Assert.Empty(climber.Deck.Cards);
 
         RunManager.Instance.State = run;
@@ -86,5 +88,7 @@ public class MasterCardsTests
         Assert.Equal(MasterCards.StartingActions.Length + 1, master.Deck.Cards.Count);
         Assert.Equal("加固+1", master.Deck.Cards[0].Title);
         Assert.Equal("泥沼+1", master.Deck.Cards[^1].Title);
+        Assert.Equal(master.Deck.Cards.Count, run.AllCards.Count); // 旧牌注销了
+        run.CheckDecks();
     }
 }
