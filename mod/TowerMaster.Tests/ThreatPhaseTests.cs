@@ -313,6 +313,7 @@ public class ThreatPhaseTests
         Assert.Equal(4, master.PlayerCombatState.Hand.Cards.Count);
         Assert.DoesNotContain(master.PlayerCombatState.Hand.Cards.Concat(master.PlayerCombatState.DrawPile.Cards), c => c.Title == "泥沼");
         Assert.True(MasterHand.Active);
+        Assert.False(master.Creature.IsDead); // 塔主回合里临时「活着」，原版才给他发牌、执行出牌效果
 
         // 给队友的牌：塔主死着时原版判「没有活着的队友」，有活着的爬塔玩家就放行
         var weak = master.PlayerCombatState.Hand.Cards.First(c => c.Title == "虚弱");
@@ -328,10 +329,14 @@ public class ThreatPhaseTests
         Assert.False(strength.IsValidTarget(mawler));
         Assert.True(strength.IsValidTarget(s.Combat.Enemies[0]));
 
-        // 结束：弃手牌、塔主重新「已准备」、玩家恢复；塔主回合外不能打塔主牌
-        ThreatPhase.EndTurn();
-        await Run(s.Queue);
+        // 塔主按原版「结束回合」（EndPlayerTurnAction）= 结束塔主先手：不把塔主直接标结束，房主发 end 指令
+        int before = s.Queue.Queued.Count;
+        await new MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction(master, 1).Execute();
+        Assert.False(ThreatPhase.TurnOpen);
+        Assert.Contains("\"Op\":\"end\"", RuntimeNetAction.Payload(s.Queue.Queued[before]));
+        await Run(s.Queue, before);
         Assert.Empty(master.PlayerCombatState.Hand.Cards);
+        Assert.True(master.Creature.IsDead); // 回到「死亡」
         Assert.Contains(master, cm.PlayersReadyToEndTurn);
         Assert.False(queues.ActionQueueIsPaused(100002));
         Assert.False(MasterHand.Active);

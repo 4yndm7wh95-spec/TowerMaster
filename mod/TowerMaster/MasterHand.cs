@@ -39,6 +39,11 @@ internal static class MasterHand
         else Log.Warn("塔主手牌：找不到 CardModel.CanPlay，出牌限制不生效");
         if (valid != null) harmony.Patch(valid, postfix: new HarmonyMethod(typeof(MasterHand).GetMethod(nameof(AfterIsValidTarget), GameReflection.All)!));
         else Log.Warn("塔主手牌：找不到 CardModel.IsValidTarget，按目标的限制不生效");
+        // 塔主按原版「结束回合」= 结束塔主先手（0.0.31 实测原版结束回合对塔主不起作用）
+        var endTurn = GameReflection.TypesNamed("EndPlayerTurnAction").SelectMany(t => t.GetMethods(GameReflection.All))
+            .FirstOrDefault(m => m.Name == "ExecuteAction" && m.DeclaringType?.Name == "EndPlayerTurnAction");
+        if (endTurn != null) harmony.Patch(endTurn, prefix: new HarmonyMethod(typeof(MasterHand).GetMethod(nameof(BeforeEndPlayerTurn), GameReflection.All)!));
+        else Log.Warn("塔主手牌：找不到 EndPlayerTurnAction.ExecuteAction，塔主只能用面板上的结束按钮");
     }
 
     /// <summary>战斗开始（各端）：清记录。</summary>
@@ -59,6 +64,9 @@ internal static class MasterHand
         var master = MasterPlayer();
         if (master == null) { Log.Warn($"{tag}：找不到塔主，不发牌"); return; }
         Active = true;
+        // 0.0.31 实测：塔主死着时原版不给他建手牌节点（抽牌跳过死者），出牌也在 OnPlayWrapper 里遇到死亡牌主直接返回、不执行效果。
+        // 塔主回合里爬塔玩家暂停、怪物不行动，所以这段时间让塔主「活着」（生命直接写 1，不走复活流程），结束时再写回 0。
+        if (GameReflection.Get(master, "Creature") is { } creature) Test2MasterOffField.SetHp(creature, 1);
         OpenMasterQueue();
         try { RuntimeNetAction.Call(CombatManager()!, "UndoReadyToEndTurn", master); }
         catch (Exception e) { Log.Warn($"{tag}：撤销塔主的「已准备结束回合」失败：{e.Message}"); }
@@ -111,8 +119,29 @@ internal static class MasterHand
         var master = MasterPlayer();
         if (master == null) return;
         if (GameReflection.Get(master, "PlayerCombatState") is { } pcs) await DiscardHand(Context(action), master, pcs);
+        if (GameReflection.Get(master, "Creature") is { } creature) Test2MasterOffField.SetHp(creature, 0); // 回到「死亡」：不被打、不算判负
         try { RuntimeNetAction.Call(CombatManager()!, "SetReadyToEndTurn", master, false, null); }
         catch (Exception e) { Log.Warn($"{tag}：把塔主设回「已准备结束回合」失败：{e.Message}"); }
+    }
+
+    /// <summary>
+    /// 原版结束回合动作（各端执行）：塔主回合进行中、动作属于塔主时不走原版（不把塔主标成结束、不触发整轮结束判断），
+    /// 房主改为发 end 指令结束塔主先手；之后 end 指令里再把塔主设为「已准备」。
+    /// </summary>
+    private static bool BeforeEndPlayerTurn(object __instance, ref Task __result)
+    {
+        try
+        {
+            if (!MasterCards.Enabled || !Active) return true;
+            var owner = Test2MasterOffField.NetIdOf(GameReflection.Get(__instance, "Player"))
+                        ?? (GameReflection.Get(__instance, "OwnerId") is { } id ? Convert.ToUInt64(id) : null);
+            if (owner == null || owner != Test2MasterOffField.MasterId) return true;
+            __result = Task.CompletedTask;
+            if (Test3MasterAutoPilot.LocalIsMaster) ThreatPhase.EndTurn("塔主按原版结束回合");
+            Log.Info("塔主手牌：原版结束回合 → 结束塔主先手");
+            return false;
+        }
+        catch (Exception e) { Log.Warn($"塔主手牌：处理原版结束回合失败：{e.Message}"); return true; }
     }
 
     /// <summary>塔主本回合能量：按幕 1/1/2，第 1 回合 +1，精英、Boss 每回合 +1。</summary>
@@ -265,7 +294,8 @@ internal static class MasterHand
         for (int i = 0; i < hand.Count; i++) typed.SetValue(hand[i], i);
         try
         {
-            await (Task)Static("CardPileCmd", "Discard", m => m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType != cardModel)
+            // 原版弃牌在 CardCmd（0.0.31 实测 CardPileCmd 上没有 Discard）
+            await (Task)Static("CardCmd", "Discard", m => m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType != cardModel)
                 .Invoke(null, [context, typed])!;
         }
         catch (Exception e)

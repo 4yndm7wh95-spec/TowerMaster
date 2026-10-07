@@ -179,6 +179,19 @@ namespace MegaCrit.Sts2.Core.Commands
             foreach (var c in drawn) { player.PlayerCombatState.DrawPile.Cards.Remove(c); player.PlayerCombatState.Hand.Cards.Add(c); }
             return Task.FromResult<IEnumerable<CardModel>>(drawn);
         }
+        public static Task AddToCombatAndPreview<T>(IEnumerable<Creature> targets, PileType pileType, int count, MegaCrit.Sts2.Core.Entities.Players.Player? creator, CardPilePosition position = CardPilePosition.Bottom)
+            where T : CardModel => throw new NotSupportedException();
+        public static Task AddToCombatAndPreview<T>(Creature target, PileType pileType, int count, MegaCrit.Sts2.Core.Entities.Players.Player? creator, CardPilePosition position = CardPilePosition.Bottom)
+            where T : CardModel
+        {
+            if (pileType != PileType.Draw) throw new ArgumentException("测试只支持抽牌堆");
+            for (int i = 0; i < count; i++) target.Player!.PlayerCombatState.DrawPile.Cards.Add(Activator.CreateInstance<T>());
+            return Task.CompletedTask;
+        }
+    }
+    /// <summary>仿原版：弃牌在 CardCmd 上（CardPileCmd 没有 Discard）。</summary>
+    public static class CardCmd
+    {
         public static Task Discard(PlayerChoiceContext choiceContext, IEnumerable<CardModel> cards)
         {
             foreach (var c in cards.ToList())
@@ -187,15 +200,6 @@ namespace MegaCrit.Sts2.Core.Commands
                 pcs.Hand.Cards.Remove(c);
                 pcs.DiscardPile.Cards.Add(c);
             }
-            return Task.CompletedTask;
-        }
-        public static Task AddToCombatAndPreview<T>(IEnumerable<Creature> targets, PileType pileType, int count, MegaCrit.Sts2.Core.Entities.Players.Player? creator, CardPilePosition position = CardPilePosition.Bottom)
-            where T : CardModel => throw new NotSupportedException();
-        public static Task AddToCombatAndPreview<T>(Creature target, PileType pileType, int count, MegaCrit.Sts2.Core.Entities.Players.Player? creator, CardPilePosition position = CardPilePosition.Bottom)
-            where T : CardModel
-        {
-            if (pileType != PileType.Draw) throw new ArgumentException("测试只支持抽牌堆");
-            for (int i = 0; i < count; i++) target.Player!.PlayerCombatState.DrawPile.Cards.Add(Activator.CreateInstance<T>());
             return Task.CompletedTask;
         }
     }

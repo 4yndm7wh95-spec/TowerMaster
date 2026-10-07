@@ -270,21 +270,24 @@ internal static class Test2MasterOffField
     }
 
     /// <summary>直接把生命写成 0：先找 CurrentHp 的 setter（含非公开），再找后备字段。</summary>
-    private static void SetHpZero(object creature)
+    private static void SetHpZero(object creature) => SetHp(creature, 0);
+
+    /// <summary>直接写生命（不走伤害/治疗流程，不触发死亡或复活事件）。塔主回合里临时设 1 让原版把他当活人发牌、出牌。</summary>
+    internal static void SetHp(object creature, int hp)
     {
         for (var t = creature.GetType(); t != null; t = t.BaseType)
         {
             var prop = t.GetProperty("CurrentHp", GameReflection.All | BindingFlags.DeclaredOnly);
             if (prop?.SetMethod != null)
             {
-                prop.SetValue(creature, Convert.ChangeType(0, prop.PropertyType));
+                prop.SetValue(creature, Convert.ChangeType(hp, prop.PropertyType));
                 return;
             }
             foreach (var field in new[] { "<CurrentHp>k__BackingField", "_currentHp", "currentHp" })
             {
                 var f = t.GetField(field, GameReflection.All | BindingFlags.DeclaredOnly);
                 if (f == null) continue;
-                f.SetValue(creature, Convert.ChangeType(0, f.FieldType));
+                f.SetValue(creature, Convert.ChangeType(hp, f.FieldType));
                 return;
             }
         }

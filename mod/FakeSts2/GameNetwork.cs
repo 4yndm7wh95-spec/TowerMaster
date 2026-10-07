@@ -70,6 +70,21 @@ namespace MegaCrit.Sts2.Core.GameActions
         public abstract INetAction ToNetAction();
         public Task Execute() => ExecuteAction();
     }
+    /// <summary>仿原版结束回合动作：把玩家标成「已准备结束回合」。</summary>
+    public sealed class EndPlayerTurnAction(MegaCrit.Sts2.Core.Entities.Players.Player player, int turnNumber) : GameAction
+    {
+        public MegaCrit.Sts2.Core.Entities.Players.Player Player { get; } = player;
+        public int TurnNumber { get; } = turnNumber;
+        public override ulong OwnerId => Player.NetId;
+        public override MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType ActionType => MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType.CombatPlayPhaseOnly;
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        protected override Task ExecuteAction()
+        {
+            MegaCrit.Sts2.Core.Combat.CombatManager.Instance!.SetReadyToEndTurn(Player, true);
+            return Task.CompletedTask;
+        }
+        public override INetAction ToNetAction() => throw new NotSupportedException();
+    }
     public sealed class MoveToMapCoordAction(ulong owner, MegaCrit.Sts2.Core.Map.MapCoord destination = default) : GameAction
     {
         private readonly MegaCrit.Sts2.Core.Map.MapCoord _destination = destination;
