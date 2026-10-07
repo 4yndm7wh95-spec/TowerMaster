@@ -52,3 +52,38 @@ public class TrapTests
         Assert.Equal("bluff", Assert.Single(t.Unfired).Id); // 空陷阱永不触发，战后照样给躲过奖励
     }
 }
+
+public class TrapDraftTests
+{
+    [Fact]
+    public void OfferIsSeededAndVariesByRun()
+    {
+        var a = TrapCatalog.DraftOffer(1, 111, 6);
+        Assert.Equal(7, a.Count);
+        Assert.Equal("bluff", a[^1].Id);
+        Assert.Equal(a.Select(c => c.Id), TrapCatalog.DraftOffer(1, 111, 6).Select(c => c.Id)); // 同一局固定
+        Assert.Contains(Enumerable.Range(0, 20), s => !TrapCatalog.DraftOffer(1, (ulong)s, 6).Select(c => c.Id).SequenceEqual(a.Select(c => c.Id)));
+        Assert.All(TrapCatalog.DraftOffer(2, 111, 6), c => Assert.Equal(2, c.Tier));
+    }
+
+    [Fact]
+    public void BudgetPicksOwnedAndHandLimit()
+    {
+        var offer = new[] { new TrapCard("frenzy", 1), new TrapCard("harden", 1), new TrapCard("mire", 1), new TrapCard("brittle", 1), new TrapCard("bluff", 1) };
+        var d = new TrapDraft(1, offer, [new TrapCard("mire", 1)], budget: 5, maxPicks: 3, handLimit: 6);
+        Assert.True(d.Owned(2));
+        Assert.False(d.Toggle(2));            // 手里已有泥沼，不能重复
+        Assert.True(d.Toggle(0));             // 狂怒 3
+        Assert.True(d.Toggle(1));             // 硬化 2 → 5
+        Assert.False(d.Toggle(3));            // 碎甲 1 超预算
+        Assert.True(d.Toggle(4));             // 空陷阱 0：第 3 张
+        Assert.Equal(5, d.Spent);
+        Assert.True(d.Toggle(1));             // 去掉硬化
+        Assert.True(d.Toggle(3));             // 现在碎甲可以
+        Assert.Equal(new[] { "frenzy", "brittle", "bluff" }, d.Confirm().Select(c => c.Id));
+
+        var full = new TrapDraft(1, offer, Enumerable.Range(0, 6).Select(_ => new TrapCard("bluff", 1)).ToList(), 5, 3, 6);
+        Assert.False(full.Toggle(0));          // 手满了
+        Assert.Empty(full.Confirm());         // 可以一张不挑
+    }
+}

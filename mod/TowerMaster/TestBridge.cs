@@ -209,13 +209,16 @@ internal static class TestBridge
                 "/event/choose" => a => Main(() => EventChoose(a)),
                 "/cards" => _ => Main(Cards),
                 "/threat" => _ => Main(Threat),
+                "/config" => _ => Main(() => System.Text.Json.Nodes.JsonNode.Parse(ModEntry.Active.ToJson())),
                 "/traps" => _ => Main(Traps),
-                "/traps/pack/pick" => a => Main(() => TrapPackPick(a)),
+                "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
+                "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
                 "/combat/hand" => _ => Main(CombatHand),
                 "/combat/play" => a => Main(() => CombatPlay(a)),
                 "/combat/end_turn" => _ => Main(CombatEndTurn),
                 "/threat/act" => a => Main(() => ThreatAct(a)),
                 "/threat/end" => _ => Main(ThreatEnd),
+                "/threat/ui" => a => Main(() => ThreatUi(a)),
                 "/cards/pick" => a => Main(() => CardsPick(a)),
                 "/console" => a => MainAsync(() => ConsoleCommand(a)),
                 "/logs" => a => Main(() => Logs(a)),
@@ -305,7 +308,7 @@ internal static class TestBridge
             summon_open = SummonPhase.Current is { Done: false },
             rewards_visible = Try(() => RewardsScreen() != null) ?? false,
             master_turn_open = ThreatPhase.TurnOpen,
-            pack_choice_open = SummonPhase.PackChoice is { Done: false },
+            draft_open = SummonPhase.Draft is { Done: false },
             paused_by_master_turn = ThreatPhase.PausedHere, // 本机玩家队列被塔主回合暂停（各端都有）
         };
     }
@@ -369,7 +372,7 @@ internal static class TestBridge
             opening_protected = s.IsOpeningProtected,
             encounters = s.EncounterOptions.Select(o => new { id = o.Id, name = o.Name, allows_extras = s.EncounterAllowsExtras(o.Id) }),
             monsters = s.MonsterOptions.Select(o => new { id = o.Id, name = o.Name, price = o.Price, home_act = o.HomeAct, elite = o.IsElite, hp_factor = o.HpFactor }),
-            traps = s.TrapHand.Select((t, i) => new { index = i, id = t.ToString(), name = t.Name, text = t.Describe() }),
+            traps = s.TrapHand.Select((t, i) => new { index = i, id = t.ToString(), name = t.Name, text = t.Describe(), cooling = s.TrapCooling(i) }),
             selected = new { encounter = s.Encounter, monsters = s.Monsters, traps = s.SelectedTraps },
             quote = new
             {
@@ -628,14 +631,18 @@ internal static class TestBridge
             {
                 index = i,
                 card = c.GetType().Name,
+                type = Try(() => GameReflection.Get(c, "Type")?.ToString()),
                 title = Try(() => GameReflection.Get(c, "Title")?.ToString()),
                 target_type = Try(() => GameReflection.Get(c, "TargetType")?.ToString()),
                 cost = Try(() => GameReflection.Get(c, "EnergyCost") is { } e ? ToJson(e, 0) : null),
             }).ToList();
         var enemies = (GameReflection.Get(CombatState()!, "Enemies") as IEnumerable)!.Cast<object>()
             .Select((e, i) => new { index = i, monster = Try(() => GameReflection.Get(e, "Monster")?.GetType().Name), hp = Try(() => GameReflection.Get(e, "CurrentHp")) }).ToList();
+        var me = GameReflection.Get(player, "Creature");
         return new
         {
+            hp = me == null ? null : Try(() => GameReflection.Get(me, "CurrentHp")),
+            alive = me == null ? null : Try(() => GameReflection.Get(me, "IsAlive")),
             energy = Try(() => GameReflection.Get(pcs, "Energy")),
             turn = Try(() => GameReflection.Get(pcs, "TurnNumber")),
             paused_by_master_turn = ThreatPhase.PausedHere,
@@ -698,29 +705,45 @@ internal static class TestBridge
     {
         if (!Test3MasterAutoPilot.LocalIsMaster) throw Fail("not_host", "陷阱只在塔主（房主）这边");
         var tracker = TrapPhase.Tracker;
-        var choice = SummonPhase.PackChoice is { Done: false } c ? c : null;
+        var draft = SummonPhase.Draft is { Done: false } c ? c.Draft : null;
         return new
         {
-            hand = MasterLedger.Traps.Select((t, i) => new { index = i, id = t.ToString(), name = t.Name, text = t.Describe() }),
+            hand = MasterLedger.Traps.Select((t, i) => new { index = i, id = t.ToString(), name = t.Name, text = t.Describe(), cooling = MasterLedger.LastPlaced.Contains(t.Id) }),
+            last_placed = MasterLedger.LastPlaced,
             placed_this_combat = tracker?.Placed.Select(t => t.ToString()),
             unfired_this_combat = tracker?.Unfired.Select(t => t.ToString()),
             fired_count = tracker?.FiredCount,
-            pack_choice = choice == null ? null : new
-            {
-                act = choice.ActNo,
-                packs = choice.Packs.Select((p, i) => new { index = i, name = p.NameZh, style = p.Style, cards = p.Cards.Select(x => $"{x.Name}：{x.Describe()}") }),
-            },
+            draft = draft == null ? null : DraftJson(draft),
         };
     }
 
-    private static object TrapPackPick(JsonObject a)
+    private static object DraftJson(Core.TrapDraft d) => new
     {
-        var choice = SummonPhase.PackChoice is { Done: false } c ? c : throw Fail("invalid_phase", "现在没有要选的陷阱包");
-        int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
-        if (index < 0 || index >= choice.Packs.Count) throw Fail("bad_request", $"只有 {choice.Packs.Count} 个包");
-        var name = choice.Packs[index].NameZh;
-        choice.Pick(index);
-        return new { picked = name, hand = MasterLedger.Traps.Select(t => t.ToString()), summon_open = SummonPhase.Current is { Done: false } };
+        act = d.ActNo,
+        budget = d.Budget,
+        spent = d.Spent,
+        max_picks = d.MaxPicks,
+        hand_limit = d.HandLimit,
+        picked = d.Picked,
+        problems = d.Problems.Select(p => p.ToString()),
+        offer = d.Offer.Select((t, i) => new { index = i, id = t.ToString(), name = t.Name, cost = t.Def.DraftCost, text = t.Describe(), owned = d.Owned(i), can_add = d.CanAdd(i) }),
+    };
+
+    /// <summary>选陷阱：整份替换选择（picks 是候选序号）。</summary>
+    private static object TrapDraftSelect(JsonObject a)
+    {
+        var choice = SummonPhase.Draft is { Done: false } c ? c : throw Fail("invalid_phase", "现在没有要选的陷阱");
+        var picks = a["picks"] is JsonArray arr ? arr.Select(n => n!.GetValue<int>()).ToList() : [];
+        if (!choice.Set(picks)) throw Fail("rejected_rule", "这样选不行（超预算、超张数、手牌满或已有同种）");
+        return DraftJson(choice.Draft);
+    }
+
+    private static object TrapDraftConfirm()
+    {
+        var choice = SummonPhase.Draft is { Done: false } c ? c : throw Fail("invalid_phase", "现在没有要选的陷阱");
+        var names = choice.Draft.Picked.Select(i => choice.Draft.Offer[i].ToString()).ToList();
+        if (!choice.Confirm()) throw Fail("rejected_rule", "选择不合规则");
+        return new { confirmed = names, hand = MasterLedger.Traps.Select(t => t.ToString()), summon_open = SummonPhase.Current is { Done: false } };
     }
 
     // ---------------------------------------------------------------- 塔主回合
@@ -752,6 +775,15 @@ internal static class TestBridge
         var (ok, message) = ThreatPhase.Act(op, a["monster"]?.GetValue<int>() ?? -1, a["player"]?.GetValue<ulong>() ?? 0);
         if (!ok) throw Fail("rejected_rule", message);
         return new { op, message, points_before = before, points_after = ThreatPhase.Session?.Points, still_open = ThreatPhase.TurnOpen };
+    }
+
+    /// <summary>操作塔主回合界面（截图用）：select 选中一张行动卡（显示战场目标按钮），cancel 取消。</summary>
+    private static object ThreatUi(JsonObject a)
+    {
+        if (ThreatPanel.Current is not { } panel) throw Fail("invalid_phase", "塔主回合界面没有打开");
+        var op = a["select"]?.GetValue<string>();
+        panel.SelectByOp(op);
+        return new { selected = op };
     }
 
     private static object ThreatEnd()
@@ -874,7 +906,8 @@ internal static class TestBridge
         {
             "mod" => Log.FilePath,
             "game" => Environment.GetEnvironmentVariable("TOWERMASTER_GAME_LOG"),
-            _ => throw Fail("bad_request", "source 只能是 mod 或 game"),
+            "balance" => BalanceLog.FilePath,
+            _ => throw Fail("bad_request", "source 只能是 mod、game 或 balance"),
         };
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) throw Fail("unsupported", $"没有 {source} 日志文件（game 日志要设 TOWERMASTER_GAME_LOG）");
         long cursor = a["cursor"]?.GetValue<long>() ?? 0;

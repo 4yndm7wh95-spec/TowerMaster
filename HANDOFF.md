@@ -1,3 +1,13 @@
+## 0.0.24 实测 → 0.0.25：自由选陷阱、原版卡框、平衡测试工具（2026-10-07）
+
+0.0.24 实测（`docs/ui-024-result.md`）：塔主全身像在右侧、不复活流程能走完；狂怒、躲过、宝箱、Boss 追加、同步都通过。问题和用户要求：
+- 塔主一直死着 → 原版事件走「死亡玩家」分支报 ERROR（EventModel.BeginEvent:207–210）。**改为默认让塔主按原版复活**（他在战斗和玩家列表里都隐藏了，玩家看不到），开关 `master_stay_dead`。
+- 目标按钮在玩家胸前 → 改取 Hitbox 和 Visuals.Bounds 里更高的上沿，用画布变换换算到屏幕。
+- 用户不要固定陷阱包 → **自由选陷阱**（`TrapDraft`）：每幕随机 6 种候选 + 空陷阱，预算 5（每种花 0~3），最多挑 3 张，手牌上限 6，手里同种不重复，新一幕手里的陷阱自动升级；上一场盖过的种类这一场冷却。击倒奖励抽手里没有的。
+- 用户要原版卡牌框架 → `VanillaCard`：运行时实例化游戏的 card.tscn，套一张原版无色技能卡的卡框，再改标题、说明、费用、类型字、插画；失败退回自绘。行动卡和选陷阱都用它。**没在真游戏里验证过**，风险：NCard 套模型后可能延迟刷新文字、卡框颜色不对等。
+- 用户要平衡测试 → `BalanceLog`（每场一行 JSON）、`towermaster.config.json`（不改代码调数值，`ModEntry.LoadConfig`）、`scripts/balance_sim.py`（离线经济模拟）、MCP `tm_autoplay`（固定策略机器人）、`tm_balance`（汇总）。方案见 `docs/balance-plan.md`。
+- 接口：/traps/draft/select、/traps/draft/confirm、/threat/ui（选中/取消行动卡，截图用）、/config、/logs source=balance；/combat/hand 加 type、hp、alive。
+
 ## 0.0.23 实测 → 0.0.24：交互改版 + 塔主独立形象（2026-10-07）
 
 0.0.23 实测（`docs/ui-023-result.md`）：狂怒修好、躲过奖励、同步都通过；18 张美术资源已生成提交（`mod/TowerMaster/art/`）。用户反馈：面板「挺一般」，要更舒服、门槛更低的交互；召唤要按幕分类、按费用筛选；陷阱包做成可点开的卡牌包；塔主尽快变成站在怪物一侧的独立形象，不再是死掉的英雄、战后不复活回血。

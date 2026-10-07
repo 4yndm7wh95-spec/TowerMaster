@@ -106,10 +106,10 @@ def check_condition(instance: str, cond: dict) -> tuple[bool, Any]:
     for key, want in cond.items():
         if key == "summon_open":
             ok &= bool(state.get("summon_open")) == want
-        elif key == "summon_or_pack":  # 召唤面板或陷阱包选择，哪个先出来都算
-            ok &= bool(state.get("summon_open") or state.get("pack_choice_open")) == want
-        elif key == "pack_choice_open":
-            ok &= bool(state.get("pack_choice_open")) == want
+        elif key == "summon_or_draft":  # 召唤面板或选陷阱，哪个先出来都算
+            ok &= bool(state.get("summon_open") or state.get("draft_open")) == want
+        elif key == "draft_open":
+            ok &= bool(state.get("draft_open")) == want
         elif key == "in_combat":
             ok &= bool((state.get("combat") or {}).get("in_progress")) == want
         elif key == "room":
@@ -222,10 +222,10 @@ def run_battle(args: dict) -> dict:
     step("map_vote", lambda: call(climber, "/map/vote", target))
 
     # 2. 召唤
-    summon = step("wait_summon", lambda: wait_for(host, {"summon_or_pack": True}, args.get("timeout_s", 60)))
-    if summon["state"].get("pack_choice_open"):  # 本幕第一次召唤前先选陷阱包
-        result_pack = step("pick_trap_pack", lambda: call(host, "/traps/pack/pick", {"index": args.get("pack", 0)}))
-        summon = step("wait_summon_after_pack", lambda: wait_for(host, {"summon_open": True}, args.get("timeout_s", 60)))
+    summon = step("wait_summon", lambda: wait_for(host, {"summon_or_draft": True}, args.get("timeout_s", 60)))
+    if summon["state"].get("draft_open"):  # 本幕第一次召唤前先挑陷阱
+        result_pack = step("trap_draft", lambda: draft(host, args.get("draft")))
+        summon = step("wait_summon_after_draft", lambda: wait_for(host, {"summon_open": True}, args.get("timeout_s", 60)))
     else:
         result_pack = None
     before = summon["state"].get("wallet")
@@ -259,7 +259,7 @@ def run_battle(args: dict) -> dict:
         shots.append(step("screenshot_combat", lambda: call(climber, "/screenshot", {"name": f"{prefix}-combat"})))
 
     result = {
-        "trap_pack": result_pack,
+        "trap_draft": result_pack,
         "host": host,
         "climber": climber,
         "room": point,
@@ -286,8 +286,14 @@ def run_battle(args: dict) -> dict:
             step("threat_end", lambda: call(host, "/threat/end"))
         result["threat_state"] = call(host, "/threat")
 
-    # 5. win
-    if args.get("win", True):
+    # 5. 结束战斗：autoplay=true 时用机器人真打，否则 win
+    if args.get("autoplay"):
+        result["autoplay"] = step("autoplay", lambda: autoplay_battle({"instance": climber, "host": host,
+                                  "policy": args.get("policy", "attack"), "master_policy": args.get("master_policy", "greedy")}))
+        step("wait_combat_end", lambda: wait_for(host, {"in_combat": False}, args.get("timeout_s", 60)))
+        time.sleep(args.get("settle_s", 1.0))
+        result["wallet_after"] = call(host, "/state").get("wallet")
+    elif args.get("win", True):
         step("console_win", lambda: call(climber, "/console", {"command": "win"}))
         step("wait_combat_end", lambda: wait_for(host, {"in_combat": False}, args.get("timeout_s", 60)))
         time.sleep(args.get("settle_s", 1.0))
@@ -301,6 +307,179 @@ def run_battle(args: dict) -> dict:
     result["steps"] = steps
     result["total_s"] = round(time.time() - t0, 2)
     return result
+
+
+def draft(host: str, picks: list[int] | None) -> dict:
+    """挑陷阱：给了 picks 就按序号选；没给就按候选顺序尽量挑（预算、张数内能加就加）。然后确认。"""
+    info = call(host, "/traps").get("draft") or {}
+    if picks is None:
+        picks, spent = [], 0
+        for o in info.get("offer", []):
+            if o["owned"] or len(picks) >= info["max_picks"] or spent + o["cost"] > info["budget"]:
+                continue
+            picks.append(o["index"])
+            spent += o["cost"]
+    call(host, "/traps/draft/select", {"picks": picks})
+    return call(host, "/traps/draft/confirm")
+
+
+def balance_summary(instance: str) -> dict:
+    """读塔主的平衡记录（每场一行 JSON），按幕、房间汇总。"""
+    text = read_log(instance, "balance")
+    rows = [json.loads(l) for l in text.splitlines() if l.strip()]
+    groups: dict[str, list] = {}
+    for r in rows:
+        groups.setdefault(f"act{r.get('act_no')}-{r.get('room')}", []).append(r)
+
+    def avg(xs):
+        return round(sum(xs) / len(xs), 2) if xs else None
+
+    summary = {}
+    for key, rs in sorted(groups.items()):
+        summary[key] = {
+            "battles": len(rs),
+            "won": sum(1 for r in rs if r.get("result") == "won"),
+            "avg_damage_taken": avg([r.get("damage_taken", 0) for r in rs]),
+            "avg_rounds": avg([r.get("rounds", 0) for r in rs]),
+            "avg_standard_cost": avg([r.get("standard_cost", 0) for r in rs]),
+            "avg_monster_spend": avg([r.get("monster_spend", 0) for r in rs]),
+            "avg_spawned_hp": avg([r.get("spawned_hp", 0) for r in rs]),
+            "avg_threat_spent": avg([r.get("threat_spent", 0) for r in rs]),
+            "threat_allotted": avg([r.get("threat_allotted", 0) for r in rs]),
+            "traps_placed": sum(len(r.get("traps_placed", [])) for r in rs),
+            "traps_fired": sum(len(r.get("traps_fired", [])) for r in rs),
+            "knockdowns": sum(len(r.get("knocked_down", [])) for r in rs),
+            "vanilla_summons": sum(1 for r in rs if r.get("summon") == "vanilla"),
+        }
+    points = [(r.get("battle_index"), r.get("points_after_battle")) for r in rows]
+    return {"rows": len(rows), "groups": summary, "points_curve": points, "last": rows[-3:]}
+
+
+# ---------------------------------------------------------------- 自动打牌（平衡测试用，策略固定、可重复）
+
+
+def _energy(hand: dict) -> int:
+    e = hand.get("energy")
+    try:
+        return int(e)
+    except (TypeError, ValueError):
+        return 0
+
+
+def master_turn(host: str, policy: str) -> list:
+    """塔主回合策略：none 什么都不做；greedy 先给血最多的怪加力量，再给血最少的怪加格挡，最后给玩家上易伤/虚弱；
+    debuff 只上减益和眩晕。点数用完或没得做就结束。"""
+    done = []
+    for _ in range(12):
+        t = call(host, "/threat")
+        if not t.get("open"):
+            return done
+        points = t.get("points") or 0
+        monsters, players = t.get("monsters") or [], t.get("players") or []
+        tries = []
+        if policy == "greedy" and monsters:
+            strong = max(monsters, key=lambda m: m["hp"])
+            weak = min(monsters, key=lambda m: m["hp"])
+            if points >= 2:
+                tries.append({"op": "strength", "monster": strong["index"]})
+            tries.append({"op": "block", "monster": weak["index"]})
+        if policy in ("greedy", "debuff") and players:
+            p = players[0]["net_id"]
+            tries += [{"op": "vulnerable", "player": p}, {"op": "weak", "player": p}, {"op": "dazed", "player": p}]
+        acted = False
+        for op in tries:
+            try:
+                call(host, "/threat/act", op)
+                done.append(op["op"])
+                acted = True
+                time.sleep(0.3)
+                break
+            except ToolError:
+                continue
+        if not acted:
+            break
+    try:
+        if call(host, "/threat").get("open"):
+            call(host, "/threat/end")
+    except ToolError:
+        pass
+    return done
+
+
+def autoplay_turn(inst: str, policy: str, host: str | None, master_policy: str) -> dict:
+    """爬塔玩家打一回合：等塔主回合结束；按策略顺序反复尝试出牌（出不去的跳过），直到一轮都出不去；然后结束回合。
+    策略：attack 先攻击后技能；block 先技能后攻击。不看怪物意图——这是固定基准，不是最优打法。"""
+    played, master_ops = [], []
+    for _ in range(120):  # 最多等 60 秒塔主回合
+        if host and call(host, "/state").get("master_turn_open"):
+            master_ops += master_turn(host, master_policy)
+        if not call(inst, "/state").get("paused_by_master_turn"):
+            break
+        time.sleep(0.5)
+    first = ("Attack", "Skill", "Power") if policy == "attack" else ("Skill", "Power", "Attack")
+    for _ in range(12):
+        hand = call(inst, "/combat/hand")
+        if _energy(hand) <= 0 and not any(c.get("type") == "Power" for c in hand["hand"]):
+            break
+        cards = sorted(hand["hand"], key=lambda c: first.index(c["type"]) if c.get("type") in first else 9)
+        progressed = False
+        for c in cards:
+            if c.get("type") in ("Status", "Curse"):
+                continue
+            before = len(hand["hand"])
+            try:
+                call(inst, "/combat/play", {"index": c["index"]})
+            except ToolError:
+                continue
+            time.sleep(0.7)
+            after = call(inst, "/combat/hand")
+            if len(after["hand"]) < before or _energy(after) < _energy(hand):
+                played.append(c.get("title") or c["card"])
+                progressed = True
+                break
+        if not progressed:
+            break
+        if not (call(inst, "/state").get("combat") or {}).get("in_progress"):
+            return {"played": played, "master": master_ops, "ended": True}
+    try:
+        call(inst, "/combat/end_turn")
+    except ToolError:
+        pass
+    return {"played": played, "master": master_ops, "ended": False}
+
+
+def autoplay_battle(args: dict) -> dict:
+    """自动打完一整场：每回合 autoplay_turn，直到战斗结束（赢或玩家倒下）或超过回合上限。"""
+    inst = args.get("instance") or (climber_instances() or [None])[0]
+    host = args.get("host") or host_instance()
+    policy = args.get("policy", "attack")
+    master_policy = args.get("master_policy", "greedy")
+    turns = []
+    t0 = time.time()
+    for turn in range(args.get("max_turns", 30)):
+        state = call(inst, "/state")
+        if not (state.get("combat") or {}).get("in_progress"):
+            break
+        try:
+            turn_no = call(inst, "/combat/hand").get("turn")
+        except ToolError:
+            turn_no = None
+        turns.append(autoplay_turn(inst, policy, host, master_policy))
+        # 等敌人回合结束、下一个玩家回合开始（回合数变了）或战斗结束
+        for _ in range(80):
+            time.sleep(0.5)
+            st = call(inst, "/state")
+            if not (st.get("combat") or {}).get("in_progress"):
+                break
+            try:
+                if call(inst, "/combat/hand").get("turn") != turn_no:
+                    break
+            except ToolError:
+                break
+    end = call(inst, "/state")
+    me = next((p for p in end.get("players") or [] if not p.get("is_master")), {})
+    return {"turns": len(turns), "result": "lost" if me.get("alive") is False else "won_or_running",
+            "hp": me.get("hp"), "detail": turns, "s": round(time.time() - t0, 1)}
 
 
 def bench(instance: str, route: str, n: int) -> dict:
@@ -383,8 +562,15 @@ TOOLS = [
          lambda a: call(a["instance"], "/combat/end_turn")),
     tool("tm_traps", "塔主陷阱：手里的陷阱（序号、名字、说明）、本场盖下/没触发的、待选的陷阱包。", INST, [],
          lambda a: call(host_or(a), "/traps")),
-    tool("tm_trap_pack_pick", "选本幕陷阱包（每幕第一次召唤前弹出，选完才出召唤面板）。", {**INST, "index": I}, ["index"],
-         lambda a: call(host_or(a), "/traps/pack/pick", {"index": a["index"]})),
+    tool("tm_trap_draft", "每幕开头挑陷阱：picks 给候选序号（见 tm_traps 的 draft.offer）；不给就按顺序在预算内自动挑。会确认。", {**INST, "picks": {"type": "array", "items": I}}, [],
+         lambda a: draft(host_or(a), a.get("picks"))),
+    tool("tm_threat_ui", "塔主回合界面：select=行动卡操作名（显示战场目标按钮，截图用）；不给就取消选择。", {**INST, "select": S}, [],
+         lambda a: call(host_or(a), "/threat/ui", {"select": a.get("select")})),
+    tool("tm_autoplay", "自动打完一整场（平衡测试用的固定基准机器人）：policy=attack|block（爬塔玩家出牌顺序），master_policy=none|greedy|debuff（塔主回合花威胁点的策略）。返回回合数、结果、每回合出的牌和塔主操作。",
+         {**INST, "host": S, "policy": S, "master_policy": S, "max_turns": I}, [],
+         autoplay_battle),
+    tool("tm_balance", "读塔主的平衡记录（每场战斗一行），按幕和房间汇总：场数、胜场、平均掉血、回合数、花费、威胁点、陷阱、击倒、召唤点曲线。", INST, [],
+         lambda a: balance_summary(host_or(a))),
     tool("tm_threat", "塔主回合状态（塔主实例）：是否进行中、第几回合、威胁点、剩余秒数、活着的怪（下标、血、格挡、力量、剩余回血次数）、玩家（血、手牌、状态）。", INST, [],
          lambda a: call(host_or(a), "/threat")),
     tool("tm_threat_act", "塔主回合操作：op=block/heal/strength（给 monster 下标）、strength_all、weak/vulnerable/frail/dazed（给 player 联机 id）。不合规则返回 rejected_rule。",
@@ -408,7 +594,7 @@ TOOLS = [
     tool("tm_reflect", "反射读对象或调方法：target 以 run/state/combat/node:路径/type:类型名 开头，用 .成员 [下标] 往下走。没有 method 就读值。",
          {**INST, "target": S, "method": S, "args": {"type": "array"}, "await": B, "depth": I}, ["instance", "target"],
          lambda a: call(a["instance"], "/reflect", {k: a[k] for k in ("target", "method", "args", "await", "depth") if k in a})),
-    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、master_turn_open、paused_by_master_turn、rewards_visible、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
+    tool("tm_wait", "等一个实例满足条件：summon_open、in_combat、master_turn_open、paused_by_master_turn、draft_open、summon_or_draft、rewards_visible、room、point_type、total_floor_at_least、in_run、log_contains（可配 source）。超时返回最后状态。",
          {**INST, "condition": {"type": "object"}, "timeout_s": {"type": "number"}}, ["instance", "condition"],
          lambda a: wait_for(a["instance"], a["condition"], a.get("timeout_s", 30))),
     tool("tm_compare_logs", "对比各实例 TowerMaster 日志里清单、替换、生成、降血相关的行（去掉时间戳），列出差异。",
@@ -419,7 +605,7 @@ TOOLS = [
          lambda a: bench(a["instance"], a.get("route", "/state"), a.get("n", 100))),
     tool("tm_battle", "一键跑一场：爬塔玩家选路（col/row 或 point_type 取第一个）→ 塔主选怪（monsters/encounter，或 vanilla=true）→ 截图 → 确认 → 两端对比怪物 → win → 召唤点前后 → 日志对比。失败时返回失败的步骤。",
          {"host": S, "climber": S, "col": I, "row": I, "point_type": S, "monsters": {"type": "array", "items": S}, "encounter": S,
-          "vanilla": B, "win": B, "pack": I, "traps": {"type": "array", "items": I}, "read_rewards": B, "threat": {"type": "array", "items": {"type": "object"}, "description": "第一回合塔主回合里依次执行的操作，如 [{\"op\":\"block\",\"monster\":0}]；做完自动结束塔主回合"}, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
+          "vanilla": B, "win": B, "autoplay": B, "policy": S, "master_policy": S, "draft": {"type": "array", "items": I, "description": "本幕第一次召唤前挑陷阱的候选序号；不给就自动挑"}, "traps": {"type": "array", "items": I}, "read_rewards": B, "threat": {"type": "array", "items": {"type": "object"}, "description": "第一回合塔主回合里依次执行的操作，如 [{\"op\":\"block\",\"monster\":0}]；做完自动结束塔主回合"}, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
          run_battle),
 ]
 

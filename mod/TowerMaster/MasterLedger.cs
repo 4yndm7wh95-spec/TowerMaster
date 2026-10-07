@@ -13,7 +13,7 @@ internal sealed record PendingBattle(RoomKind Room, int StandardCost, int Monste
 internal static class MasterLedger
 {
     private sealed record Saved(ulong Seed, int Points, int ActNo, ulong[] KnockedDown, int Battles,
-        string[]? Traps = null, int[]? PacksPicked = null);
+        string[]? Traps = null, int[]? PacksPicked = null, string[]? LastPlaced = null);
 
     private static readonly List<TrapCard> _traps = new();
     private static readonly HashSet<int> _packsPicked = new();
@@ -21,8 +21,37 @@ internal static class MasterLedger
     /// <summary>塔主手里的陷阱（「id@等级」）。</summary>
     public static IReadOnlyList<TrapCard> Traps => _traps;
 
-    /// <summary>这一幕的陷阱包选过没有。</summary>
-    public static bool PackPicked(int actNo) => _packsPicked.Contains(actNo);
+    private static readonly HashSet<string> _lastPlaced = new();
+
+    /// <summary>这一幕的陷阱选过没有。</summary>
+    public static bool DraftDone(int actNo) => _packsPicked.Contains(actNo);
+
+    /// <summary>上一场盖过的陷阱种类（冷却：这一场不能再盖）。</summary>
+    public static IReadOnlySet<string> LastPlaced => _lastPlaced;
+
+    public static void SetLastPlaced(IEnumerable<string> ids)
+    {
+        _lastPlaced.Clear();
+        _lastPlaced.UnionWith(ids);
+        Save();
+    }
+
+    /// <summary>新一幕：手里的陷阱升到本幕等级。</summary>
+    public static void UpgradeHand(int actNo)
+    {
+        int tier = Math.Clamp(actNo, 1, 3);
+        bool changed = false;
+        for (int i = 0; i < _traps.Count; i++)
+            if (_traps[i].Tier < tier) { _traps[i] = _traps[i] with { Tier = tier }; changed = true; }
+        if (changed) { Log.Info($"塔主陷阱：手里的陷阱升到第 {tier} 级"); Save(); }
+    }
+
+    public static void CompleteDraft(int actNo, IReadOnlyList<TrapCard> cards)
+    {
+        _packsPicked.Add(actNo);
+        if (cards.Count > 0) AddTraps(cards, $"第 {actNo} 幕选陷阱");
+        else { Log.Info($"塔主陷阱：第 {actNo} 幕没有挑陷阱"); Save(); }
+    }
 
     public static void AddTraps(IEnumerable<TrapCard> cards, string reason)
     {
@@ -30,12 +59,6 @@ internal static class MasterLedger
         _traps.AddRange(list);
         Log.Info($"塔主陷阱：{reason}，获得 {string.Join("、", list.Select(c => c.Name))}，手里 {_traps.Count} 张");
         Save();
-    }
-
-    public static void PickPack(int actNo, TrapPack pack)
-    {
-        _packsPicked.Add(actNo);
-        AddTraps(pack.Cards, $"第 {actNo} 幕选「{pack.NameZh}」");
     }
 
     /// <summary>盖下陷阱：从手里拿走（按序号，从大到小删）。返回拿走的牌。</summary>
@@ -68,6 +91,7 @@ internal static class MasterLedger
         Pending = null;
         _traps.Clear();
         _packsPicked.Clear();
+        _lastPlaced.Clear();
     }
 
     /// <summary>取当前这局的钱包：换了局就从文件读，没有就新开；进入新一幕时按新上限截断。</summary>
@@ -82,12 +106,14 @@ internal static class MasterLedger
             BattlesFought = 0;
             _traps.Clear();
             _packsPicked.Clear();
+            _lastPlaced.Clear();
             if (saved != null && saved.Seed == seed)
             {
                 Wallet.Restore(saved.Points, saved.ActNo, saved.KnockedDown);
                 BattlesFought = saved.Battles;
                 _traps.AddRange((saved.Traps ?? []).Select(TrapCatalog.Parse).Where(c => TrapCatalog.Exists(c.Id)));
                 _packsPicked.UnionWith(saved.PacksPicked ?? []);
+                _lastPlaced.UnionWith(saved.LastPlaced ?? []);
                 Log.Info($"塔主账本：读档，召唤点 {Wallet.Points}，已打 {BattlesFought} 场");
             }
             else Log.Info($"塔主账本：新的一局，召唤点 {Wallet.Points}");
@@ -109,7 +135,7 @@ internal static class MasterLedger
         try
         {
             var saved = new Saved(_seed, Wallet.Points, Wallet.ActNo, Wallet.KnockedDownLastBattle.ToArray(), BattlesFought,
-                _traps.Select(t => t.ToString()).ToArray(), _packsPicked.Order().ToArray());
+                _traps.Select(t => t.ToString()).ToArray(), _packsPicked.Order().ToArray(), _lastPlaced.Order().ToArray());
             var temp = FilePath + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(saved));
             File.Move(temp, FilePath, overwrite: true);

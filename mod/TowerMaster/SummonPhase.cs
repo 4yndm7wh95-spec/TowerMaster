@@ -76,11 +76,11 @@ internal static class SummonPhase
         catch (Exception e) { Log.Warn($"召唤阶段：检查 Boss {encounter} 的场景失败，不允许另加怪：{e.Message}"); return false; }
     };
 
-    /// <summary>正在等塔主选的陷阱包（每幕一次）；没有为 null。</summary>
-    public static TrapPackChoice? PackChoice { get; private set; }
+    /// <summary>正在等塔主选的陷阱（每幕一次）；没有为 null。</summary>
+    public static TrapDraftChoice? Draft { get; private set; }
 
-    /// <summary>陷阱包界面工厂；测试里替换。</summary>
-    internal static Func<TrapPackChoice, ISummonUi> PackUiFactory = choice => new TrapPackPanel(choice);
+    /// <summary>选陷阱界面工厂；测试里替换。</summary>
+    internal static Func<TrapDraftChoice, ISummonUi> DraftUiFactory = choice => new TrapDraftPanel(choice);
 
     /// <summary>界面工厂；测试里替换。</summary>
     internal static Func<SummonSession, ISummonUi> UiFactory = session => new SummonPanel(session);
@@ -167,7 +167,7 @@ internal static class SummonPhase
         void OpenSummon()
         {
             var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds, m => MonsterFilter(actId, m), BossAllowsExtras,
-                ThreatPhase.Enabled ? MasterLedger.Traps : null);
+                ThreatPhase.Enabled ? MasterLedger.Traps : null, _config.TrapCooldown ? MasterLedger.LastPlaced : null);
             Current = session;
             session.Finished += OnFinished;
             try
@@ -181,22 +181,25 @@ internal static class SummonPhase
             }
         }
 
-        // 每幕第一次召唤前，塔主先从 3 个陷阱包里选一个（设计文档：和玩家见先古之民同时；这里放在本幕第一个战斗房前）
-        if (ThreatPhase.Enabled && !MasterLedger.PackPicked(act.ActNo))
+        // 每幕第一次召唤前，塔主先自由挑陷阱（用户要求：不要固定卡包；预算、张数、不重复约束见 TrapDraft）
+        if (ThreatPhase.Enabled && !MasterLedger.DraftDone(act.ActNo))
         {
-            var choice = new TrapPackChoice(act.ActNo, TrapCatalog.PacksFor(act.ActNo));
-            PackChoice = choice;
-            choice.Picked += pack =>
+            MasterLedger.UpgradeHand(act.ActNo);
+            var draft = new TrapDraft(act.ActNo, TrapCatalog.DraftOffer(act.ActNo, Seed(state), _config.TrapDraftOfferSize), MasterLedger.Traps,
+                TowerMasterConfig.ByAct(_config.TrapDraftBudget, act.ActNo), _config.TrapDraftMaxPicks, _config.TrapHandLimit);
+            var choice = new TrapDraftChoice(draft);
+            Draft = choice;
+            choice.Confirmed += cards =>
             {
-                PackChoice = null;
-                MasterLedger.PickPack(act.ActNo, pack);
+                Draft = null;
+                MasterLedger.CompleteDraft(act.ActNo, cards);
                 OpenSummon();
             };
-            try { PackUiFactory(choice).Show(); }
+            try { DraftUiFactory(choice).Show(); }
             catch (Exception e)
             {
-                Log.Error("召唤阶段：打开陷阱包面板失败，默认拿第一个", e);
-                choice.Pick(0);
+                Log.Error("召唤阶段：打开选陷阱面板失败，这一幕不挑陷阱", e);
+                choice.Confirm();
             }
         }
         else OpenSummon();
@@ -236,7 +239,9 @@ internal static class SummonPhase
             var wallet = MasterLedger.Wallet!;
             var (total, spend) = session.Charge;
             total = Math.Min(total, wallet.Points);
+            int before = wallet.Points;
             wallet.Spend(total);
+            BalanceLog.Summoned(session, before, wallet.Points);
             MasterLedger.Pending = new PendingBattle(session.Room.Room, session.Room.StandardCostOverride ?? 0, spend);
             MasterLedger.Save();
 
@@ -324,6 +329,24 @@ internal static class SummonPhase
         catch (Exception e) { Log.Error("召唤阶段：记录击倒失败", e); }
     }
 
+    /// <summary>战斗没赢（全员倒下等）：只写平衡记录。</summary>
+    internal static void RecordLoss()
+    {
+        try
+        {
+            if (!Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
+            int damage = 0;
+            foreach (var p in ClimberPlayers())
+            {
+                var id = Test2MasterOffField.NetIdOf(p)!.Value;
+                int end = Convert.ToInt32(GameReflection.Get(GameReflection.Get(p, "Creature")!, "CurrentHp"));
+                damage += Math.Max(0, StartHp.GetValueOrDefault(id, end) - end);
+            }
+            BalanceLog.Finish(false, MasterLedger.Wallet?.ActNo ?? 1, MasterLedger.BattlesFought + 1, StartHp, ClimberPlayers(), KnockedDown, damage, null, MasterLedger.Wallet?.Points ?? 0);
+        }
+        catch (Exception e) { Log.Warn($"平衡记录：记录失败的战斗出错：{e.Message}"); }
+    }
+
     internal static void AfterCombatWon(object room)
     {
         try
@@ -334,6 +357,7 @@ internal static class SummonPhase
             var wallet = MasterLedger.For(Seed(state), act?.ActNo ?? MasterLedger.Wallet?.ActNo ?? 1);
             var pending = MasterLedger.Pending ?? new PendingBattle(RoomKind.Monster, 0, 0); // 「?」战斗等：没有召唤记录
             MasterLedger.Pending = null;
+            if (ThreatPhase.Enabled) TrapPhase.Finish(true, _config); // 先结算陷阱（躲过奖励要记进平衡记录）
 
             int damage = 0;
             foreach (var p in ClimberPlayers())
@@ -346,8 +370,9 @@ internal static class SummonPhase
             var income = wallet.SettleBattle(new BattleResult(pending.Room, pending.StandardCost, pending.MonsterSpend, damage, KnockedDown.ToList()),
                 Climbers(state), out var rewarded);
             MasterLedger.CountBattle();
-            if (ThreatPhase.Enabled) TrapPhase.KnockdownReward(rewarded.Count, wallet.ActNo, Seed(state), MasterLedger.BattlesFought);
+            if (ThreatPhase.Enabled) TrapPhase.KnockdownReward(rewarded.Count, wallet.ActNo, Seed(state), MasterLedger.BattlesFought, _config.TrapHandLimit);
             MasterLedger.Save();
+            BalanceLog.Finish(true, wallet.ActNo, MasterLedger.BattlesFought, StartHp, ClimberPlayers(), KnockedDown, damage, income, wallet.Points);
             var text = $"战斗收入 +{income.Credited}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +
                        (income.Knockdown > 0 ? $"，击倒 {income.Knockdown}" : "") + (income.Wasted > 0 ? $"，超上限作废 {income.Wasted}" : "") +
                        $"），召唤点 {wallet.Points}/{wallet.Cap}";

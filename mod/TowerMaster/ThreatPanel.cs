@@ -41,8 +41,15 @@ internal sealed class ThreatPanel : IThreatUi
     private ulong _lastTicks;
     private int _frame;
 
+    /// <summary>正在显示的塔主回合界面（测试接口用）。</summary>
+    internal static ThreatPanel? Current { get; private set; }
+
+    /// <summary>按操作名选中行动卡；null 取消（测试接口用，和点卡/右键一样）。</summary>
+    internal void SelectByOp(string? op) => Select(op == null ? null : Actions.FirstOrDefault(a => a.Op == op));
+
     public void Show()
     {
+        Current = this;
         _layer = new G.CanvasLayer { Layer = 100 };
 
         _targets = new G.Control { MouseFilter = G.Control.MouseFilterEnum.Ignore };
@@ -62,6 +69,7 @@ internal sealed class ThreatPanel : IThreatUi
 
     public void Close()
     {
+        if (Current == this) Current = null;
         ThreatPhase.Applied -= Rebuild;
         P.Tree.ProcessFrame -= OnFrame;
         _layer?.QueueFree();
@@ -219,6 +227,25 @@ internal sealed class ThreatPanel : IThreatUi
         card.AddThemeStyleboxOverride("disabled", P.Box(new G.Color(0.09f, 0.10f, 0.13f), new G.Color(0.18f, 0.20f, 0.24f), 1, 10, 0));
         card.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
 
+        // 原版卡框（失败就用下面的自绘小卡）
+        var face = new CardFace(a.Name, a.Effect(prices, act) + (a.Target == Target.Monster ? "\n选一只怪" : a.Target == Target.Player ? "\n选一名玩家" : ""), "塔主", $"{cost}", a.Icon);
+        if (VanillaCard.Create(face, 0.40f) is { } vanilla)
+        {
+            card.CustomMinimumSize = vanilla.CustomMinimumSize + new G.Vector2(8, 8);
+            vanilla.Position = new G.Vector2(4, selected ? -14 : 4); // 选中的卡抬起来
+            card.AddChild(vanilla);
+            card.AddThemeStyleboxOverride("normal", P.Box(new G.Color(0, 0, 0, 0), selected ? P.Gold : new G.Color(0, 0, 0, 0), selected ? 3 : 0, 14, 0));
+            card.AddThemeStyleboxOverride("hover", P.Box(new G.Color(1, 1, 1, 0.04f), P.Gold, 2, 14, 0));
+            card.AddThemeStyleboxOverride("disabled", P.Box(new G.Color(0, 0, 0, 0), new G.Color(0, 0, 0, 0), 0, 14, 0));
+            if (card.Disabled) card.Modulate = new G.Color(0.6f, 0.6f, 0.6f, 0.6f);
+            card.Pressed += () =>
+            {
+                if (a.Target == Target.None) { Do(a.Op); return; }
+                Select(_selected?.Op == a.Op ? null : a);
+            };
+            return card;
+        }
+
         var col = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
         col.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
         col.AddThemeConstantOverride("separation", 4);
@@ -299,15 +326,25 @@ internal sealed class ThreatPanel : IThreatUi
 
     private void AddTarget(G.Control node, string label, bool usable, Action act)
     {
-        var hitbox = GameReflection.Get(node, "Hitbox") as G.Control ?? node;
-        var rect = hitbox.GetGlobalRect();
-        var origin = hitbox.GetGlobalTransformWithCanvas().Origin;
-        var button = P.MakeButton($"▼ {label}", usable ? new G.Color(0.30f, 0.12f, 0.14f) : P.Sunk, P.Danger, P.Gold, usable ? P.TextMain : P.TextDim, new G.Vector2(0, 40), 17);
+        // 头顶：取点击框和形象边框（Visuals.Bounds）里更高的那个上沿（0.0.24 实测只用点击框时，玩家的按钮落在胸前）
+        var rects = new List<G.Rect2>();
+        if (GameReflection.Get(node, "Hitbox") is G.Control hitbox) rects.Add(ScreenRect(hitbox));
+        if (GameReflection.Get(node, "Visuals") is { } visuals && GameReflection.Get(visuals, "Bounds") is G.Control bounds) rects.Add(ScreenRect(bounds));
+        if (rects.Count == 0) rects.Add(ScreenRect(node));
+        float top = rects.Min(r => r.Position.Y);
+        float centerX = rects[0].Position.X + rects[0].Size.X / 2;
+        var button = P.MakeButton($"▼ {label}", usable ? new G.Color(0.30f, 0.12f, 0.14f) : P.Sunk, P.Danger, P.Gold, usable ? P.TextMain : P.TextDim, new G.Vector2(140, 40), 17);
         button.Disabled = !usable;
-        button.Position = new G.Vector2(origin.X + rect.Size.X / 2 - 70, Math.Max(80, origin.Y - 52));
-        button.CustomMinimumSize = new G.Vector2(140, 40);
+        button.Position = new G.Vector2(centerX - 70, Math.Max(80, top - 50));
         button.Pressed += act;
         _targets.AddChild(button);
+    }
+
+    /// <summary>控件在屏幕上的矩形（含所在画布的变换和缩放）。</summary>
+    private static G.Rect2 ScreenRect(G.Control control)
+    {
+        var t = control.GetGlobalTransformWithCanvas();
+        return new G.Rect2(t.Origin, control.Size * t.Scale);
     }
 
     /// <summary>战斗房间里所有可见的角色节点和它们对应的 Creature。</summary>

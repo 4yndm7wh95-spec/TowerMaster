@@ -80,6 +80,21 @@ public sealed class TowerMasterConfig
     // ---------------------------------------------------------------- 陷阱
     public int MaxTrapsPerBattle { get; set; } = 2;
 
+    /// <summary>每幕开头选陷阱：候选几种（另加一张空陷阱）。</summary>
+    public int TrapDraftOfferSize { get; set; } = 6;
+
+    /// <summary>每幕选陷阱的预算（按幕）。陷阱的预算花费见 TrapDef.DraftCost（1~3，空陷阱 0）。</summary>
+    public int[] TrapDraftBudget { get; set; } = [5, 5, 5];
+
+    /// <summary>每幕最多挑几张。</summary>
+    public int TrapDraftMaxPicks { get; set; } = 3;
+
+    /// <summary>手里最多几张陷阱。</summary>
+    public int TrapHandLimit { get; set; } = 6;
+
+    /// <summary>上一场盖过的陷阱种类，这一场不能再盖（冷却 1 场，逼塔主轮换）。</summary>
+    public bool TrapCooldown { get; set; } = true;
+
     /// <summary>每张陷阱盖下时花的召唤点（不退）。</summary>
     public int TrapPlaceCost { get; set; } = 1;
 

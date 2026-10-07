@@ -18,8 +18,8 @@ internal static class MasterPresence
     private static G.Node? _decoratedRoom;
     private static G.Tween? _idle;
 
-    /// <summary>战后不复活塔主（默认开）。如果实测发现塔主一直死着会卡住选路、事件等流程，关掉这个。</summary>
-    public static bool StayDead { get; set; } = true;
+    /// <summary>战后不复活塔主。默认关：一直死着会让原版事件走死亡分支（0.0.24 实测），而塔主已经隐藏，复活玩家也看不到。</summary>
+    public static bool StayDead { get; set; }
 
     /// <summary>每帧检查战斗房间（只做显示）；测试里不挂。</summary>
     internal static void Apply(Harmony harmony, bool stayDead)
@@ -28,7 +28,7 @@ internal static class MasterPresence
         if (_patched) return;
         _patched = true;
         var revive = GameReflection.FindMethod("ReviveBeforeCombatEnd", "Player");
-        if (revive != null)
+        if (revive != null && stayDead)
         {
             harmony.Patch(revive, prefix: new HarmonyMethod(typeof(MasterPresence).GetMethod(nameof(SkipMasterRevive), GameReflection.All)!) { priority = Priority.First });
             Log.Info($"塔主形象：战后不复活塔主，已挂到 {GameReflection.Describe(revive)}");

@@ -44,7 +44,7 @@ public static class ModEntry
         }
         if (settings.Test3MasterAutoPilot) Test3MasterAutoPilot.Apply(harmony, settings);
         // 召唤阶段要用测试 1b 的清单通道（上面已经挂好），塔主身份沿用测试 2
-        var config = new TowerMasterConfig();
+        var config = LoadConfig();
         if (settings.SummonPhase && settings.Test1bMixedEncounter) SummonPhase.Apply(harmony, config, prices);
         else if (settings.SummonPhase) Log.Warn("召唤阶段需要 test1b_mixed_encounter 开着（复用它的清单通道），没有启用");
         if (settings.MasterTurn && settings.SummonPhase && settings.Test1bMixedEncounter) ThreatPhase.Apply(harmony, config, prices);
@@ -54,6 +54,29 @@ public static class ModEntry
         try { TestBridge.StartFromEnvironment(); }
         catch (Exception e) { Log.Error("测试接口启动失败", e); }
     }
+
+    /// <summary>
+    /// 平衡数值：mod 目录下 towermaster.config.json（可以只写要改的字段，其余用默认值），没有就全用默认值。
+    /// 改完要重启游戏；两台电脑都要放同一份（塔主那台起作用，客户端只执行指令，但保持一致免得混淆）。
+    /// </summary>
+    internal static TowerMasterConfig LoadConfig()
+    {
+        var path = Path.Combine(Log.ModDir, "towermaster.config.json");
+        try
+        {
+            if (File.Exists(path))
+            {
+                var config = TowerMasterConfig.FromJson(File.ReadAllText(path));
+                Log.Info($"平衡数值：读取 {path}");
+                return Active = config;
+            }
+        }
+        catch (Exception e) { Log.Error($"平衡数值：{path} 读不了，用默认值", e); }
+        return Active = new TowerMasterConfig();
+    }
+
+    /// <summary>当前生效的数值（测试接口读）。</summary>
+    internal static TowerMasterConfig Active { get; private set; } = new();
 
     private static Assembly? ResolveFromModDir(object? sender, ResolveEventArgs args)
     {

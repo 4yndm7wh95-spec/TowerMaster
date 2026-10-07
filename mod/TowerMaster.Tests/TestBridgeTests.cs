@@ -40,3 +40,17 @@ public class TestBridgeTests
         Assert.Equal("x", dumped["Host"]);
     }
 }
+
+public class ConfigFileTests
+{
+    [Fact]
+    public void ExampleConfigParsesWithDefaults()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && !File.Exists(Path.Combine(dir, "TowerMaster", "towermaster.config.example.json"))) dir = Path.GetDirectoryName(dir);
+        Assert.NotNull(dir);
+        var config = TowerMaster.Core.TowerMasterConfig.FromJson(File.ReadAllText(Path.Combine(dir!, "TowerMaster", "towermaster.config.example.json")));
+        var defaults = new TowerMaster.Core.TowerMasterConfig();
+        Assert.Equal(defaults.ToJson(), config.ToJson()); // 示例里写的都是当前默认值
+    }
+}

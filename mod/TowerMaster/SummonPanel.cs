@@ -441,6 +441,12 @@ internal sealed class SummonPanel : ISummonUi
         {
             var card = _session.TrapHand[i];
             var button = TrapMiniCard(card);
+            if (_session.TrapCooling(i)) // 上一场盖过同种：这一场冷却
+            {
+                button.Disabled = true;
+                button.Modulate = new G.Color(1, 1, 1, 0.4f);
+                button.TooltipText += "\n上一场盖过，这一场冷却";
+            }
             int index = i;
             button.Pressed += () => _session.ToggleTrap(index);
             _trapButtons.Add((button, i));

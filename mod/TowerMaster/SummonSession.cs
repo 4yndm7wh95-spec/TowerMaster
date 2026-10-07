@@ -20,13 +20,19 @@ internal sealed class SummonSession
     private readonly List<string> _monsters = new();
     private readonly Func<string, bool> _bossAllowsExtras;
     private readonly List<int> _traps = new();
+    private readonly IReadOnlySet<string> _cooling;
+
+    /// <summary>这张陷阱在冷却（上一场盖过同种），这一场不能盖。</summary>
+    public bool TrapCooling(int index) => index >= 0 && index < TrapHand.Count && _cooling.Contains(TrapHand[index].Id);
 
     /// <param name="allowMonster">哪些怪能选（排除依赖专用场景、槽位的怪）；null 表示不限制。</param>
     /// <param name="bossAllowsExtras">这个 Boss 能不能另加怪（有专用场景、命名槽位的不能）；null 表示都能。</param>
     public SummonSession(SummonRules rules, RoomContext room, IReadOnlyList<string> bossCandidates, double seconds,
-        Func<string, bool>? allowMonster = null, Func<string, bool>? bossAllowsExtras = null, IReadOnlyList<TrapCard>? trapHand = null)
+        Func<string, bool>? allowMonster = null, Func<string, bool>? bossAllowsExtras = null, IReadOnlyList<TrapCard>? trapHand = null,
+        IReadOnlySet<string>? cooling = null)
     {
         TrapHand = trapHand ?? [];
+        _cooling = cooling ?? new HashSet<string>();
         _rules = rules;
         Room = room;
         SecondsLeft = seconds;
@@ -70,7 +76,11 @@ internal sealed class SummonSession
     public void ToggleTrap(int index)
     {
         if (Done || index < 0 || index >= TrapHand.Count) return;
-        if (!_traps.Remove(index)) _traps.Add(index);
+        if (!_traps.Remove(index))
+        {
+            if (TrapCooling(index)) return;
+            _traps.Add(index);
+        }
         Changed?.Invoke();
     }
     public string? Encounter { get; private set; }
@@ -141,7 +151,7 @@ internal sealed class SummonSession
     {
         var unknown = monsters.Where(m => MonsterOptions.All(o => o.Id != m)).ToList();
         if (encounter != null && EncounterOptions.All(o => o.Id != encounter)) unknown.Insert(0, encounter);
-        unknown.AddRange((traps ?? []).Where(i => i < 0 || i >= TrapHand.Count).Select(i => $"陷阱序号 {i}"));
+        unknown.AddRange((traps ?? []).Where(i => i < 0 || i >= TrapHand.Count || TrapCooling(i)).Select(i => $"陷阱序号 {i}（不存在或冷却中）"));
         if (Done || unknown.Count > 0) return unknown;
         if (encounter != null) Encounter = encounter;
         _monsters.Clear();

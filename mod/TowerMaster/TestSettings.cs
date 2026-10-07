@@ -25,8 +25,11 @@ internal sealed class TestSettings
     /// <summary>塔主回合（开发第 3 步）：每个玩家回合开始时塔主花威胁点。需要召唤阶段开着。</summary>
     [JsonPropertyName("master_turn")] public bool MasterTurn { get; set; }
 
-    /// <summary>塔主战后不复活（用户要求）。实测如果卡住选路、事件等流程就改成 false。</summary>
-    [JsonPropertyName("master_stay_dead")] public bool MasterStayDead { get; set; } = true;
+    /// <summary>
+    /// 塔主战后不复活。0.0.24 实测：塔主一直死着，进事件时原版走「死亡玩家」分支报 ERROR、塔主的事件没结束。
+    /// 塔主在战斗里和玩家列表里都已经隐藏，复活与否玩家看不到，所以默认让他按原版复活（只是看不见）。
+    /// </summary>
+    [JsonPropertyName("master_stay_dead")] public bool MasterStayDead { get; set; }
 
     [JsonPropertyName("test3_block_master_items")] public bool Test3BlockMasterItems { get; set; } = true;
 

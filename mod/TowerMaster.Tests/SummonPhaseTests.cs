@@ -192,7 +192,12 @@ public class SummonPhaseTests
         var manager = new CombatManager();
         manager.SetUpCombat(state);
         run.Players[1].Creature.Damage(23);
+        File.Delete(BalanceLog.FilePath);
         manager.Win(null!);
+        var line = File.ReadAllLines(BalanceLog.FilePath).Single(); // 平衡记录：一场一行
+        Assert.Contains("\"result\":\"won\"", line);
+        Assert.Contains("\"damage_taken\":23", line);
+        Assert.Contains("\"summon\":\"confirmed\"", line);
 
         // 收入 = 基础 5 + 节约 0 + 战果 2（掉 23 血）= 7；12 − 2 + 7 = 17
         Assert.Equal(17, MasterLedger.Wallet!.Points);
@@ -287,49 +292,53 @@ public class SummonPhaseTests
     private static string Json(object body) => System.Text.Json.JsonSerializer.Serialize(body, TestBridge.JsonOut);
 
     [Fact]
-    public void FirstSummonOfActPicksTrapPackThenPlacesTraps()
+    public void FirstSummonOfActDraftsTrapsThenPlacesThemWithCooldown()
     {
         var queue = Init();
         var prices = PriceBook.Load(Path.Combine(Log.ModDir, "price_book.data"));
         ThreatPhase.Apply(new Harmony("towermaster.summon"), new TowerMasterConfig(), prices);
-        TrapPackChoice? shownChoice = null;
-        SummonPhase.PackUiFactory = c => { shownChoice = c; return new FakeUi(null!); };
+        TrapDraftChoice? shown = null;
+        SummonPhase.DraftUiFactory = c => { shown = c; return new FakeUi(null!); };
         try
         {
             MasterLedger.For(123, 1);
             for (int i = 0; i < 3; i++) MasterLedger.CountBattle(); // 过了开局保护才能盖陷阱
             queue.RequestEnqueue(MoveTo(MapPointType.Monster));
-            Assert.NotNull(shownChoice);
-            Assert.Null(SummonPhase.Current);             // 先选陷阱包，召唤面板还没出来
-            shownChoice!.Pick(1);                          // 拖延包
+            Assert.NotNull(shown);
+            Assert.Null(SummonPhase.Current);              // 先挑陷阱，召唤面板还没出来
+            var draft = shown!.Draft;
+            Assert.Equal(7, draft.Offer.Count);            // 6 种随机 + 空陷阱
+            Assert.Equal(5, draft.Budget);
+            // 挑两张便宜的 + 空陷阱
+            var cheap = Enumerable.Range(0, draft.Offer.Count).Where(i => draft.Offer[i].Def.DraftCost == 1).Take(2).ToList();
+            int bluff = draft.Offer.Count - 1;
+            Assert.True(shown.Set([.. cheap, bluff]));
+            Assert.False(shown.Set([0, 1, 2, 3]));         // 超张数：整份不改
+            Assert.Equal(cheap.Count + 1, draft.Picked.Count);
+            Assert.True(shown.Confirm());
+            Assert.True(MasterLedger.DraftDone(1));
             var session = Assert.Single(Shown, u => u.Session != null).Session;
-            Assert.Equal(4, session.TrapHand.Count);
-            Assert.True(MasterLedger.PackPicked(1));
+            Assert.Equal(cheap.Count + 1, session.TrapHand.Count);
 
             session.Click("Nibbit");
             session.ToggleTrap(0);
-            session.ToggleTrap(1);
-            Assert.True(session.Quote.Ok, string.Join(",", session.Quote.Violations));
-            Assert.Equal(2, session.Quote.TrapCost);
-            session.ToggleTrap(2);
-            Assert.Contains(SummonViolation.TooManyTraps, session.Quote.Violations); // 每场最多 2 张
-            session.ToggleTrap(2);
-            int before = MasterLedger.Wallet!.Points;
-            Assert.True(session.Confirm());
-            Assert.Equal(before - 2 - 2, MasterLedger.Wallet!.Points); // 小啃兽 2 + 陷阱 2
-            Assert.Equal(2, MasterLedger.Traps.Count);                 // 盖下的从手里拿走
+            Assert.True(session.Confirm(), string.Join(",", session.Quote.Violations));
+            var placed = TrapPhase.Tracker == null ? MasterLedger.LastPlaced.Single() : null;
+            Assert.NotNull(placed);
 
-            // 同一幕下一场不再选包
-            shownChoice = null;
+            // 下一场：同种陷阱冷却，不能盖；同一幕不再挑
+            shown = null;
             Shown.Clear();
             queue.Queued.Clear();
             queue.RequestEnqueue(MoveTo(MapPointType.Monster));
-            Assert.Null(shownChoice);
+            Assert.Null(shown);
+            var next = Shown.Single(u => u.Session != null).Session;
+            Assert.All(Enumerable.Range(0, next.TrapHand.Count).Where(i => next.TrapHand[i].Id == placed), i => Assert.True(next.TrapCooling(i)));
         }
         finally
         {
             ThreatPhase.Disable();
-            SummonPhase.PackUiFactory = c => new TrapPackPanel(c);
+            SummonPhase.DraftUiFactory = c => new TrapDraftPanel(c);
         }
     }
 

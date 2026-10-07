@@ -31,7 +31,8 @@ public enum TrapEffect
 }
 
 /// <summary>一种陷阱。<see cref="Amounts"/> 按等级（1/2/3，对应牌池所在幕）取效果数值。</summary>
-public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int Threshold, TrapEffect Effect, int[] Amounts)
+/// <param name="DraftCost">选进手里要花的「陷阱预算」（越强越贵）。</param>
+public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int Threshold, TrapEffect Effect, int[] Amounts, int DraftCost = 1)
 {
     public int Amount(int tier) => Amounts[Math.Clamp(tier, 1, Amounts.Length) - 1];
 
@@ -115,16 +116,16 @@ public static class TrapCatalog
 {
     public static readonly IReadOnlyList<TrapDef> All =
     [
-        new("harden", "硬化", TrapTrigger.AttacksInTurn, 3, TrapEffect.BlockAllEnemies, [5, 8, 11]),
-        new("brittle", "碎甲", TrapTrigger.SkillsInTurn, 3, TrapEffect.FrailPlayer, [1, 2, 2]),
-        new("stifle", "窒息", TrapTrigger.CardsInTurn, 6, TrapEffect.WeakPlayer, [2, 2, 3]),
-        new("rally", "鼓舞", TrapTrigger.RoundStart, 3, TrapEffect.StrengthAllEnemies, [1, 2, 2]),
-        new("frenzy", "狂怒", TrapTrigger.EnemyDied, 1, TrapEffect.StrengthAllEnemies, [2, 3, 3]),
-        new("mire", "泥沼", TrapTrigger.RoundStart, 2, TrapEffect.DazedPlayer, [2, 2, 3]),
-        new("mend", "再生", TrapTrigger.RoundStart, 4, TrapEffect.HealAllEnemiesPercent, [15, 20, 25]),
-        new("countdown", "倒计时", TrapTrigger.RoundStart, 6, TrapEffect.HealAllEnemiesPercent, [30, 35, 40]),
-        new("exposed", "破绽", TrapTrigger.AttacksInTurn, 4, TrapEffect.VulnerablePlayer, [1, 2, 2]),
-        new("bluff", "空陷阱", TrapTrigger.Never, 0, TrapEffect.None, [0, 0, 0]),
+        new("harden", "硬化", TrapTrigger.AttacksInTurn, 3, TrapEffect.BlockAllEnemies, [5, 8, 11], 2),
+        new("brittle", "碎甲", TrapTrigger.SkillsInTurn, 3, TrapEffect.FrailPlayer, [1, 2, 2], 1),
+        new("stifle", "窒息", TrapTrigger.CardsInTurn, 6, TrapEffect.WeakPlayer, [2, 2, 3], 1),
+        new("rally", "鼓舞", TrapTrigger.RoundStart, 3, TrapEffect.StrengthAllEnemies, [1, 2, 2], 2),
+        new("frenzy", "狂怒", TrapTrigger.EnemyDied, 1, TrapEffect.StrengthAllEnemies, [2, 3, 3], 3),
+        new("mire", "泥沼", TrapTrigger.RoundStart, 2, TrapEffect.DazedPlayer, [2, 2, 3], 1),
+        new("mend", "再生", TrapTrigger.RoundStart, 4, TrapEffect.HealAllEnemiesPercent, [15, 20, 25], 2),
+        new("countdown", "倒计时", TrapTrigger.RoundStart, 6, TrapEffect.HealAllEnemiesPercent, [30, 35, 40], 1),
+        new("exposed", "破绽", TrapTrigger.AttacksInTurn, 4, TrapEffect.VulnerablePlayer, [1, 2, 2], 2),
+        new("bluff", "空陷阱", TrapTrigger.Never, 0, TrapEffect.None, [0, 0, 0], 0),
     ];
 
     public static TrapDef Get(string id) => All.FirstOrDefault(d => d.Id == id) ?? throw new KeyNotFoundException($"没有陷阱 {id}");
@@ -152,6 +153,23 @@ public static class TrapCatalog
     /// <summary>本幕牌池（击倒奖励从这里抽，空陷阱除外）。</summary>
     public static IReadOnlyList<TrapCard> PoolFor(int actNo) =>
         PacksFor(actNo).SelectMany(p => p.Cards).Where(c => c.Id != "bluff").DistinctBy(c => c.Id).ToList();
+
+    /// <summary>
+    /// 每幕开头给塔主挑的候选：除空陷阱外随机 offerSize 种（按种子固定，每局不同），再加一张空陷阱；等级 = 幕数。
+    /// </summary>
+    public static IReadOnlyList<TrapCard> DraftOffer(int actNo, ulong seed, int offerSize)
+    {
+        int tier = Math.Clamp(actNo, 1, 3);
+        var kinds = All.Where(d => d.Id != "bluff").Select(d => d.Id).ToList();
+        var rng = new Random(unchecked((int)(seed ^ (ulong)(actNo * 104729))));
+        for (int i = kinds.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (kinds[i], kinds[j]) = (kinds[j], kinds[i]);
+        }
+        return kinds.Take(Math.Min(offerSize, kinds.Count)).Order(StringComparer.Ordinal)
+            .Select(id => new TrapCard(id, tier)).Append(new TrapCard("bluff", tier)).ToList();
+    }
 
     /// <summary>"id@tier" 解析。</summary>
     public static TrapCard Parse(string text)
@@ -232,5 +250,79 @@ public sealed class TrapTracker
             fires.Add(new TrapFire(_armed[i], player));
         }
         return fires;
+    }
+}
+
+/// <summary>选陷阱时不能确认的原因。</summary>
+public enum TrapDraftProblem { OverBudget, TooManyPicks, HandFull }
+
+/// <summary>
+/// 每幕开头的自由选陷阱（用户要求：不要固定卡包，让塔主自己挑、自己搭配，并有约束保证平衡和变化）：
+/// - 候选是本幕随机的一批（<see cref="TrapCatalog.DraftOffer"/>），每局不同；
+/// - 每种陷阱有预算花费（越强越贵），本幕预算有限；最多挑几张；
+/// - 手里同一种陷阱只能有一张（已有的不能再挑）；手牌有上限；
+/// - 已有的陷阱在新一幕自动升到本幕等级。
+/// </summary>
+public sealed class TrapDraft
+{
+    private readonly List<int> _picked = new();
+
+    public TrapDraft(int actNo, IReadOnlyList<TrapCard> offer, IReadOnlyList<TrapCard> hand, int budget, int maxPicks, int handLimit)
+    {
+        ActNo = actNo;
+        Offer = offer;
+        Hand = hand;
+        Budget = budget;
+        MaxPicks = maxPicks;
+        HandLimit = handLimit;
+    }
+
+    public int ActNo { get; }
+    public IReadOnlyList<TrapCard> Offer { get; }
+    public IReadOnlyList<TrapCard> Hand { get; }
+    public int Budget { get; }
+    public int MaxPicks { get; }
+    public int HandLimit { get; }
+    public IReadOnlyList<int> Picked => _picked;
+    public int Spent => _picked.Sum(i => Offer[i].Def.DraftCost);
+    public bool Done { get; private set; }
+
+    /// <summary>手里已经有这一种（不能重复挑）。</summary>
+    public bool Owned(int index) => Hand.Any(h => h.Id == Offer[index].Id);
+
+    /// <summary>这张现在能不能加选（不算已选的）。</summary>
+    public bool CanAdd(int index) =>
+        !Done && !Owned(index) && !_picked.Contains(index)
+        && Spent + Offer[index].Def.DraftCost <= Budget
+        && _picked.Count < MaxPicks && Hand.Count + _picked.Count < HandLimit;
+
+    /// <summary>点一下：没选就加（能加的话），选了就去掉。返回是否变了。</summary>
+    public bool Toggle(int index)
+    {
+        if (Done || index < 0 || index >= Offer.Count) return false;
+        if (_picked.Remove(index)) return true;
+        if (!CanAdd(index)) return false;
+        _picked.Add(index);
+        return true;
+    }
+
+    public IReadOnlyList<TrapDraftProblem> Problems
+    {
+        get
+        {
+            var list = new List<TrapDraftProblem>();
+            if (Spent > Budget) list.Add(TrapDraftProblem.OverBudget);
+            if (_picked.Count > MaxPicks) list.Add(TrapDraftProblem.TooManyPicks);
+            if (Hand.Count + _picked.Count > HandLimit) list.Add(TrapDraftProblem.HandFull);
+            return list;
+        }
+    }
+
+    /// <summary>确认：返回挑中的牌（可以一张不挑）。</summary>
+    public IReadOnlyList<TrapCard> Confirm()
+    {
+        if (Problems.Count > 0) throw new InvalidOperationException("选陷阱不合规则");
+        Done = true;
+        return _picked.Order().Select(i => Offer[i]).ToList();
     }
 }

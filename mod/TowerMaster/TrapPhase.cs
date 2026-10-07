@@ -4,19 +4,42 @@ using TowerMaster.Core;
 
 namespace TowerMaster;
 
-/// <summary>每幕一次的陷阱包选择（3 选 1）。</summary>
-internal sealed class TrapPackChoice(int actNo, IReadOnlyList<TrapPack> packs)
+/// <summary>每幕一次的自由选陷阱（包着规则库的 <see cref="TrapDraft"/>，加上界面要用的事件）。</summary>
+internal sealed class TrapDraftChoice(TrapDraft draft)
 {
-    public int ActNo { get; } = actNo;
-    public IReadOnlyList<TrapPack> Packs { get; } = packs;
-    public bool Done { get; private set; }
-    public event Action<TrapPack>? Picked;
+    public TrapDraft Draft { get; } = draft;
+    public bool Done => Draft.Done;
+    public event Action? Changed;
+    public event Action<IReadOnlyList<TrapCard>>? Confirmed;
 
-    public void Pick(int index)
+    public bool Toggle(int index)
     {
-        if (Done || index < 0 || index >= Packs.Count) return;
-        Done = true;
-        Picked?.Invoke(Packs[index]);
+        bool changed = Draft.Toggle(index);
+        if (changed) Changed?.Invoke();
+        return changed;
+    }
+
+    /// <summary>整份替换选择（测试接口用）。有不能选的就整份不改，返回 false。</summary>
+    public bool Set(IReadOnlyList<int> picks)
+    {
+        var before = Draft.Picked.ToList();
+        foreach (var i in before) Draft.Toggle(i);
+        foreach (var i in picks.Distinct())
+        {
+            if (Draft.Toggle(i)) continue;
+            foreach (var j in Draft.Picked.ToList()) Draft.Toggle(j);
+            foreach (var j in before) Draft.Toggle(j);
+            return false;
+        }
+        Changed?.Invoke();
+        return true;
+    }
+
+    public bool Confirm()
+    {
+        if (Draft.Done || Draft.Problems.Count > 0) return false;
+        Confirmed?.Invoke(Draft.Confirm());
+        return true;
     }
 }
 
@@ -66,6 +89,7 @@ internal static class TrapPhase
     {
         _pending = cards.ToList();
         _handAtEntry = handLeft + cards.Count;
+        MasterLedger.SetLastPlaced(cards.Select(c => c.Id));
         if (cards.Count > 0) Log.Info($"塔主陷阱：盖下 {string.Join("、", cards.Select(c => c.Name))}（只有塔主知道）");
     }
 
@@ -144,6 +168,7 @@ internal static class TrapPhase
         foreach (var fire in fires)
         {
             Log.Info($"塔主陷阱：{fire.Card.Name} 触发（{fire.Card.Describe()}）{(fire.Player != 0 ? $"，玩家 {fire.Player}" : "")}");
+            BalanceLog.TrapFired(fire.Card);
             var command = new ThreatCommand(1, 0, 0, round, "trap", MonsterId: fire.Card.ToString(), Player: fire.Player,
                 Amount: fire.Card.Def.Amount(fire.Card.Tier));
             if (ThreatPhase.TurnOpen) Deferred.Add(fire); // 塔主回合里玩家队列暂停着，等塔主回合结束再发（指令要排在 end 后面）
@@ -178,16 +203,23 @@ internal static class TrapPhase
         if (unfired.Count == 0) return;
         MasterLedger.AddTraps(unfired, "没触发的陷阱收回");
         if (!won) return;
+        BalanceLog.TrapsDodged(unfired);
         ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "trap_dodge",
             MonsterId: string.Join("、", unfired.Select(c => c.Name)), Amount: config.DodgeRewardGold * unfired.Count));
     }
 
-    /// <summary>击倒奖励：每名被击倒（且有奖励）的玩家，从本幕牌池抽 1 张。</summary>
-    internal static void KnockdownReward(int count, int actNo, ulong seed, int battle)
+    /// <summary>击倒奖励：每名被击倒（且有奖励）的玩家，从本幕牌池抽 1 张手里没有的（手满就不给）。</summary>
+    internal static void KnockdownReward(int count, int actNo, ulong seed, int battle, int handLimit)
     {
         if (count <= 0) return;
-        var pool = TrapCatalog.PoolFor(actNo);
         var rng = new Random(unchecked((int)(seed ^ (ulong)(battle * 7919 + 17))));
-        MasterLedger.AddTraps(Enumerable.Range(0, count).Select(_ => pool[rng.Next(pool.Count)]), "击倒奖励");
+        var gained = new List<TrapCard>();
+        for (int i = 0; i < count; i++)
+        {
+            var pool = TrapCatalog.PoolFor(actNo).Where(c => MasterLedger.Traps.Concat(gained).All(h => h.Id != c.Id)).ToList();
+            if (pool.Count == 0 || MasterLedger.Traps.Count + gained.Count >= handLimit) break;
+            gained.Add(pool[rng.Next(pool.Count)]);
+        }
+        if (gained.Count > 0) MasterLedger.AddTraps(gained, "击倒奖励");
     }
 }

@@ -125,6 +125,7 @@ internal static class ThreatPhase
             var room = RoomOf(state);
             TrapPhase.CombatSetUp();
             Session = new ThreatSession(_config, actNo, room, Climbers(state).Count);
+            BalanceLog.CombatStarted(state, null, Session.Points);
             Log.Info($"塔主回合：本场 {room} 房，第 {actNo} 幕，威胁点 {Session.Points}");
         }
         catch (Exception e) { Log.Error("塔主回合：战斗开始时初始化失败，本场没有塔主回合", e); }
@@ -164,6 +165,8 @@ internal static class ThreatPhase
             if (!Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
             if (GameReflection.Get(combatState, "CurrentSide")?.ToString() != "Player") return;
             Round = Convert.ToInt32(GameReflection.Get(combatState, "RoundNumber") ?? Round + 1);
+            BalanceLog.Round(Round);
+            if (Round == 1) BalanceLog.Spawned(combatState);
             // 陷阱先发：指令排在 begin 前面，不会被塔主回合的暂停挡住
             try { TrapPhase.RoundStarted(Round); }
             catch (Exception e) { Log.Warn($"陷阱：回合开始检查失败：{e.Message}"); }
@@ -199,8 +202,10 @@ internal static class ThreatPhase
             if (Enabled && Test3MasterAutoPilot.LocalIsMaster)
             {
                 // 不确定 CombatWon、CombatEnded 谁先触发：这里按场面判断是不是赢了（还有爬塔玩家活着、敌人都死了）
-                try { TrapPhase.Finish(Won(), _config); }
+                bool won = Won();
+                try { TrapPhase.Finish(won, _config); }
                 catch (Exception e) { Log.Error("陷阱：战斗结束结算失败", e); }
+                if (!won) SummonPhase.RecordLoss();
             }
             CloseUi();
             TurnOpen = false;
@@ -229,6 +234,7 @@ internal static class ThreatPhase
         {
             var combat = CombatState() ?? throw new InvalidOperationException("不在战斗中");
             ThreatResult result;
+            int pointsBefore = Session.Points;
             string? monsterId = null;
             object? creature = null;
             if (op is "block" or "heal" or "strength")
@@ -252,6 +258,7 @@ internal static class ThreatPhase
                 _ => throw new ArgumentException($"不认识的操作 {op}"),
             };
             if (!result.Ok) return (false, Describe(result.Violation));
+            BalanceLog.ThreatUsed(op, pointsBefore - Session.Points);
 
             Send(new ThreatCommand(1, 0, 0, Round, op, monster, monsterId, player, result.Amount,
                 op == "strength_all" ? result.Monsters?.ToArray() : null));

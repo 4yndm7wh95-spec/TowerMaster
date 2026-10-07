@@ -1,0 +1,35 @@
+{
+  // 平衡数值示例：复制成 mods/TowerMaster/towermaster.config.json 再改；只写要改的字段，其余用默认值。改完重启游戏。
+  // 下面都是当前默认值。完整字段见 mod/TowerMaster.Core/TowerMasterConfig.cs。
+
+  // —— 召唤点经济 ——
+  "starting_summon_points": 12,
+  "base_income": [5, 6, 7],
+  "climber_income_factor": [1.0, 1.25, 1.5],
+  "savings_cap": [30, 45, 60],
+  "damage_per_bonus_point": 10,
+
+  // —— 单场强度上限 ——
+  "normal_spend_cap_multiplier": 1.6,
+  "elite_spend_cap_multiplier": 1.5,
+  "boss_extra_spend_cap_multiplier": 2.0,
+  "opening_protection_battles": 3,
+  "opening_spend_cap_multiplier": 1.3,
+  "cross_act_hp_cut": 0.2,
+  "cross_act_price_premium": 1.0,
+  "elite_room_discount": 0.7,
+
+  // —— 塔主回合 ——
+  "threat_per_battle": [3, 4, 5],
+  "threat_elite_bonus": 1,
+  "threat_boss_bonus": 2,
+
+  // —— 陷阱 ——
+  "max_traps_per_battle": 2,
+  "trap_place_cost": 1,
+  "dodge_reward_gold": 15,
+  "trap_draft_budget": [5, 5, 5],
+  "trap_draft_max_picks": 3,
+  "trap_hand_limit": 6,
+  "trap_cooldown": true
+}
