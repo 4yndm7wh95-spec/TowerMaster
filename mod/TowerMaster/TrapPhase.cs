@@ -32,7 +32,6 @@ internal static class TrapPhase
     private static List<TrapCard> _pending = new();
     private static int _handAtEntry;
     private static bool _infoSent;
-    private static int _deadSeen;
     private static bool _patched;
     private static readonly List<TrapFire> Deferred = new();
 
@@ -56,7 +55,8 @@ internal static class TrapPhase
         _pending = new();
         _handAtEntry = 0;
         _infoSent = false;
-        _deadSeen = 0;
+        Known.Clear();
+        CountedDead.Clear();
         Tracker = null;
         Deferred.Clear();
     }
@@ -75,7 +75,8 @@ internal static class TrapPhase
         Tracker = new TrapTracker(_pending);
         _pending = new();
         _infoSent = false;
-        _deadSeen = 0;
+        Known.Clear();
+        CountedDead.Clear();
         Deferred.Clear();
     }
 
@@ -111,15 +112,31 @@ internal static class TrapPhase
         catch (Exception e) { Log.Warn($"陷阱：处理出牌失败：{e.Message}"); }
     }
 
-    /// <summary>有新死的敌人、而且还有活着的敌人：触发「敌人死亡」陷阱（每只死亡一次）。</summary>
+    private static readonly List<object> Known = new();
+    private static readonly HashSet<object> CountedDead = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// 有新死的敌人、而且还有活着的敌人：触发「敌人死亡」陷阱（每只死亡一次）。
+    /// 原版死掉的怪会从 CombatState.Enemies 里移除（0.0.22 实测狂怒因此没触发），所以记住见过的每只怪：
+    /// 列表里没了（又不在逃跑名单里）或标记死亡，都算死了。
+    /// </summary>
     private static void CheckDeaths(int round)
     {
         if (Tracker == null || ThreatPhase.CombatState() is not { } combat) return;
         var enemies = (GameReflection.Get(combat, "Enemies") as IEnumerable)?.Cast<object>().ToList() ?? [];
-        int dead = enemies.Count(e => GameReflection.Get(e, "IsDead") is true);
+        var escaped = (GameReflection.Get(combat, "EscapedCreatures") as IEnumerable)?.Cast<object>().ToHashSet(ReferenceEqualityComparer.Instance)
+                      ?? new HashSet<object>(ReferenceEqualityComparer.Instance);
+        foreach (var e in enemies)
+            if (!Known.Any(k => ReferenceEquals(k, e))) Known.Add(e);
         bool anyAlive = enemies.Any(e => GameReflection.Get(e, "IsDead") is not true);
-        for (; _deadSeen < dead; _deadSeen++)
+        foreach (var k in Known)
+        {
+            if (CountedDead.Contains(k) || escaped.Contains(k)) continue;
+            bool gone = !enemies.Any(e => ReferenceEquals(e, k));
+            if (!gone && GameReflection.Get(k, "IsDead") is not true) continue;
+            CountedDead.Add(k);
             if (anyAlive) Fire(Tracker.EnemyDied(), round);
+        }
     }
 
     private static void Fire(IReadOnlyList<TrapFire> fires, int round)

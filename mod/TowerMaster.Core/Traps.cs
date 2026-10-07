@@ -63,6 +63,34 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
     }
 
     private string Subject => Trigger == TrapTrigger.RoundStart ? "每名玩家" : "该玩家";
+
+    /// <summary>界面上的短条件，例如「3 张攻击」「第 2 回合」。</summary>
+    public string ShortWhen => Trigger switch
+    {
+        TrapTrigger.RoundStart => $"第 {Threshold} 回合",
+        TrapTrigger.AttacksInTurn => $"一回合 {Threshold} 攻击",
+        TrapTrigger.SkillsInTurn => $"一回合 {Threshold} 技能",
+        TrapTrigger.CardsInTurn => $"一回合 {Threshold} 张牌",
+        TrapTrigger.EnemyDied => "敌人死亡",
+        _ => "不触发",
+    };
+
+    /// <summary>界面上的短效果，例如「敌 +5 格挡」。</summary>
+    public string ShortWhat(int tier)
+    {
+        int a = Amount(tier);
+        return Effect switch
+        {
+            TrapEffect.BlockAllEnemies => $"敌 +{a} 格挡",
+            TrapEffect.StrengthAllEnemies => $"敌 +{a} 力量",
+            TrapEffect.HealAllEnemiesPercent => $"敌回血 {a}%",
+            TrapEffect.WeakPlayer => $"虚弱 {a}",
+            TrapEffect.VulnerablePlayer => $"易伤 {a}",
+            TrapEffect.FrailPlayer => $"脆弱 {a}",
+            TrapEffect.DazedPlayer => $"眩晕 ×{a}",
+            _ => "诈唬",
+        };
+    }
 }
 
 /// <summary>塔主手里的一张陷阱：种类 + 等级。</summary>
@@ -71,6 +99,8 @@ public sealed record TrapCard(string Id, int Tier)
     public TrapDef Def => TrapCatalog.Get(Id);
     public string Name => Tier > 1 ? $"{Def.NameZh}+{Tier - 1}" : Def.NameZh;
     public string Describe() => Def.Describe(Tier);
+    /// <summary>「条件 → 效果」短文本。</summary>
+    public string Short => $"{Def.ShortWhen} → {Def.ShortWhat(Tier)}";
     public override string ToString() => $"{Id}@{Tier}";
 }
 

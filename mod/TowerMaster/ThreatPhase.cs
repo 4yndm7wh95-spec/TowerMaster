@@ -341,7 +341,7 @@ internal static class ThreatPhase
                     break;
                 case "trap_info":
                     Log.Info($"{tag}：塔主手里有 {command.Amount} 张陷阱");
-                    if (!Test3MasterAutoPilot.LocalIsMaster) SummonPhase.Toast($"塔主手里有 {command.Amount} 张陷阱（这场盖没盖、盖了什么看不到）");
+                    if (!Test3MasterAutoPilot.LocalIsMaster) SummonPhase.Toast($"塔主手里有 {command.Amount} 张陷阱");
                     break;
                 case "trap_dodge":
                     await DodgeReward(command, tag);
@@ -405,8 +405,7 @@ internal static class ThreatPhase
                 Log.Warn($"{tag}：不认识的操作 {c.Op}，跳过");
                 return;
         }
-        if (!Test3MasterAutoPilot.LocalIsMaster) SummonPhase.Toast($"塔主：{OpName(c.Op)}" +
-            (c.MonsterId != null ? $" → {NameOf(c.MonsterId)}" : c.Player != 0 ? $" → 玩家 {c.Player}" : ""));
+        if (!Test3MasterAutoPilot.LocalIsMaster) SummonPhase.Toast(c.MonsterId != null ? $"塔主：{NameOf(c.MonsterId)} {OpName(c.Op)}" : $"塔主：{OpName(c.Op)}");
     }
 
     // ---------------------------------------------------------------- 陷阱效果（各端）
@@ -447,7 +446,7 @@ internal static class ThreatPhase
                 break;
         }
         Log.Info($"{tag}：陷阱 {card} 触发{(c.Player != 0 ? $"，玩家 {c.Player}" : "")}，数值 {c.Amount}");
-        SummonPhase.Toast($"陷阱触发：{card.Name}——{card.Describe()}");
+        SummonPhase.Toast($"陷阱「{card.Name}」：{card.Def.ShortWhat(card.Tier)}");
     }
 
     /// <summary>躲过奖励：每名爬塔玩家 +金币（PlayerCmd.GainGold，各端同样执行）。</summary>
@@ -459,7 +458,7 @@ internal static class ThreatPhase
         foreach (var p in Climbers(state))
             await (Task)gain.Invoke(null, [(decimal)c.Amount, p, false])!;
         Log.Info($"{tag}：躲过陷阱 {c.MonsterId}，每名玩家 +{c.Amount} 金币");
-        SummonPhase.Toast($"躲过了塔主的陷阱：{c.MonsterId}。每人 +{c.Amount} 金币");
+        SummonPhase.Toast($"躲过陷阱：{c.MonsterId} · 每人 +{c.Amount} 金币");
     }
 
     /// <summary>还有爬塔玩家活着、敌人都死了（或跑了）。</summary>

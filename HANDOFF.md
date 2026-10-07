@@ -1,3 +1,15 @@
+## 0.0.22 实测 → 0.0.23：狂怒修复 + 界面重做（2026-10-07）
+
+0.0.22 实测（`docs/traps-result.md`）：出牌钩子挂上了（`MegaCrit.Sts2.Core.Hooks.Hook.AfterCardPlayed(ICombatState, PlayerChoiceContext, CardPlay)`）；泥沼、再生、倒计时、鼓舞、碎甲、硬化、破绽、躲过奖励、读档、第二幕选包都通过；无 StateDivergence。
+狂怒没触发：原版死掉的怪会从 `CombatState.Enemies` 里移除（CreatureCmd → CombatState.RemoveCreature），按 IsDead 数不到。改为记住见过的每只怪，列表里没了（且不在 EscapedCreatures）或 IsDead 都算死亡。
+
+用户反馈界面太丑、字太多、太挤，0.0.23 重做三个面板：
+- 召唤面板：顶栏（标题、房间、开局保护、召唤点）；左边怪物网格（小卡：形象 + 名字，价格/数量/精英/幕数是角标，说明在悬停提示）；右边固定侧栏（阵容、陷阱开关、花费条、剩余、错误、确认/按原版）。
+- 塔主回合面板：更窄；每只怪/玩家一张紧凑卡（名字+数值一行、按钮一行，花费用 ◆），手牌是小标签，说明在悬停提示。
+- 陷阱包面板：三张大卡（整张可点），每张陷阱一行「名字 + 短条件 → 短效果」。
+- 提示文字全部缩短。
+- 可选美术资源：`Art.cs` 从 mod 目录 art/*.png 读，缺了退回文字；清单和生图 prompt 在 `docs/art-assets.md`（用户说可以让 Codex 用 imagegen 生成）。
+
 ## 陷阱牌（2026-10-07，0.0.22，待实测）
 
 用户让我继续做。说明和测试点见 `docs/traps-plan.md`。

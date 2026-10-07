@@ -69,6 +69,11 @@
     <!-- 0.0.9 及以前单独安装的规则库，现在已编进主 DLL -->
     <Delete Files="$(ModsDir)\TowerMaster\TowerMaster.Core.dll" />
     <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(ModsDir)\TowerMaster" />
+    <!-- 美术资源（可选）：art 目录下的 png 原样拷过去，界面运行时从 mod 目录读；缺了就退回文字 -->
+    <ItemGroup>
+      <ArtFiles Include="art\*.png" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArtFiles)" DestinationFolder="$(ModsDir)\TowerMaster\art" Condition="'@(ArtFiles)' != ''" />
     <!-- 游戏递归扫描所有 JSON，清理旧价格表以免被误认成 manifest。 -->
     <Delete Files="$(ModsDir)\TowerMaster\price_book.json" />
     <Message Importance="high" Text="已安装到 $(ModsDir)\TowerMaster" />

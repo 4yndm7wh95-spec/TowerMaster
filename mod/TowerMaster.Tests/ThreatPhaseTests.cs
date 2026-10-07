@@ -198,15 +198,16 @@ public class ThreatPhaseTests
         Play(s, new Defend());
         Assert.Equal(4, s.Queue.Queued.Count);
         s.Combat.Enemies[0].Damage(999);
+        s.Combat.Enemies.RemoveAt(0); // 原版：死掉的怪从 Enemies 里移除（0.0.22 实测狂怒因此没触发）
         Play(s, new Defend());
         Assert.Contains("frenzy@1", RuntimeNetAction.Payload(s.Queue.Queued[4]));
         await Run(s.Queue);
-        Assert.Equal(5, s.Combat.Enemies[1].Block);
-        Assert.Equal(2, s.Combat.Enemies[1].Powers.OfType<StrengthPower>().Single().Amount);
+        Assert.Equal(5, s.Combat.Enemies[0].Block);
+        Assert.Equal(2, s.Combat.Enemies[0].Powers.OfType<StrengthPower>().Single().Amount);
 
         // 胜利：空陷阱没触发，收回手里，玩家拿 15 金币
         int gold = s.Climber.Gold;
-        s.Combat.Enemies[1].Damage(999);
+        s.Combat.Enemies[0].Damage(999);
         s.Manager.Win(null!);
         var dodge = s.Queue.Queued.Last();
         Assert.Contains("trap_dodge", RuntimeNetAction.Payload(dodge));
