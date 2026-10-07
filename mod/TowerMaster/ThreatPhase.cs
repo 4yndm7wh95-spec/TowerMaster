@@ -108,6 +108,24 @@ internal static class ThreatPhase
 
     internal static void Disable() => Enabled = false;
 
+    /// <summary>一局结束或新开一局：关面板、清本场状态；如果还暂停着玩家队列就恢复（断线时没有 CombatEnded）。</summary>
+    internal static void ResetRun()
+    {
+        CloseUi();
+        if (_pausedByUs)
+        {
+            try { CallQueueSet("UnpauseAllPlayerQueues"); } catch (Exception e) { Log.Warn($"塔主回合：恢复玩家队列失败：{e.Message}"); }
+        }
+        _pausedByUs = false;
+        Session = null;
+        TurnOpen = false;
+        Round = 0;
+        _subscribed = null;
+        Keys.Clear();
+        try { Banner(false); } catch { /* 界面可能已经没了 */ }
+        TrapPhase.Reset();
+    }
+
     // ---------------------------------------------------------------- 战斗开始、回合开始、战斗结束
 
     private static void AfterSetUp(object? __instance, object[] __args)

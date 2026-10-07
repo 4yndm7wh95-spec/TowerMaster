@@ -98,6 +98,8 @@ namespace MegaCrit.Sts2.Core.Runs
         public FakeService NetService { get; set; } = new();
         public MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer? ActionQueueSynchronizer { get; set; }
         public MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet ActionQueueSet { get; set; } = new();
+        public void CleanUp(bool graceful = true) { }
+        public void SetUpNewMultiplayer(RunState state, object lobby, bool shouldSave, System.DateTimeOffset? dailyTime = null) => State = state;
     }
 }
 namespace MegaCrit.Sts2.Core.Modding

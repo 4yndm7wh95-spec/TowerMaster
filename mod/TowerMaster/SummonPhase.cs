@@ -27,6 +27,7 @@ internal static class SummonPhase
     private static TowerMasterConfig _config = new();
     private static SummonRules _rules = null!;
     private static object? _heldMove, _queue;
+    private static ISummonUi? _openUi;
     private static bool _releasing;
     private static int _sent;
     private static readonly Dictionary<ulong, int> StartHp = new();
@@ -87,6 +88,25 @@ internal static class SummonPhase
 
     /// <summary>结算提示（收入等）；游戏里显示在屏幕上，测试里只记日志。</summary>
     internal static Action<string> Toast = text => SummonPanel.ShowToast(text);
+
+    /// <summary>
+    /// 一局结束（回主菜单、断线、放弃）或新开一局时：关掉还开着的面板，丢掉扣住的移动和本场记录，
+    /// 账本只清内存（下次按新一局的种子从文件读或新开）。0.0.26 实测：断线后新局还显示上一局的召唤点和暂停状态。
+    /// </summary>
+    internal static void ResetRun()
+    {
+        var ui = _openUi;
+        _openUi = null;
+        try { ui?.Close(); } catch (Exception e) { Log.Warn($"召唤阶段：关闭面板失败：{e.Message}"); }
+        _heldMove = _queue = null;
+        _releasing = false;
+        Current = null;
+        Draft = null;
+        StartHp.Clear();
+        KnockedDown.Clear();
+        _subscribedManager = null;
+        MasterLedger.Configure(_config);
+    }
 
     internal static void Configure(TowerMasterConfig config, PriceBook prices)
     {
@@ -172,7 +192,8 @@ internal static class SummonPhase
             session.Finished += OnFinished;
             try
             {
-                UiFactory(session).Show();
+                _openUi = UiFactory(session);
+                _openUi.Show();
             }
             catch (Exception e)
             {
@@ -195,7 +216,7 @@ internal static class SummonPhase
                 MasterLedger.CompleteDraft(act.ActNo, cards);
                 OpenSummon();
             };
-            try { DraftUiFactory(choice).Show(); }
+            try { _openUi = DraftUiFactory(choice); _openUi.Show(); }
             catch (Exception e)
             {
                 Log.Error("召唤阶段：打开选陷阱面板失败，这一幕不挑陷阱", e);

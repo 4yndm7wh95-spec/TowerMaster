@@ -118,12 +118,24 @@ public static class RuntimeNetAction
     /// <summary>召唤清单在战斗外执行（NonCombat）；塔主回合指令要在玩家队列暂停时也能执行（Any）。</summary>
     public static object Kind(object action) =>
         Enum.Parse(Required("GameActionType"), Payload(action).StartsWith(ThreatPhase.Prefix) ? ThreatPhase.ActionKind(Payload(action)) : "NonCombat");
-    public static Task Execute(object action)
+    public static async Task Execute(object action)
     {
-        if (Payload(action).StartsWith(ThreatPhase.Prefix)) return ThreatPhase.Execute(Payload(action), action);
-        // 清单不合格只记日志：各客户端执行同一个动作、得到同样的校验结果，都退回原版遭遇。
-        try { Test1bMixedEncounter.Receive(Payload(action), Owner(action)); }
-        catch (Exception e) { Log.Warn($"测试1b：拒收召唤清单（{e.Message}），下一场按原版遭遇"); }
-        return Task.CompletedTask;
+        var payload = Payload(action);
+        if (payload.StartsWith(ThreatPhase.Prefix)) await ThreatPhase.Execute(payload, action);
+        else
+        {
+            // 清单不合格只记日志：各客户端执行同一个动作、得到同样的校验结果，都退回原版遭遇。
+            try { Test1bMixedEncounter.Receive(payload, Owner(action)); }
+            catch (Exception e) { Log.Warn($"测试1b：拒收召唤清单（{e.Message}），下一场按原版遭遇"); }
+        }
+        // 同步排查（0.0.26 实测在本动作后校验不一致）：两端各记一行同样格式的状态摘要，对比日志就知道哪个数先不一样
+        try { Log.Info($"动作摘要 #{Convert.ToInt64(GameReflection.Get(action, "Id") ?? -1)} {Short(payload)}｜{StateDigest.Describe()}"); }
+        catch (Exception e) { Log.Warn($"动作摘要失败：{e.Message}"); }
+    }
+
+    private static string Short(string payload)
+    {
+        var op = System.Text.RegularExpressions.Regex.Match(payload, "\"Op\":\"([a-z_]+)\"");
+        return op.Success ? "threat:" + op.Groups[1].Value : "summon";
     }
 }

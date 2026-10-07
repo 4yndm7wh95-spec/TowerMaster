@@ -245,6 +245,25 @@ public class ThreatPhaseTests
     }
 
     [Fact]
+    public async Task LeavingTheRunClearsMasterTurnState()
+    {
+        var s = Init();
+        RunLifecycle.Apply(new Harmony("towermaster.threat"));
+        s.Manager.StartTurn(CombatSide.Player, 1);
+        await Run(s.Queue);
+        Assert.True(ThreatPhase.PausedHere);
+        Assert.True(ThreatPhase.TurnOpen);
+
+        RunManager.Instance.CleanUp(); // 断线回主菜单：没有 CombatEnded
+        Assert.False(ThreatPhase.PausedHere);
+        Assert.False(ThreatPhase.TurnOpen);
+        Assert.Null(ThreatPhase.Session);
+        Assert.False(RunManager.Instance.ActionQueueSet.Paused);
+        Assert.Null(MasterLedger.Wallet);
+        Assert.False(Shown[0].Open);
+    }
+
+    [Fact]
     public void OpeningBattlesGetFewerThreatPoints()
     {
         Init(threat: 5, opening: 2); // 第一幕第 1 场普通战（假游戏里已打 0 场）
