@@ -19,12 +19,14 @@ internal sealed class SummonSession
     private readonly SummonRules _rules;
     private readonly List<string> _monsters = new();
     private readonly Func<string, bool> _bossAllowsExtras;
+    private readonly List<int> _traps = new();
 
     /// <param name="allowMonster">哪些怪能选（排除依赖专用场景、槽位的怪）；null 表示不限制。</param>
     /// <param name="bossAllowsExtras">这个 Boss 能不能另加怪（有专用场景、命名槽位的不能）；null 表示都能。</param>
     public SummonSession(SummonRules rules, RoomContext room, IReadOnlyList<string> bossCandidates, double seconds,
-        Func<string, bool>? allowMonster = null, Func<string, bool>? bossAllowsExtras = null)
+        Func<string, bool>? allowMonster = null, Func<string, bool>? bossAllowsExtras = null, IReadOnlyList<TrapCard>? trapHand = null)
     {
+        TrapHand = trapHand ?? [];
         _rules = rules;
         Room = room;
         SecondsLeft = seconds;
@@ -57,6 +59,20 @@ internal sealed class SummonSession
     /// <summary>Boss 房的候选 Boss；其他房间为空。</summary>
     public IReadOnlyList<SummonOption> EncounterOptions { get; }
     public IReadOnlyList<string> Monsters => _monsters;
+
+    /// <summary>塔主手里的陷阱（召唤时可以选几张盖下）。</summary>
+    public IReadOnlyList<TrapCard> TrapHand { get; }
+
+    /// <summary>选了要盖的陷阱（TrapHand 的序号）。</summary>
+    public IReadOnlyList<int> SelectedTraps => _traps;
+
+    /// <summary>选中或取消一张陷阱。</summary>
+    public void ToggleTrap(int index)
+    {
+        if (Done || index < 0 || index >= TrapHand.Count) return;
+        if (!_traps.Remove(index)) _traps.Add(index);
+        Changed?.Invoke();
+    }
     public string? Encounter { get; private set; }
     public bool Unlimited { get; }
     public double SecondsLeft { get; private set; }
@@ -89,7 +105,7 @@ internal sealed class SummonSession
     /// <summary>当前选的 Boss 能不能另加怪。</summary>
     public bool BossAllowsExtras => Room.Room != RoomKind.Boss || Encounter == null || _bossAllowsExtras(Encounter);
 
-    public SummonQuote Quote => _rules.Quote(Room, new Core.SummonPlan(Room.Room == RoomKind.Boss ? Encounter : null, _monsters));
+    public SummonQuote Quote => _rules.Quote(Room, new Core.SummonPlan(Room.Room == RoomKind.Boss ? Encounter : null, _monsters, _traps.Count));
 
     /// <summary>规则之外、面板要提示的问题（目前只有「这个 Boss 不能另加怪」）。</summary>
     public IReadOnlyList<string> ExtraProblems =>
@@ -121,14 +137,17 @@ internal sealed class SummonSession
     /// 整份替换选择（测试接口用，重复调用不会叠加）。不认识的编号原样返回、不改任何东西；
     /// Boss 房 encounter 为 null 时保留当前 Boss。
     /// </summary>
-    public IReadOnlyList<string> SetSelection(string? encounter, IReadOnlyList<string> monsters)
+    public IReadOnlyList<string> SetSelection(string? encounter, IReadOnlyList<string> monsters, IReadOnlyList<int>? traps = null)
     {
         var unknown = monsters.Where(m => MonsterOptions.All(o => o.Id != m)).ToList();
         if (encounter != null && EncounterOptions.All(o => o.Id != encounter)) unknown.Insert(0, encounter);
+        unknown.AddRange((traps ?? []).Where(i => i < 0 || i >= TrapHand.Count).Select(i => $"陷阱序号 {i}"));
         if (Done || unknown.Count > 0) return unknown;
         if (encounter != null) Encounter = encounter;
         _monsters.Clear();
         if (BossAllowsExtras) _monsters.AddRange(monsters);
+        _traps.Clear();
+        _traps.AddRange((traps ?? []).Distinct());
         Changed?.Invoke();
         return [];
     }
@@ -185,13 +204,13 @@ internal sealed class SummonSession
         SummonViolation.WrongEncounterRoom => "遭遇类型和房间不符",
         SummonViolation.BossNotCandidate => "不是本幕的候选 Boss",
         SummonViolation.EmptyRoom => "至少召唤一只怪物",
+        SummonViolation.TooManyTraps => "每场最多盖 2 张陷阱",
         SummonViolation.OpeningProtectionMonster => "开局保护：只能用本幕的普通怪",
         SummonViolation.OpeningProtectionCost => "开局保护：花费超过本场上限",
         SummonViolation.OpeningProtectionTraps => "开局保护：不能盖陷阱",
         SummonViolation.TooManyMonsters => "场上怪物太多",
         SummonViolation.TooManySameMonster => "同名怪物太多",
         SummonViolation.TooManyElites => "每个房间最多一只精英",
-        SummonViolation.TooManyTraps => "陷阱太多",
         SummonViolation.OverSpendCap => "超过单场花费上限",
         SummonViolation.OverEliteExtraCap => "精英房另加小怪超过上限",
         SummonViolation.OverBossExtraCap => "Boss 房另加的怪超过上限",

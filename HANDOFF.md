@@ -1,3 +1,12 @@
+## 陷阱牌（2026-10-07，0.0.22，待实测）
+
+用户让我继续做。说明和测试点见 `docs/traps-plan.md`。
+- 规则库 `Traps.cs`（TrapCatalog、TrapTracker）；mod `TrapPhase`、`TrapPackPanel`、召唤面板陷阱区、`MasterLedger` 存手里陷阱和选包记录。
+- 效果走 ThreatPhase 指令：trap / trap_info（CombatPlayPhaseOnly）、trap_dodge（NonCombat）。
+- 出牌检测挂 `Hook.AfterCardPlayed`（按名字找，签名未在 docs/game-api 里，需实测确认）；敌人死亡靠出牌后和回合开始时检查。
+- 接口：/traps、/traps/pack/pick、/summon/select 的 traps；MCP tm_traps、tm_trap_pack_pick，tm_battle 自动选包（pack）和盖陷阱（traps）。
+- 没做：陷阱商店、塔主宝箱、升级陷阱、召唤增援/药水/少抽牌类陷阱、陷阱牌面美术。
+
 ## 0.0.21 实测通过（2026-10-06）
 
 塔主回合：不同步已修（首场 5 回合不用 win，两端 37 条塔主回合日志一致，StateDivergence 0）；暂停期间出牌、结束回合会排队，塔主结束后执行；格挡、力量、回血、虚弱/易伤/脆弱、眩晕、全体力量都通过；同回合第二次减益被拒；精英 4 点、Boss 5 点；面板左侧、无倒计时。

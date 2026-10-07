@@ -30,7 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_INSTANCES = {"A": {"port": 47101}, "B": {"port": 47102}}
 # 本机接口不走代理（系统或环境变量里的代理会把 127.0.0.1 也转出去）
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-COMPARE_KEYWORDS = ["收到清单", "已替换", "开始生成", "：生成 ", "水土不服", "找回", "塔主回合 #"]
+COMPARE_KEYWORDS = ["收到清单", "已替换", "开始生成", "：生成 ", "水土不服", "找回", "塔主回合 #"]  # 陷阱触发、躲过也记在「塔主回合 #」行里
 
 
 class ToolError(Exception):
@@ -106,6 +106,10 @@ def check_condition(instance: str, cond: dict) -> tuple[bool, Any]:
     for key, want in cond.items():
         if key == "summon_open":
             ok &= bool(state.get("summon_open")) == want
+        elif key == "summon_or_pack":  # 召唤面板或陷阱包选择，哪个先出来都算
+            ok &= bool(state.get("summon_open") or state.get("pack_choice_open")) == want
+        elif key == "pack_choice_open":
+            ok &= bool(state.get("pack_choice_open")) == want
         elif key == "in_combat":
             ok &= bool((state.get("combat") or {}).get("in_progress")) == want
         elif key == "room":
@@ -218,7 +222,12 @@ def run_battle(args: dict) -> dict:
     step("map_vote", lambda: call(climber, "/map/vote", target))
 
     # 2. 召唤
-    summon = step("wait_summon", lambda: wait_for(host, {"summon_open": True}, args.get("timeout_s", 60)))
+    summon = step("wait_summon", lambda: wait_for(host, {"summon_or_pack": True}, args.get("timeout_s", 60)))
+    if summon["state"].get("pack_choice_open"):  # 本幕第一次召唤前先选陷阱包
+        result_pack = step("pick_trap_pack", lambda: call(host, "/traps/pack/pick", {"index": args.get("pack", 0)}))
+        summon = step("wait_summon_after_pack", lambda: wait_for(host, {"summon_open": True}, args.get("timeout_s", 60)))
+    else:
+        result_pack = None
     before = summon["state"].get("wallet")
     panel = step("summon_panel", lambda: call(host, "/summon"))
     shots = []
@@ -230,7 +239,7 @@ def run_battle(args: dict) -> dict:
         confirm = step("summon_vanilla", lambda: call(host, "/summon/vanilla"))
     else:
         if args.get("monsters") is not None or args.get("encounter"):
-            sel = step("summon_select", lambda: call(host, "/summon/select", {"encounter": args.get("encounter"), "monsters": args.get("monsters") or []}))
+            sel = step("summon_select", lambda: call(host, "/summon/select", {"encounter": args.get("encounter"), "monsters": args.get("monsters") or [], "traps": args.get("traps") or []}))
             if args.get("screenshot", True):
                 shots.append(step("screenshot_selected", lambda: call(host, "/screenshot", {"name": f"{prefix}-selected"})))
             if not sel["can_confirm"]:
@@ -250,6 +259,7 @@ def run_battle(args: dict) -> dict:
         shots.append(step("screenshot_combat", lambda: call(climber, "/screenshot", {"name": f"{prefix}-combat"})))
 
     result = {
+        "trap_pack": result_pack,
         "host": host,
         "climber": climber,
         "room": point,
@@ -333,8 +343,8 @@ TOOLS = [
     tool("tm_summon", "读塔主召唤面板：可选怪物（编号、价格、幕、精英、血量倍数）、候选 Boss、当前选择和报价。不填 instance 自动找房主。", INST, [],
          lambda a: call(host_or(a), "/summon")),
     tool("tm_summon_select", "设置召唤选择（整份替换，重复调用不叠加）。encounter 只在 Boss 房用。返回报价和能否确认。",
-         {**INST, "encounter": S, "monsters": {"type": "array", "items": S}}, ["monsters"],
-         lambda a: call(host_or(a), "/summon/select", {"encounter": a.get("encounter"), "monsters": a["monsters"]})),
+         {**INST, "encounter": S, "monsters": {"type": "array", "items": S}, "traps": {"type": "array", "items": I, "description": "要盖的陷阱：手里的序号（见 tm_summon 的 traps）"}}, ["monsters"],
+         lambda a: call(host_or(a), "/summon/select", {"encounter": a.get("encounter"), "monsters": a["monsters"], "traps": a.get("traps") or []})),
     tool("tm_summon_confirm", "确认召唤（不合规则时报 rejected_rule）。返回扣点前后。", INST, [],
          lambda a: call(host_or(a), "/summon/confirm")),
     tool("tm_summon_vanilla", "塔主按原版出场（手动回退，扣标准开销）。", INST, [],
@@ -371,6 +381,10 @@ TOOLS = [
          lambda a: call(a["instance"], "/combat/play", {k: a[k] for k in ("index", "target") if k in a})),
     tool("tm_end_turn", "本机玩家结束回合（入队原版 EndPlayerTurnAction）。", INST, ["instance"],
          lambda a: call(a["instance"], "/combat/end_turn")),
+    tool("tm_traps", "塔主陷阱：手里的陷阱（序号、名字、说明）、本场盖下/没触发的、待选的陷阱包。", INST, [],
+         lambda a: call(host_or(a), "/traps")),
+    tool("tm_trap_pack_pick", "选本幕陷阱包（每幕第一次召唤前弹出，选完才出召唤面板）。", {**INST, "index": I}, ["index"],
+         lambda a: call(host_or(a), "/traps/pack/pick", {"index": a["index"]})),
     tool("tm_threat", "塔主回合状态（塔主实例）：是否进行中、第几回合、威胁点、剩余秒数、活着的怪（下标、血、格挡、力量、剩余回血次数）、玩家（血、手牌、状态）。", INST, [],
          lambda a: call(host_or(a), "/threat")),
     tool("tm_threat_act", "塔主回合操作：op=block/heal/strength（给 monster 下标）、strength_all、weak/vulnerable/frail/dazed（给 player 联机 id）。不合规则返回 rejected_rule。",
@@ -405,7 +419,7 @@ TOOLS = [
          lambda a: bench(a["instance"], a.get("route", "/state"), a.get("n", 100))),
     tool("tm_battle", "一键跑一场：爬塔玩家选路（col/row 或 point_type 取第一个）→ 塔主选怪（monsters/encounter，或 vanilla=true）→ 截图 → 确认 → 两端对比怪物 → win → 召唤点前后 → 日志对比。失败时返回失败的步骤。",
          {"host": S, "climber": S, "col": I, "row": I, "point_type": S, "monsters": {"type": "array", "items": S}, "encounter": S,
-          "vanilla": B, "win": B, "read_rewards": B, "threat": {"type": "array", "items": {"type": "object"}, "description": "第一回合塔主回合里依次执行的操作，如 [{\"op\":\"block\",\"monster\":0}]；做完自动结束塔主回合"}, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
+          "vanilla": B, "win": B, "pack": I, "traps": {"type": "array", "items": I}, "read_rewards": B, "threat": {"type": "array", "items": {"type": "object"}, "description": "第一回合塔主回合里依次执行的操作，如 [{\"op\":\"block\",\"monster\":0}]；做完自动结束塔主回合"}, "skip_rewards": B, "screenshot": B, "screenshot_prefix": S, "timeout_s": {"type": "number"}, "settle_s": {"type": "number"}}, [],
          run_battle),
 ]
 

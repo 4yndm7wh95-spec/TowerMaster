@@ -26,7 +26,13 @@ namespace MegaCrit.Sts2.Core.Entities.Cards
 {
     public enum PileType { None, Draw, Hand, Discard, Exhaust }
     public enum CardPilePosition { None, Bottom, Top, Random }
-    public sealed class CardPlay { }
+    public enum CardType { None, Attack, Skill, Power, Status, Curse }
+    public sealed class CardPlay
+    {
+        public CardModel Card { get; set; } = null!;
+        public MegaCrit.Sts2.Core.Entities.Players.Player Player { get; set; } = null!;
+        public bool IsFirstInSeries { get; set; } = true;
+    }
     public sealed class CardPile
     {
         public List<CardModel> Cards { get; } = new();
@@ -35,7 +41,11 @@ namespace MegaCrit.Sts2.Core.Entities.Cards
 namespace MegaCrit.Sts2.Core.Models
 {
     public abstract class PowerModel : AbstractModel { public int Amount { get; set; } }
-    public abstract class CardModel : AbstractModel { public virtual string Title => GetType().Name; }
+    public abstract class CardModel : AbstractModel
+    {
+        public virtual string Title => GetType().Name;
+        public virtual MegaCrit.Sts2.Core.Entities.Cards.CardType Type => MegaCrit.Sts2.Core.Entities.Cards.CardType.Skill;
+    }
 }
 namespace MegaCrit.Sts2.Core.Models.Powers
 {
@@ -47,7 +57,12 @@ namespace MegaCrit.Sts2.Core.Models.Powers
 namespace MegaCrit.Sts2.Core.Models.Cards
 {
     public sealed class Dazed : CardModel { }
-    public sealed class Strike : CardModel { public override string Title => "打击"; }
+    public sealed class Strike : CardModel
+    {
+        public override string Title => "打击";
+        public override MegaCrit.Sts2.Core.Entities.Cards.CardType Type => MegaCrit.Sts2.Core.Entities.Cards.CardType.Attack;
+    }
+    public sealed class Defend : CardModel { public override string Title => "防御"; }
 }
 namespace MegaCrit.Sts2.Core.Commands
 {
@@ -81,6 +96,20 @@ namespace MegaCrit.Sts2.Core.Commands
             power.Amount += (int)amount;
             return Task.FromResult<T?>(power);
         }
+    }
+    public static class PlayerCmd
+    {
+        public static Task GainGold(decimal amount, MegaCrit.Sts2.Core.Entities.Players.Player player, bool wasStolenBack = false)
+        {
+            player.Gold += (int)amount;
+            return Task.CompletedTask;
+        }
+    }
+    /// <summary>原版的静态钩子（出牌后通知所有模型）。</summary>
+    public static class Hook
+    {
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        public static Task AfterCardPlayed(MegaCrit.Sts2.Core.Combat.CombatState combatState, PlayerChoiceContext choiceContext, CardPlay cardPlay) => Task.CompletedTask;
     }
     public static class CardPileCmd
     {

@@ -31,7 +31,7 @@ public class ThreatPhaseTests
 
     private sealed record Setup(ActionQueueSynchronizer Queue, CombatManager Manager, CombatState Combat, Player Climber);
 
-    private static Setup Init(NetGameType type = NetGameType.Host, int threat = 10)
+    private static Setup Init(NetGameType type = NetGameType.Host, int threat = 10, Action? beforeSetUp = null)
     {
         var run = new RunState();
         run.Players.Add(new Player(100001));
@@ -67,6 +67,7 @@ public class ThreatPhaseTests
         combat.CreateCreature(new Mawler().ToMutable(), 50);
         var manager = new CombatManager();
         CombatManager.Instance = manager;
+        beforeSetUp?.Invoke();
         manager.SetUpCombat(combat);
         return new Setup(queue, manager, combat, climber);
     }
@@ -164,6 +165,70 @@ public class ThreatPhaseTests
         s.Manager.End(null!); // 塔主回合中战斗结束：兜底恢复
         Assert.False(RunManager.Instance.ActionQueueSet.Paused);
         Assert.Equal(new[] { true, false }, Banners);
+    }
+
+    private static void Play(Setup s, MegaCrit.Sts2.Core.Models.CardModel card) =>
+        MegaCrit.Sts2.Core.Commands.Hook.AfterCardPlayed(s.Combat, null!, new MegaCrit.Sts2.Core.Entities.Cards.CardPlay { Card = card, Player = s.Climber });
+
+    [Fact]
+    public async Task TrapsFireThroughTheCommandChannelAndUnfiredOnesPayDodgeGold()
+    {
+        MasterLedger.Clear();
+        var s = Init(threat: 3, beforeSetUp: () => TrapPhase.Place(
+            [new TrapCard("harden", 1), new TrapCard("frenzy", 1), new TrapCard("bluff", 1)], handLeft: 2));
+        Assert.Equal(3, TrapPhase.Tracker!.Placed.Count);
+
+        s.Manager.StartTurn(CombatSide.Player, 1);
+        Assert.Contains("trap_info", RuntimeNetAction.Payload(s.Queue.Queued[0])); // 塔主手里 2 + 3 = 5 张
+        Assert.Contains("\"Amount\":5", RuntimeNetAction.Payload(s.Queue.Queued[0]));
+        Assert.Equal(GameActionType.CombatPlayPhaseOnly, s.Queue.Queued[0].ActionType);
+        Assert.Contains("begin", RuntimeNetAction.Payload(s.Queue.Queued[1]));
+
+        // 塔主回合中触发的陷阱要等塔主回合结束后再发（排在 end 后面，不被暂停挡住）
+        Play(s, new Strike());
+        Play(s, new Strike());
+        Play(s, new Strike());
+        Assert.Equal(2, s.Queue.Queued.Count);
+        ThreatPhase.EndTurn();
+        Assert.Contains("end", RuntimeNetAction.Payload(s.Queue.Queued[2]));
+        Assert.Contains("harden@1", RuntimeNetAction.Payload(s.Queue.Queued[3]));
+        Assert.Equal(GameActionType.CombatPlayPhaseOnly, s.Queue.Queued[3].ActionType);
+
+        // 技能牌不算攻击；有怪死了（还有活的）触发狂怒
+        Play(s, new Defend());
+        Assert.Equal(4, s.Queue.Queued.Count);
+        s.Combat.Enemies[0].Damage(999);
+        Play(s, new Defend());
+        Assert.Contains("frenzy@1", RuntimeNetAction.Payload(s.Queue.Queued[4]));
+        await Run(s.Queue);
+        Assert.Equal(5, s.Combat.Enemies[1].Block);
+        Assert.Equal(2, s.Combat.Enemies[1].Powers.OfType<StrengthPower>().Single().Amount);
+
+        // 胜利：空陷阱没触发，收回手里，玩家拿 15 金币
+        int gold = s.Climber.Gold;
+        s.Combat.Enemies[1].Damage(999);
+        s.Manager.Win(null!);
+        var dodge = s.Queue.Queued.Last();
+        Assert.Contains("trap_dodge", RuntimeNetAction.Payload(dodge));
+        Assert.Equal(GameActionType.NonCombat, dodge.ActionType);
+        await dodge.Execute();
+        Assert.Equal(gold + 15, s.Climber.Gold);
+        Assert.Contains(MasterLedger.Traps, t => t.Id == "bluff");
+        Assert.Null(TrapPhase.Tracker);
+        s.Manager.End(null!); // 之后的 CombatEnded 不再重复结算
+        Assert.Single(MasterLedger.Traps, t => t.Id == "bluff");
+    }
+
+    [Fact]
+    public void LostCombatReturnsTrapsWithoutReward()
+    {
+        MasterLedger.Clear();
+        var s = Init(beforeSetUp: () => TrapPhase.Place([new TrapCard("mend", 1)], 0));
+        int queued = s.Queue.Queued.Count;
+        s.Climber.Creature.Damage(999);
+        s.Manager.End(null!);
+        Assert.Equal(queued, s.Queue.Queued.Count); // 没赢，不发躲过奖励
+        Assert.Equal("mend", Assert.Single(MasterLedger.Traps).Id);
     }
 
     [Fact]

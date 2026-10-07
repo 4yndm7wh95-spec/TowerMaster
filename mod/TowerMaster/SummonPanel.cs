@@ -160,8 +160,39 @@ internal sealed class SummonPanel : ISummonUi
         box.AddChild(chips);
     }
 
+    private readonly List<(G.Button Button, int Index)> _trapButtons = new();
+
+    /// <summary>陷阱区：手里每张陷阱一个开关按钮（只有手里有陷阱时显示）。</summary>
+    private void BuildTraps(G.VBoxContainer box)
+    {
+        if (_session.TrapHand.Count == 0) return;
+        box.AddChild(Text($"盖陷阱（手里 {_session.TrapHand.Count} 张；每张 1 召唤点，每场最多 2 张；玩家只知道你手里有几张）", 21, Gold));
+        if (_session.IsOpeningProtected)
+        {
+            box.AddChild(Text("开局保护：前几场不能盖陷阱", 18, TextDim));
+            return;
+        }
+        var flow = new G.HFlowContainer();
+        flow.AddThemeConstantOverride("h_separation", 10);
+        flow.AddThemeConstantOverride("v_separation", 8);
+        for (int i = 0; i < _session.TrapHand.Count; i++)
+        {
+            var card = _session.TrapHand[i];
+            var button = MakeButton($"{card.Name}", CardBg, CardHover, CardBorder, TextMain, new G.Vector2(0, 44), 19);
+            button.TooltipText = card.Describe();
+            int index = i;
+            button.Pressed += () => _session.ToggleTrap(index);
+            _trapButtons.Add((button, i));
+            flow.AddChild(button);
+        }
+        box.AddChild(flow);
+        var hint = Text("把鼠标停在陷阱上看触发条件和效果", 16, TextDim);
+        box.AddChild(hint);
+    }
+
     private void BuildOptions(G.VBoxContainer box)
     {
+        BuildTraps(box);
         var room = _session.Room.Room;
         if (room == RoomKind.Boss)
         {
@@ -481,6 +512,12 @@ internal sealed class SummonPanel : ISummonUi
         var room = _session.Room.Room;
         var quote = _session.Quote;
 
+        foreach (var (button, index) in _trapButtons)
+        {
+            bool on = _session.SelectedTraps.Contains(index);
+            button.AddThemeStyleboxOverride("normal", Box(on ? new G.Color(0.30f, 0.12f, 0.14f) : CardBg, on ? Bad : CardBorder, on ? 3 : 1, 10, 14));
+        }
+
         foreach (var (id, (card, count)) in _cards)
         {
             bool isEncounter = _session.EncounterOptions.Any(o => o.Id == id);
@@ -505,7 +542,15 @@ internal sealed class SummonPanel : ISummonUi
                 ApplyGameFont(b);
                 _chosen.AddChild(b);
             }
-            _emptyHint.Visible = _session.Monsters.Count == 0;
+            _emptyHint.Visible = _session.Monsters.Count == 0 && _session.SelectedTraps.Count == 0;
+            foreach (var i in _session.SelectedTraps)
+            {
+                int index = i;
+                var b = MakeButton($"陷阱 {_session.TrapHand[i].Name}  ✕", new G.Color(0.25f, 0.10f, 0.12f), new G.Color(0.35f, 0.14f, 0.16f), Bad, new G.Color(1f, 0.75f, 0.7f), new G.Vector2(0, 42), 20);
+                b.Pressed += () => _session.ToggleTrap(index);
+                ApplyGameFont(b);
+                _chosen.AddChild(b);
+            }
             if (room == RoomKind.Boss)
                 _emptyHint.Text = _session.BossAllowsExtras ? "不另加怪物也可以" : "这个 Boss 有专用场景，不能另加怪物";
         }

@@ -76,6 +76,12 @@ internal static class SummonPhase
         catch (Exception e) { Log.Warn($"召唤阶段：检查 Boss {encounter} 的场景失败，不允许另加怪：{e.Message}"); return false; }
     };
 
+    /// <summary>正在等塔主选的陷阱包（每幕一次）；没有为 null。</summary>
+    public static TrapPackChoice? PackChoice { get; private set; }
+
+    /// <summary>陷阱包界面工厂；测试里替换。</summary>
+    internal static Func<TrapPackChoice, ISummonUi> PackUiFactory = choice => new TrapPackPanel(choice);
+
     /// <summary>界面工厂；测试里替换。</summary>
     internal static Func<SummonSession, ISummonUi> UiFactory = session => new SummonPanel(session);
 
@@ -154,21 +160,46 @@ internal static class SummonPhase
             Log.Info($"召唤阶段：Boss 候选 {string.Join("、", candidates.Select(c => $"{c}（{(BossAllowsExtras(c) ? "可另加怪" : "专用场景，不能另加")}）"))}；" +
                      $"所有 Boss：{string.Join("、", prices.Acts.Values.SelectMany(a => a.Encounters).Where(e => e.Value.Room == RoomKind.Boss).Select(e => $"{e.Key}={(BossAllowsExtras(e.Key) ? "可" : "不可")}"))}");
 
-        var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds, m => MonsterFilter(actId, m), BossAllowsExtras);
         _heldMove = move;
         _queue = queue;
-        Current = session;
-        session.Finished += OnFinished;
         Log.Info($"召唤阶段：{room} 房，幕 {actId}，召唤点 {wallet.Points}，标准开销 {context.StandardCostOverride}{(opening ? "（开局保护）" : "")}，扣住移动");
-        try
+
+        void OpenSummon()
         {
-            UiFactory(session).Show();
+            var session = new SummonSession(_rules, context, candidates, _config.SummonPhaseSeconds, m => MonsterFilter(actId, m), BossAllowsExtras,
+                ThreatPhase.Enabled ? MasterLedger.Traps : null);
+            Current = session;
+            session.Finished += OnFinished;
+            try
+            {
+                UiFactory(session).Show();
+            }
+            catch (Exception e)
+            {
+                Log.Error("召唤阶段：打开面板失败，按原版出场", e);
+                session.UseVanilla();
+            }
         }
-        catch (Exception e)
+
+        // 每幕第一次召唤前，塔主先从 3 个陷阱包里选一个（设计文档：和玩家见先古之民同时；这里放在本幕第一个战斗房前）
+        if (ThreatPhase.Enabled && !MasterLedger.PackPicked(act.ActNo))
         {
-            Log.Error("召唤阶段：打开面板失败，按原版出场", e);
-            session.UseVanilla();
+            var choice = new TrapPackChoice(act.ActNo, TrapCatalog.PacksFor(act.ActNo));
+            PackChoice = choice;
+            choice.Picked += pack =>
+            {
+                PackChoice = null;
+                MasterLedger.PickPack(act.ActNo, pack);
+                OpenSummon();
+            };
+            try { PackUiFactory(choice).Show(); }
+            catch (Exception e)
+            {
+                Log.Error("召唤阶段：打开陷阱包面板失败，默认拿第一个", e);
+                choice.Pick(0);
+            }
         }
+        else OpenSummon();
         return false;
     }
 
@@ -210,6 +241,8 @@ internal static class SummonPhase
             MasterLedger.Save();
 
             if (session.Confirmed) SendPlan(session);
+            // 盖下的陷阱：从手里拿走，留给下一场战斗（只有房主知道盖了什么）
+            TrapPhase.Place(session.Confirmed ? MasterLedger.TakeTraps(session.SelectedTraps) : [], MasterLedger.Traps.Count);
             Log.Info(session.Confirmed
                 ? $"召唤阶段：确认 {(session.Encounter ?? string.Join("+", session.Monsters))}，花费 {total}，剩余 {wallet.Points}"
                 : $"召唤阶段：{(!session.Unlimited && session.SecondsLeft <= 0 ? "超时" : "塔主选择按原版出场")}，按原版出场，花费 {total}，剩余 {wallet.Points}");
@@ -313,6 +346,7 @@ internal static class SummonPhase
             var income = wallet.SettleBattle(new BattleResult(pending.Room, pending.StandardCost, pending.MonsterSpend, damage, KnockedDown.ToList()),
                 Climbers(state), out var rewarded);
             MasterLedger.CountBattle();
+            if (ThreatPhase.Enabled) TrapPhase.KnockdownReward(rewarded.Count, wallet.ActNo, Seed(state), MasterLedger.BattlesFought);
             MasterLedger.Save();
             var text = $"战斗收入 +{income.Credited}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +
                        (income.Knockdown > 0 ? $"，击倒 {income.Knockdown}" : "") + (income.Wasted > 0 ? $"，超上限作废 {income.Wasted}" : "") +

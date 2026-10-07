@@ -17,6 +17,7 @@ namespace MegaCrit.Sts2.Core.Entities.Players
         public ulong NetId { get; }
         public MegaCrit.Sts2.Core.Entities.Creatures.Creature Creature { get; }
         public PlayerCombatState PlayerCombatState { get; } = new();
+        public int Gold { get; set; } = 99;
     }
     public sealed class PlayerCombatState
     {

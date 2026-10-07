@@ -56,6 +56,7 @@ public class SummonPhaseTests
         SummonPhase.Apply(new Harmony("towermaster.summon"), new TowerMasterConfig(), prices); // 已挂过，只打开开关
         SummonPhase.UiFactory = s => new FakeUi(s);
         Test1FixedEncounter.SetEnabled(false); // 同一进程里测试 1a 的补丁也挂着，关掉免得它再换一次遭遇
+        ThreatPhase.Disable();                 // 塔主回合测试可能打开过：这里不要陷阱包
         SummonPhase.Toast = Toasts.Add;
         Shown.Clear();
         Toasts.Clear();
@@ -284,6 +285,53 @@ public class SummonPhaseTests
     }
 
     private static string Json(object body) => System.Text.Json.JsonSerializer.Serialize(body, TestBridge.JsonOut);
+
+    [Fact]
+    public void FirstSummonOfActPicksTrapPackThenPlacesTraps()
+    {
+        var queue = Init();
+        var prices = PriceBook.Load(Path.Combine(Log.ModDir, "price_book.data"));
+        ThreatPhase.Apply(new Harmony("towermaster.summon"), new TowerMasterConfig(), prices);
+        TrapPackChoice? shownChoice = null;
+        SummonPhase.PackUiFactory = c => { shownChoice = c; return new FakeUi(null!); };
+        try
+        {
+            MasterLedger.For(123, 1);
+            for (int i = 0; i < 3; i++) MasterLedger.CountBattle(); // 过了开局保护才能盖陷阱
+            queue.RequestEnqueue(MoveTo(MapPointType.Monster));
+            Assert.NotNull(shownChoice);
+            Assert.Null(SummonPhase.Current);             // 先选陷阱包，召唤面板还没出来
+            shownChoice!.Pick(1);                          // 拖延包
+            var session = Assert.Single(Shown, u => u.Session != null).Session;
+            Assert.Equal(4, session.TrapHand.Count);
+            Assert.True(MasterLedger.PackPicked(1));
+
+            session.Click("Nibbit");
+            session.ToggleTrap(0);
+            session.ToggleTrap(1);
+            Assert.True(session.Quote.Ok, string.Join(",", session.Quote.Violations));
+            Assert.Equal(2, session.Quote.TrapCost);
+            session.ToggleTrap(2);
+            Assert.Contains(SummonViolation.TooManyTraps, session.Quote.Violations); // 每场最多 2 张
+            session.ToggleTrap(2);
+            int before = MasterLedger.Wallet!.Points;
+            Assert.True(session.Confirm());
+            Assert.Equal(before - 2 - 2, MasterLedger.Wallet!.Points); // 小啃兽 2 + 陷阱 2
+            Assert.Equal(2, MasterLedger.Traps.Count);                 // 盖下的从手里拿走
+
+            // 同一幕下一场不再选包
+            shownChoice = null;
+            Shown.Clear();
+            queue.Queued.Clear();
+            queue.RequestEnqueue(MoveTo(MapPointType.Monster));
+            Assert.Null(shownChoice);
+        }
+        finally
+        {
+            ThreatPhase.Disable();
+            SummonPhase.PackUiFactory = c => new TrapPackPanel(c);
+        }
+    }
 
     [Fact]
     public void SceneBossRejectsExtrasAndClearsThem()

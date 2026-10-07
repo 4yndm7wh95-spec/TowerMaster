@@ -41,8 +41,11 @@ internal static class ThreatPhase
     /// 和玩家出牌同一个时间点。0.0.20 用 Any，慢的一端还在发牌时就执行了，校验编号错位，StateDivergence。
     /// begin 之后的操作和 end 排在塔主队列里 begin 后面（每个玩家的队列只看队头），用 Any 才不被暂停挡住。
     /// </summary>
+    /// 陷阱触发（trap）和陷阱数提示（trap_info）同理用 CombatPlayPhaseOnly；躲过奖励（trap_dodge）在战斗结束后发金币，用 NonCombat。
     internal static string ActionKind(string payload) =>
-        payload.Contains("\"Op\":\"begin\"") ? "CombatPlayPhaseOnly" : "Any";
+        payload.Contains("\"Op\":\"begin\"") || payload.Contains("\"Op\":\"trap\"") || payload.Contains("\"Op\":\"trap_info\"") ? "CombatPlayPhaseOnly"
+        : payload.Contains("\"Op\":\"trap_dodge\"") ? "NonCombat"
+        : "Any";
 
     private static TowerMasterConfig _config = new();
     private static PriceBook? _prices;
@@ -81,6 +84,7 @@ internal static class ThreatPhase
     {
         Configure(config, prices);
         Enabled = true;
+        TrapPhase.Apply(harmony);
         if (_patched) return;
         _patched = true;
         var target = GameReflection.FindMethod("SetUpCombat", "CombatManager");
@@ -119,6 +123,7 @@ internal static class ThreatPhase
             if (state == null) return;
             var actNo = _prices!.Acts.TryGetValue(GameReflection.Get(state, "Act")!.GetType().Name, out var act) ? act.ActNo : 1;
             var room = RoomOf(state);
+            TrapPhase.CombatSetUp();
             Session = new ThreatSession(_config, actNo, room, Climbers(state).Count);
             Log.Info($"塔主回合：本场 {room} 房，第 {actNo} 幕，威胁点 {Session.Points}");
         }
@@ -140,6 +145,7 @@ internal static class ThreatPhase
     {
         Hook(manager, "TurnStarted", nameof(OnTurnStarted));
         Hook(manager, "CombatEnded", nameof(OnCombatEnded));
+        Hook(manager, "CombatWon", nameof(OnCombatWon));
         _subscribed = manager;
     }
 
@@ -155,9 +161,13 @@ internal static class ThreatPhase
     {
         try
         {
-            if (!Enabled || !Test3MasterAutoPilot.LocalIsMaster || Session == null) return;
+            if (!Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
             if (GameReflection.Get(combatState, "CurrentSide")?.ToString() != "Player") return;
             Round = Convert.ToInt32(GameReflection.Get(combatState, "RoundNumber") ?? Round + 1);
+            // 陷阱先发：指令排在 begin 前面，不会被塔主回合的暂停挡住
+            try { TrapPhase.RoundStarted(Round); }
+            catch (Exception e) { Log.Warn($"陷阱：回合开始检查失败：{e.Message}"); }
+            if (Session == null) return;
             if (Round > 1) Session.NextTurn();
             if (Session.Points <= 0) { Log.Info($"塔主回合：第 {Round} 回合没有威胁点了，跳过"); return; }
             if (TurnOpen) { Log.Warn("塔主回合：上一个塔主回合还没结束，又开始新回合，先结束上一个"); EndTurn("新回合开始"); }
@@ -175,10 +185,23 @@ internal static class ThreatPhase
         }
     }
 
+    /// <summary>战斗胜利（房主）：没触发的陷阱翻开、给躲过奖励。</summary>
+    internal static void OnCombatWon(object room)
+    {
+        try { if (Enabled && Test3MasterAutoPilot.LocalIsMaster) TrapPhase.Finish(true, _config); }
+        catch (Exception e) { Log.Error("陷阱：战斗胜利结算失败", e); }
+    }
+
     internal static void OnCombatEnded(object room)
     {
         try
         {
+            if (Enabled && Test3MasterAutoPilot.LocalIsMaster)
+            {
+                // 不确定 CombatWon、CombatEnded 谁先触发：这里按场面判断是不是赢了（还有爬塔玩家活着、敌人都死了）
+                try { TrapPhase.Finish(Won(), _config); }
+                catch (Exception e) { Log.Error("陷阱：战斗结束结算失败", e); }
+            }
             CloseUi();
             TurnOpen = false;
             Session = null;
@@ -252,6 +275,8 @@ internal static class ThreatPhase
         CloseUi();
         try { Send(new ThreatCommand(1, 0, 0, Round, "end")); }
         catch (Exception e) { Log.Error("塔主回合：发送结束失败", e); }
+        try { TrapPhase.Flush(); }
+        catch (Exception e) { Log.Error("陷阱：补发塔主回合期间触发的陷阱失败", e); }
         Log.Info($"塔主回合：第 {Round} 回合结束（{reason}），剩余威胁点 {Session?.Points ?? 0}");
     }
 
@@ -274,7 +299,7 @@ internal static class ThreatPhase
         try { ui?.Close(); } catch (Exception e) { Log.Warn($"塔主回合：关闭面板失败：{e.Message}"); }
     }
 
-    private static void Send(ThreatCommand command)
+    internal static void Send(ThreatCommand command)
     {
         var run = Test1bMixedEncounter.Run;
         var state = GameReflection.Get(run, "State")!;
@@ -310,6 +335,16 @@ internal static class ThreatPhase
                     _pausedByUs = false;
                     Banner(false);
                     Log.Info($"{tag}：结束，玩家继续");
+                    break;
+                case "trap":
+                    await ApplyTrap(command, action, tag);
+                    break;
+                case "trap_info":
+                    Log.Info($"{tag}：塔主手里有 {command.Amount} 张陷阱");
+                    if (!Test3MasterAutoPilot.LocalIsMaster) SummonPhase.Toast($"塔主手里有 {command.Amount} 张陷阱（这场盖没盖、盖了什么看不到）");
+                    break;
+                case "trap_dodge":
+                    await DodgeReward(command, tag);
                     break;
                 default:
                     await ApplyEffect(command, action, tag);
@@ -372,6 +407,69 @@ internal static class ThreatPhase
         }
         if (!Test3MasterAutoPilot.LocalIsMaster) SummonPhase.Toast($"塔主：{OpName(c.Op)}" +
             (c.MonsterId != null ? $" → {NameOf(c.MonsterId)}" : c.Player != 0 ? $" → 玩家 {c.Player}" : ""));
+    }
+
+    // ---------------------------------------------------------------- 陷阱效果（各端）
+
+    private static async Task ApplyTrap(ThreatCommand c, object action, string tag)
+    {
+        var card = TrapCatalog.Parse(c.MonsterId ?? "");
+        if (!TrapCatalog.Exists(card.Id)) { Log.Warn($"{tag}：不认识的陷阱 {c.MonsterId}，跳过"); return; }
+        var combat = CombatState();
+        if (combat == null) { Log.Info($"{tag}：已不在战斗中，陷阱 {card} 跳过"); return; }
+        var def = card.Def;
+        var enemies = Enemies(combat).Where(Alive).ToList();
+        var players = c.Player != 0
+            ? new[] { ClimberCreature(combat, c.Player) }.Where(x => x != null).Cast<object>().ToList()
+            : (GameReflection.Get(Test1bMixedEncounter.Run, "State") is { } state ? Climbers(state) : [])
+                .Select(p => GameReflection.Get(p, "Creature")!).Where(Alive).ToList();
+        decimal amount = c.Amount;
+        switch (def.Effect)
+        {
+            case TrapEffect.BlockAllEnemies:
+                foreach (var e in enemies) await GainBlock(e, amount);
+                break;
+            case TrapEffect.StrengthAllEnemies:
+                foreach (var e in enemies) await ApplyPower("StrengthPower", action, e, amount);
+                break;
+            case TrapEffect.HealAllEnemiesPercent:
+                foreach (var e in enemies) await Heal(e, Math.Max(1, Convert.ToInt32(GameReflection.Get(e, "MaxHp")) * c.Amount / 100));
+                break;
+            case TrapEffect.WeakPlayer:
+            case TrapEffect.VulnerablePlayer:
+            case TrapEffect.FrailPlayer:
+                var power = def.Effect switch { TrapEffect.WeakPlayer => "WeakPower", TrapEffect.VulnerablePlayer => "VulnerablePower", _ => "FrailPower" };
+                foreach (var p in players) await ApplyPower(power, action, p, amount);
+                break;
+            case TrapEffect.DazedPlayer:
+                foreach (var p in players)
+                    for (int i = 0; i < c.Amount; i++) await AddDazed(p);
+                break;
+        }
+        Log.Info($"{tag}：陷阱 {card} 触发{(c.Player != 0 ? $"，玩家 {c.Player}" : "")}，数值 {c.Amount}");
+        SummonPhase.Toast($"陷阱触发：{card.Name}——{card.Describe()}");
+    }
+
+    /// <summary>躲过奖励：每名爬塔玩家 +金币（PlayerCmd.GainGold，各端同样执行）。</summary>
+    private static async Task DodgeReward(ThreatCommand c, string tag)
+    {
+        var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
+        if (state == null) return;
+        var gain = Static("PlayerCmd", "GainGold", m => m.GetParameters().Length == 3 && m.GetParameters()[0].ParameterType == typeof(decimal));
+        foreach (var p in Climbers(state))
+            await (Task)gain.Invoke(null, [(decimal)c.Amount, p, false])!;
+        Log.Info($"{tag}：躲过陷阱 {c.MonsterId}，每名玩家 +{c.Amount} 金币");
+        SummonPhase.Toast($"躲过了塔主的陷阱：{c.MonsterId}。每人 +{c.Amount} 金币");
+    }
+
+    /// <summary>还有爬塔玩家活着、敌人都死了（或跑了）。</summary>
+    private static bool Won()
+    {
+        var combat = CombatState();
+        if (combat == null) return false;
+        var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
+        bool climberAlive = state != null && Climbers(state).Any(p => Alive(GameReflection.Get(p, "Creature")!));
+        return climberAlive && !Enemies(combat).Any(Alive);
     }
 
     // ---------------------------------------------------------------- 原版命令（反射）

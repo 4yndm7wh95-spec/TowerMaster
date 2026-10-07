@@ -209,6 +209,8 @@ internal static class TestBridge
                 "/event/choose" => a => Main(() => EventChoose(a)),
                 "/cards" => _ => Main(Cards),
                 "/threat" => _ => Main(Threat),
+                "/traps" => _ => Main(Traps),
+                "/traps/pack/pick" => a => Main(() => TrapPackPick(a)),
                 "/combat/hand" => _ => Main(CombatHand),
                 "/combat/play" => a => Main(() => CombatPlay(a)),
                 "/combat/end_turn" => _ => Main(CombatEndTurn),
@@ -303,6 +305,7 @@ internal static class TestBridge
             summon_open = SummonPhase.Current is { Done: false },
             rewards_visible = Try(() => RewardsScreen() != null) ?? false,
             master_turn_open = ThreatPhase.TurnOpen,
+            pack_choice_open = SummonPhase.PackChoice is { Done: false },
             paused_by_master_turn = ThreatPhase.PausedHere, // 本机玩家队列被塔主回合暂停（各端都有）
         };
     }
@@ -366,7 +369,8 @@ internal static class TestBridge
             opening_protected = s.IsOpeningProtected,
             encounters = s.EncounterOptions.Select(o => new { id = o.Id, name = o.Name, allows_extras = s.EncounterAllowsExtras(o.Id) }),
             monsters = s.MonsterOptions.Select(o => new { id = o.Id, name = o.Name, price = o.Price, home_act = o.HomeAct, elite = o.IsElite, hp_factor = o.HpFactor }),
-            selected = new { encounter = s.Encounter, monsters = s.Monsters },
+            traps = s.TrapHand.Select((t, i) => new { index = i, id = t.ToString(), name = t.Name, text = t.Describe() }),
+            selected = new { encounter = s.Encounter, monsters = s.Monsters, traps = s.SelectedTraps },
             quote = new
             {
                 ok = q.Ok,
@@ -374,6 +378,7 @@ internal static class TestBridge
                 problems = s.ExtraProblems.Concat(q.Violations.Select(SummonSession.Describe)),
                 monster_price = q.MonsterPrice,
                 crowd_tax = q.CrowdTax,
+                trap_cost = q.TrapCost,
                 total = q.Total,
                 spend_cap = Math.Round(q.SpendCap, 2),
                 left_after = s.Room.Savings - q.Total,
@@ -387,7 +392,8 @@ internal static class TestBridge
     {
         var s = RequireSession();
         var monsters = a["monsters"] is JsonArray arr ? arr.Select(n => n!.GetValue<string>()).ToList() : [];
-        var unknown = s.SetSelection(a["encounter"]?.GetValue<string>(), monsters);
+        var traps = a["traps"] is JsonArray ta ? ta.Select(n => n!.GetValue<int>()).ToList() : null;
+        var unknown = s.SetSelection(a["encounter"]?.GetValue<string>(), monsters, traps);
         if (unknown.Count > 0) throw Fail("unknown_option", $"不在可选列表里：{string.Join(", ", unknown)}");
         return SummonSnapshot(s);
     }
@@ -684,6 +690,37 @@ internal static class TestBridge
         var action = type.GetConstructors(GameReflection.All).First(c => c.GetParameters().Length == 2).Invoke([player, turn]);
         RuntimeNetAction.Call(GameReflection.Get(RunOrNull()!, "ActionQueueSynchronizer")!, "RequestEnqueue", action);
         return new { enqueued = "EndPlayerTurnAction", turn };
+    }
+
+    // ---------------------------------------------------------------- 陷阱（塔主）
+
+    private static object Traps()
+    {
+        if (!Test3MasterAutoPilot.LocalIsMaster) throw Fail("not_host", "陷阱只在塔主（房主）这边");
+        var tracker = TrapPhase.Tracker;
+        var choice = SummonPhase.PackChoice is { Done: false } c ? c : null;
+        return new
+        {
+            hand = MasterLedger.Traps.Select((t, i) => new { index = i, id = t.ToString(), name = t.Name, text = t.Describe() }),
+            placed_this_combat = tracker?.Placed.Select(t => t.ToString()),
+            unfired_this_combat = tracker?.Unfired.Select(t => t.ToString()),
+            fired_count = tracker?.FiredCount,
+            pack_choice = choice == null ? null : new
+            {
+                act = choice.ActNo,
+                packs = choice.Packs.Select((p, i) => new { index = i, name = p.NameZh, style = p.Style, cards = p.Cards.Select(x => $"{x.Name}：{x.Describe()}") }),
+            },
+        };
+    }
+
+    private static object TrapPackPick(JsonObject a)
+    {
+        var choice = SummonPhase.PackChoice is { Done: false } c ? c : throw Fail("invalid_phase", "现在没有要选的陷阱包");
+        int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
+        if (index < 0 || index >= choice.Packs.Count) throw Fail("bad_request", $"只有 {choice.Packs.Count} 个包");
+        var name = choice.Packs[index].NameZh;
+        choice.Pick(index);
+        return new { picked = name, hand = MasterLedger.Traps.Select(t => t.ToString()), summon_open = SummonPhase.Current is { Done: false } };
     }
 
     // ---------------------------------------------------------------- 塔主回合
