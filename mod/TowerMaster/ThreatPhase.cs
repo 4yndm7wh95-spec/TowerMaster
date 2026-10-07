@@ -136,6 +136,7 @@ internal static class ThreatPhase
             TurnOpen = false;
             Round = 0;
             Session = null;
+            MasterHand.CombatStarted();
             if (!Test3MasterAutoPilot.LocalIsMaster) return;
             var state = Test1bMixedEncounter.Run is { } run ? GameReflection.Get(run, "State") : null;
             if (state == null) return;
@@ -151,7 +152,10 @@ internal static class ThreatPhase
         catch (Exception e) { Log.Error("塔主回合：战斗开始时初始化失败，本场没有塔主回合", e); }
     }
 
-    private static RoomKind RoomOf(object state)
+    internal static int ActNoOf(object state) =>
+        _prices != null && GameReflection.Get(state, "Act") is { } act && _prices.Acts.TryGetValue(act.GetType().Name, out var a) ? a.ActNo : 1;
+
+    internal static RoomKind RoomOf(object state)
     {
         var point = GameReflection.Get(state, "CurrentMapPoint");
         return (point == null ? null : GameReflection.Get(point, "PointType")?.ToString()) switch
@@ -194,7 +198,7 @@ internal static class ThreatPhase
             catch (Exception e) { Log.Warn($"陷阱：回合开始检查失败：{e.Message}"); }
             if (Session == null) return;
             if (Round > 1) Session.NextTurn();
-            if (Session.Points <= 0) { Log.Info($"塔主回合：第 {Round} 回合没有可用的威胁点（本场还剩 {Session.Remaining}），跳过"); return; }
+            if (Session.Points <= 0 && !MasterCards.Enabled) { Log.Info($"塔主回合：第 {Round} 回合没有可用的威胁点（本场还剩 {Session.Remaining}），跳过"); return; }
             if (TurnOpen) { Log.Warn("塔主回合：上一个塔主回合还没结束，又开始新回合，先结束上一个"); EndTurn("新回合开始"); }
             TurnOpen = true;
             SecondsLeft = _config.MasterTurnSeconds;
@@ -360,8 +364,10 @@ internal static class ThreatPhase
                     _pausedByUs = true;
                     if (!Test3MasterAutoPilot.LocalIsMaster) Banner(true);
                     Log.Info($"{tag}：开始，玩家暂停出牌");
+                    if (MasterCards.Enabled) await MasterHand.Begin(action, command.Round, tag);
                     break;
                 case "end":
+                    if (MasterCards.Enabled) await MasterHand.End(action, tag);
                     if (_pausedByUs) CallQueueSet("UnpauseAllPlayerQueues");
                     _pausedByUs = false;
                     Banner(false);
@@ -468,7 +474,11 @@ internal static class ThreatPhase
                 break;
             case TrapEffect.StrengthAllEnemies when c.Monsters != null && c.Amounts != null:
                 for (int i = 0; i < c.Monsters.Length && i < c.Amounts.Length; i++)
-                    if (AliveEnemy(combat, c.Monsters[i]) is { } e) await ApplyPower("StrengthPower", action, e, c.Amounts[i]);
+                    if (AliveEnemy(combat, c.Monsters[i]) is { } e)
+                    {
+                        await ApplyPower("StrengthPower", action, e, c.Amounts[i]);
+                        if (MasterCards.Enabled) MasterHand.RecordStrength(e, c.Amounts[i]); // 塔主牌的力量上限也算上陷阱给的（各端）
+                    }
                 break;
             case TrapEffect.StrengthAllEnemies:
                 foreach (var e in enemies) await ApplyPower("StrengthPower", action, e, amount);

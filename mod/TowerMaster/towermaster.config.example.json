@@ -35,6 +35,12 @@
     "strength_cap": [2, 3, 4]
   },
 
+  // —— 塔主牌（towermaster.test.json 里 master_cards 开着时，战斗中用这些代替威胁点）——
+  "master_energy": [1, 1, 2],
+  "master_energy_first_turn_bonus": 1,
+  "master_energy_room_bonus": 1,
+  "master_hand_draw": 4,
+
   // —— 陷阱 ——
   "max_traps_per_battle": 2,
   "trap_place_cost": 1,

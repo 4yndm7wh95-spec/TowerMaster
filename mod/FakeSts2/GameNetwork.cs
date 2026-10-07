@@ -29,6 +29,8 @@ namespace MegaCrit.Sts2.Core.Entities.Players
     {
         public MegaCrit.Sts2.Core.Entities.Cards.CardPile Hand { get; } = new();
         public MegaCrit.Sts2.Core.Entities.Cards.CardPile DrawPile { get; } = new();
+        public MegaCrit.Sts2.Core.Entities.Cards.CardPile DiscardPile { get; } = new();
+        public int Energy { get; set; }
     }
 }
 namespace MegaCrit.Sts2.Core.Multiplayer.Serialization

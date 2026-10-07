@@ -153,7 +153,7 @@ internal sealed class ThreatPanel : IThreatUi
         side.AddThemeConstantOverride("separation", 8);
         _points = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.Center };
         side.AddChild(_points);
-        _status = P.Text("选一张行动卡", 14, P.TextDim);
+        _status = P.Text(MasterCards.Enabled ? "拖动手牌出牌" : "选一张行动卡", 14, P.TextDim);
         _status.HorizontalAlignment = G.HorizontalAlignment.Center;
         _status.AutowrapMode = G.TextServer.AutowrapMode.WordSmart;
         _status.CustomMinimumSize = new G.Vector2(170, 0);
@@ -181,7 +181,8 @@ internal sealed class ThreatPanel : IThreatUi
         _lastTicks = now;
         if (_layer == null) return;
         if (_timer != null) _timer.Text = $"{Math.Ceiling(ThreatPhase.SecondsLeft)} 秒";
-        if (++_frame % 15 == 0 && _selected != null) PlaceTargets(); // 怪物动画会挪位置，隔一会儿重新对齐目标按钮
+        if (++_frame % 15 == 0 && _selected != null) PlaceTargets();
+        if (MasterCards.Enabled && _frame % 20 == 0) Rebuild(); // 原版出牌不经过我们的指令，定时刷新能量和玩家信息 // 怪物动画会挪位置，隔一会儿重新对齐目标按钮
         if (G.Input.IsMouseButtonPressed(G.MouseButton.Right) && _selected != null) Select(null);
     }
 
@@ -194,6 +195,17 @@ internal sealed class ThreatPanel : IThreatUi
         int act = session?.ActNo ?? 1;
 
         foreach (var child in _points.GetChildren()) child.QueueFree();
+        if (MasterCards.Enabled)
+        {
+            // 塔主牌模式：出牌用原版手牌（拖到目标上），这里只剩信息和「结束回合」
+            foreach (var child in _hand.GetChildren()) child.QueueFree();
+            var pcs = MasterHand.MasterPlayer() is { } m ? GameReflection.Get(m, "PlayerCombatState") : null;
+            _points.AddChild(P.Text($"能量 {(pcs == null ? "?" : GameReflection.Get(pcs, "Energy"))}", 26, P.Gold));
+            _points.TooltipText = "塔主牌用能量打出；把手牌拖到怪物或玩家身上。";
+            RebuildInfo();
+            P.ApplyGameFont(_layer);
+            return;
+        }
         if (Art.Icon("icon_threat_point", 30) is { } icon) _points.AddChild(icon);
         _points.AddChild(P.Text($"{points}", 30, P.Gold));
         int later = (session?.Remaining ?? 0) - points;

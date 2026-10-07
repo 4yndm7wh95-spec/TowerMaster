@@ -34,7 +34,8 @@ public static class MasterCards
     private static Type[] _types = [];
     private static bool _registered;
 
-    internal static bool Enabled => _registered;
+    /// <summary>塔主牌模式开着（注册成功后为真；测试里可以关掉，注册本身不能撤销）。</summary>
+    internal static bool Enabled { get; set; }
     internal static IReadOnlyCollection<Type> Types => _types;
     internal static MasterCardDef? DefOf(object? card) => card != null && ByType.TryGetValue(card.GetType(), out var d) ? d : null;
     public static Type? TypeOf(string key) => ByKey.GetValueOrDefault(key);
@@ -92,7 +93,7 @@ public static class MasterCards
 
     internal static void Register(Harmony harmony, TowerMasterConfig config)
     {
-        if (_registered) return;
+        if (_registered) { Enabled = true; return; }
         var cardModel = GameReflection.TypesNamed("CardModel").FirstOrDefault(t => t.IsAbstract) ?? throw new TypeLoadException("CardModel");
         var ctor = cardModel.GetConstructors(GameReflection.All).FirstOrDefault(c => c.GetParameters().Length == 5)
                    ?? throw new MissingMethodException("CardModel", ".ctor(int, CardType, CardRarity, TargetType, bool)");
@@ -148,7 +149,9 @@ public static class MasterCards
         PatchLoc(harmony);
         PatchPortrait(harmony);
         MasterDeck.Apply(harmony);
+        MasterHand.Apply(harmony);
         _registered = true;
+        Enabled = true;
         Log.Info($"塔主牌：已生成 {types.Count} 种卡牌类型（{types[0].Name} …），等 ModelDb.Init 收录");
     }
 
@@ -265,24 +268,35 @@ public static class MasterCards
             {
                 case "block" when target != null:
                     await ThreatPhase.GainBlock(target, TowerMasterConfig.ByAct(p.BlockAmount, def.Tier));
+                    MasterHand.Record(def, target, 0);
                     break;
                 case "heal" when target != null:
                     await ThreatPhase.Heal(target, Math.Max(1, Convert.ToInt32(GameReflection.Get(target, "MaxHp")) * p.HealPercent / 100));
+                    MasterHand.Record(def, target, 0);
                     break;
                 case "strength" when target != null:
                     await ThreatPhase.ApplyPowerWith("StrengthPower", context, target, TowerMasterConfig.ByAct(p.StrengthAmount, def.Tier));
+                    MasterHand.Record(def, target, TowerMasterConfig.ByAct(p.StrengthAmount, def.Tier));
                     break;
                 case "strength_all":
                     if (ThreatPhase.CombatState() is { } combat)
                         foreach (var e in ((GameReflection.Get(combat, "Enemies") as IEnumerable)?.Cast<object>() ?? []).ToList())
-                            if (GameReflection.Get(e, "IsDead") is not true) await ThreatPhase.ApplyPowerWith("StrengthPower", context, e, p.StrengthAllAmount);
+                        {
+                            // 已到上限的怪跳过
+                            if (GameReflection.Get(e, "IsDead") is true || MasterHand.StrengthOf(e) + p.StrengthAllAmount > TowerMasterConfig.ByAct(p.StrengthCap, def.Tier)) continue;
+                            await ThreatPhase.ApplyPowerWith("StrengthPower", context, e, p.StrengthAllAmount);
+                            MasterHand.RecordStrength(e, p.StrengthAllAmount, fromCard: true);
+                        }
+                    MasterHand.Record(def, null, 0);
                     break;
                 case "weak" or "vulnerable" or "frail" when target != null:
                     await ThreatPhase.ApplyPowerWith(def.Op switch { "weak" => "WeakPower", "vulnerable" => "VulnerablePower", _ => "FrailPower" },
                         context, target, p.DebuffStacks);
+                    MasterHand.Record(def, target, 0);
                     break;
                 case "dazed" when target != null:
                     await ThreatPhase.AddDazed(target);
+                    MasterHand.Record(def, target, 0);
                     break;
             }
             Log.Info($"塔主牌：打出 {def.Title}{(target != null ? $" → {GameReflection.Get(target, "Monster")?.GetType().Name ?? Test2MasterOffField.NetIdOf(target)?.ToString()}" : "")}");

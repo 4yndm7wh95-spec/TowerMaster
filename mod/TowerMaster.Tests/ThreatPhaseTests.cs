@@ -31,8 +31,10 @@ public class ThreatPhaseTests
 
     private sealed record Setup(ActionQueueSynchronizer Queue, CombatManager Manager, CombatState Combat, Player Climber);
 
-    private static Setup Init(NetGameType type = NetGameType.Host, int threat = 10, Action? beforeSetUp = null, int[]? release = null, int opening = 99)
+    private static Setup Init(NetGameType type = NetGameType.Host, int threat = 10, Action? beforeSetUp = null, int[]? release = null, int opening = 99, bool cards = false)
     {
+        MasterCards.Enabled = false;
+        MasterHand.ShowHand = _ => { };
         var run = new RunState();
         run.Players.Add(new Player(100001));
         var climber = new Player(100002);
@@ -67,6 +69,11 @@ public class ThreatPhaseTests
         combat.CreateCreature(new Mawler().ToMutable(), 50);
         var manager = new CombatManager();
         CombatManager.Instance = manager;
+        if (cards)
+        {
+            MasterCards.Register(new Harmony("towermaster.cards"), new TowerMasterConfig());
+            ModelDb.Init();
+        }
         beforeSetUp?.Invoke();
         manager.SetUpCombat(combat);
         return new Setup(queue, manager, combat, climber);
@@ -273,6 +280,69 @@ public class ThreatPhaseTests
         int before = s.Queue.Queued.Count;
         s.Manager.StartTurn(CombatSide.Player, 1);
         Assert.Single(s.Queue.Queued.Skip(before), a => RuntimeNetAction.Payload(a).Contains("\"Op\":\"begin\""));
+    }
+
+    private static CardModel MasterCard(string key) => ((CardModel)MasterCards.Canonical(MasterCards.TypeOf(key)!)).ToMutable();
+
+    [Fact]
+    public async Task MasterPlaysRealCardsFromHisHandDuringTheMasterTurn()
+    {
+        Player master = null!;
+        var s = Init(cards: true, beforeSetUp: () =>
+        {
+            master = RunManager.Instance.State.Players.First(p => p.NetId == 100001);
+            master.Creature.Damage(999); // 塔主在战斗里是「死」的
+            foreach (var key in new[] { "act:block@1", "act:weak@1", "act:strength@1", "trap:mire@1", "act:heal@1", "act:dazed@1" })
+            {
+                var c = MasterCard(key);
+                c.Owner = master;
+                master.PlayerCombatState.DrawPile.Cards.Add(c);
+            }
+        });
+        var cm = s.Manager;
+        cm.PlayersReadyToEndTurn.Add(master); // 原版：死亡玩家回合开始自动「已准备」
+        s.Manager.StartTurn(CombatSide.Player, 1);
+        await Run(s.Queue);
+
+        // 只有塔主的队列放开；塔主不再是已准备；能量 1 + 先手 1；陷阱牌移出；抽 4 张（原版抽牌跳过死者，改为直接发）
+        var queues = RunManager.Instance.ActionQueueSet;
+        Assert.True(queues.ActionQueueIsPaused(100002));
+        Assert.False(queues.ActionQueueIsPaused(100001));
+        Assert.DoesNotContain(master, cm.PlayersReadyToEndTurn);
+        Assert.Equal(2, master.PlayerCombatState.Energy);
+        Assert.Equal(4, master.PlayerCombatState.Hand.Cards.Count);
+        Assert.DoesNotContain(master.PlayerCombatState.Hand.Cards.Concat(master.PlayerCombatState.DrawPile.Cards), c => c.Title == "泥沼");
+        Assert.True(MasterHand.Active);
+
+        // 给队友的牌：塔主死着时原版判「没有活着的队友」，有活着的爬塔玩家就放行
+        var weak = master.PlayerCombatState.Hand.Cards.First(c => c.Title == "虚弱");
+        Assert.True(weak.CanPlay(out var why, out _), $"{why} active={MasterHand.Active} energy={master.PlayerCombatState.Energy} owner={weak.Owner?.NetId} def={MasterCards.DefOf(weak)?.Key} tt={weak.TargetType} cost={weak.Cost}");
+        await weak.Play(new GameActionPlayerChoiceContext(s.Queue.Queued[0]), new MegaCrit.Sts2.Core.Entities.Cards.CardPlay { Card = weak, Target = s.Climber.Creature });
+        Assert.Equal(1, s.Climber.Creature.Powers.OfType<WeakPower>().Single().Amount);
+        Assert.False(weak.IsValidTarget(s.Climber.Creature)); // 同一玩家本回合已经被上过减益
+
+        // 激励：第一幕单次 +1，上限 2；陷阱给的力量也算
+        var strength = master.PlayerCombatState.Hand.Cards.First(c => c.Title == "激励");
+        var mawler = s.Combat.Enemies[1];
+        MasterHand.RecordStrength(mawler, 2);
+        Assert.False(strength.IsValidTarget(mawler));
+        Assert.True(strength.IsValidTarget(s.Combat.Enemies[0]));
+
+        // 结束：弃手牌、塔主重新「已准备」、玩家恢复；塔主回合外不能打塔主牌
+        ThreatPhase.EndTurn();
+        await Run(s.Queue);
+        Assert.Empty(master.PlayerCombatState.Hand.Cards);
+        Assert.Contains(master, cm.PlayersReadyToEndTurn);
+        Assert.False(queues.ActionQueueIsPaused(100002));
+        Assert.False(MasterHand.Active);
+        Assert.False(strength.CanPlay(out _, out _));
+
+        // 第 2 回合：能量 1（没有先手），再抽
+        s.Manager.StartTurn(CombatSide.Player, 2);
+        await Run(s.Queue);
+        Assert.Equal(1, master.PlayerCombatState.Energy);
+        Assert.NotEmpty(master.PlayerCombatState.Hand.Cards);
+        MasterCards.Enabled = false;
     }
 
     [Fact]

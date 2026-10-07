@@ -75,3 +75,18 @@
 然后：只暂停爬塔玩家的队列（反射私有 ActionQueue.isPaused，各端同一动作里改）、塔主的「结束回合」当作先手结束（EndPlayerTurnAction 执行层识别塔主）、
 单人抽牌数/能量（`Hook.ModifyHandDraw`、`Hook.ModifyMaxEnergy` 只对塔主）、陷阱牌战斗中移出抽牌堆（`Player.PopulateCombatState` 之后过滤）、
 各种次数限制改成各端一致地在 `IsPlayable` / 目标校验里判断。
+
+## 6. 第二阶段已实现（0.0.29，方案 A）
+
+用户让我决定，选 **A：塔主在战斗里仍「死」着**（不被怪物打、判负只看爬塔玩家、回合结束判断这些已经验证过的都不动），只放开出牌：
+- 塔主回合 begin 指令（各端同步执行）：暂停全部玩家队列后只放开塔主的队列；`CombatManager.UndoReadyToEndTurn(塔主)`；
+  第 1 回合把陷阱牌移出战斗牌堆；`PlayerCmd.SetEnergy`（每回合 1/1/2，第 1 回合 +1，精英/Boss +1）；`CardPileCmd.Draw` 抽 4 张，
+  原版抽牌跳过死者时直接从抽牌堆移到手牌。塔主自己的屏幕上找到原版手牌界面 NPlayerHand 并显示。
+- 塔主拖牌：原版 PlayCardAction 各端执行 OnPlay。限制在 `CardModel.CanPlay` / `IsValidTarget` 后置补丁里判断（各端一样的记录）：
+  只在塔主回合能打；同一玩家每回合 1 次减益；每只怪治疗 2 次；力量上限 2/3/4（含陷阱）；战吼每场 1 次；晕眩每场 3 次。
+  单人局给玩家的牌原版会判「没有活着的队友」（塔主死着），有活着的爬塔玩家就放行。
+- end 指令：弃塔主手牌、`SetReadyToEndTurn(塔主)`、恢复玩家队列。
+- 塔主回合面板只剩左上玩家信息、能量、「结束回合」；底部自建行动卡不再显示。
+- 开关：`master_cards`（`towermaster.test.json` 里已开）。能量、抽牌数在配置 `master_energy`、`master_energy_first_turn_bonus`、`master_energy_room_bonus`、`master_hand_draw`。
+
+最大的未知：死亡的本机玩家能不能在原版手牌界面上拖牌（界面可能整体禁用）。接口 `/master/play` 可以不经界面直接打出，用来区分「规则能打」和「界面不让拖」。

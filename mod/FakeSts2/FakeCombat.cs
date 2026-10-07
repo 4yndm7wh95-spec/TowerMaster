@@ -7,10 +7,18 @@ namespace MegaCrit.Sts2.Core.GameActions.Multiplayer
 {
     public sealed class ActionQueueSet
     {
+        public sealed class ActionQueue { public bool isPaused; public bool isCancellingPlayerDrivenCombatActions; public bool isCancellingCombatActions; }
+        private readonly Dictionary<ulong, ActionQueue> _queues = new();
         public bool Paused { get; private set; }
         public int PauseCount { get; private set; }
-        public void PauseAllPlayerQueues() { Paused = true; PauseCount++; }
-        public void UnpauseAllPlayerQueues() => Paused = false;
+        public void PauseAllPlayerQueues()
+        {
+            Paused = true; PauseCount++;
+            foreach (var q in _queues.Values) q.isPaused = true;
+        }
+        public void UnpauseAllPlayerQueues() { Paused = false; foreach (var q in _queues.Values) q.isPaused = false; }
+        public bool ActionQueueIsPaused(ulong id) => GetQueue(id).isPaused || (Paused && !_queues.ContainsKey(id));
+        private ActionQueue GetQueue(ulong id) => _queues.TryGetValue(id, out var q) ? q : _queues[id] = new ActionQueue { isPaused = Paused };
     }
     public abstract class PlayerChoiceContext { }
     public sealed class GameActionPlayerChoiceContext(MegaCrit.Sts2.Core.GameActions.GameAction action) : PlayerChoiceContext
@@ -30,6 +38,7 @@ namespace MegaCrit.Sts2.Core.Entities.Cards
     public enum CardRarity { None, Basic, Common, Uncommon, Rare, Ancient, Event, Token, Status, Curse, Quest }
     public enum TargetType { None, Self, AnyEnemy, AllEnemies, RandomEnemy, AnyPlayer, AnyAlly, AllAllies, TargetedNoCreature, Osty }
     public enum CardKeyword { None, Exhaust, Ethereal, Innate, Unplayable, Retain, Sly, Eternal }
+    [Flags] public enum UnplayableReason { None = 0, HasUnplayableKeyword = 2, BlockedByHook = 4, BlockedByCardLogic = 8, EnergyCostTooHigh = 16, StarCostTooHigh = 32, NoLivingAllies = 64 }
     public sealed class CardPlay
     {
         public MegaCrit.Sts2.Core.Entities.Creatures.Creature? Target { get; set; }
@@ -42,6 +51,7 @@ namespace MegaCrit.Sts2.Core.Entities.Cards
         public List<CardModel> Cards { get; } = new();
         public void Clear(bool silent = false) => Cards.Clear();
         public void AddInternal(CardModel card, int index = -1, bool silent = false) => Cards.Add(card);
+        public void RemoveInternal(CardModel card, bool silent = false) => Cards.Remove(card);
     }
 }
 namespace MegaCrit.Sts2.Core.Models
@@ -72,10 +82,22 @@ namespace MegaCrit.Sts2.Core.Models
         public virtual bool CanBeGeneratedInCombat => true;
         public virtual bool CanBeGeneratedByModifiers => true;
         public virtual int MaxUpgradeLevel => 1;
-        public MegaCrit.Sts2.Core.Entities.Players.Player? Owner { get; internal set; }
+        public MegaCrit.Sts2.Core.Entities.Players.Player? Owner { get; set; }
         protected virtual Task OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext, MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay) => Task.CompletedTask;
         public Task Play(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext, MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay) => OnPlay(choiceContext, cardPlay);
         public CardModel ToMutable() => (CardModel)MutableClone();
+        /// <summary>仿原版：能量不够不能打；给队友的牌要有其他活着的玩家（这里简化成永远没有，测试塔主牌的放行）。</summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        public bool CanPlay(out MegaCrit.Sts2.Core.Entities.Cards.UnplayableReason reason, out AbstractModel? preventer)
+        {
+            preventer = null;
+            reason = Owner != null && Owner.PlayerCombatState.Energy < Cost ? MegaCrit.Sts2.Core.Entities.Cards.UnplayableReason.EnergyCostTooHigh
+                : TargetType == MegaCrit.Sts2.Core.Entities.Cards.TargetType.AnyAlly ? MegaCrit.Sts2.Core.Entities.Cards.UnplayableReason.NoLivingAllies
+                : MegaCrit.Sts2.Core.Entities.Cards.UnplayableReason.None;
+            return reason == MegaCrit.Sts2.Core.Entities.Cards.UnplayableReason.None;
+        }
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        public bool IsValidTarget(MegaCrit.Sts2.Core.Entities.Creatures.Creature? target) => target == null || !target.IsDead;
     }
 }
 namespace MegaCrit.Sts2.Core.Models.Powers
@@ -130,6 +152,11 @@ namespace MegaCrit.Sts2.Core.Commands
     }
     public static class PlayerCmd
     {
+        public static Task SetEnergy(decimal amount, MegaCrit.Sts2.Core.Entities.Players.Player player)
+        {
+            player.PlayerCombatState.Energy = (int)amount;
+            return Task.CompletedTask;
+        }
         public static Task GainGold(decimal amount, MegaCrit.Sts2.Core.Entities.Players.Player player, bool wasStolenBack = false)
         {
             player.Gold += (int)amount;
@@ -144,6 +171,24 @@ namespace MegaCrit.Sts2.Core.Commands
     }
     public static class CardPileCmd
     {
+        /// <summary>仿原版：死亡玩家不抽牌（SetupPlayerTurn 跳过死者，这里也跳过，测试我们的手动发牌）。</summary>
+        public static Task<IEnumerable<CardModel>> Draw(PlayerChoiceContext choiceContext, decimal count, MegaCrit.Sts2.Core.Entities.Players.Player player, bool fromHandDraw = false)
+        {
+            if (player.Creature.IsDead) return Task.FromResult<IEnumerable<CardModel>>([]);
+            var drawn = player.PlayerCombatState.DrawPile.Cards.Take((int)count).ToList();
+            foreach (var c in drawn) { player.PlayerCombatState.DrawPile.Cards.Remove(c); player.PlayerCombatState.Hand.Cards.Add(c); }
+            return Task.FromResult<IEnumerable<CardModel>>(drawn);
+        }
+        public static Task Discard(PlayerChoiceContext choiceContext, IEnumerable<CardModel> cards)
+        {
+            foreach (var c in cards.ToList())
+            {
+                var pcs = c.Owner!.PlayerCombatState;
+                pcs.Hand.Cards.Remove(c);
+                pcs.DiscardPile.Cards.Add(c);
+            }
+            return Task.CompletedTask;
+        }
         public static Task AddToCombatAndPreview<T>(IEnumerable<Creature> targets, PileType pileType, int count, MegaCrit.Sts2.Core.Entities.Players.Player? creator, CardPilePosition position = CardPilePosition.Bottom)
             where T : CardModel => throw new NotSupportedException();
         public static Task AddToCombatAndPreview<T>(Creature target, PileType pileType, int count, MegaCrit.Sts2.Core.Entities.Players.Player? creator, CardPilePosition position = CardPilePosition.Bottom)

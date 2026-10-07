@@ -1,3 +1,8 @@
+## 0.0.29：塔主战斗中用原版手牌出牌（第二阶段，方案 A）（2026-10-07）
+
+用户确认要「战斗中用原版手牌拖牌打出」并让我决定方案。选 A：塔主仍「死」着，只放开抽牌、能量、出牌。细节见 `docs/master-cards-plan.md` 第 6 节（`MasterHand`）。
+`towermaster.test.json` 默认开 `master_cards`。接口 `/master/hand`、`/master/play`（MCP `tm_master_hand`、`tm_master_play`）。未在真游戏里验证。
+
 ## 0.0.27 实测 → 0.0.28：修重复订阅；塔主真实卡牌第一阶段（2026-10-07）
 
 0.0.27 实测（`docs/ui-027-result.md`）：换局清理生效、新局账本 12 点 0 场、三场正常对局两端「动作摘要」34 行完全一致、无不同步。

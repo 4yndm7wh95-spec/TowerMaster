@@ -184,6 +184,9 @@ namespace MegaCrit.Sts2.Core.Combat
             TurnStarted?.Invoke(State);
         }
         public void End(MegaCrit.Sts2.Core.Rooms.CombatRoom room) => CombatEnded?.Invoke(room);
+        public HashSet<MegaCrit.Sts2.Core.Entities.Players.Player> PlayersReadyToEndTurn { get; } = new();
+        public void UndoReadyToEndTurn(MegaCrit.Sts2.Core.Entities.Players.Player player) => PlayersReadyToEndTurn.Remove(player);
+        public void SetReadyToEndTurn(MegaCrit.Sts2.Core.Entities.Players.Player player, bool canBackOut, Func<Task>? actionDuringEnemyTurn = null) => PlayersReadyToEndTurn.Add(player);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public void SetUpCombat(CombatState state) => State = state;

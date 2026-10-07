@@ -130,6 +130,16 @@ public sealed class TowerMasterConfig
 
     public ThreatPrices Threat { get; set; } = new();
 
+    // ---------------------------------------------------------------- 塔主牌（master_cards 开着时取代威胁点）
+    /// <summary>塔主每回合能量（按幕）。牌的费用沿用威胁点价目（加固/治疗/减益/晕眩 1，激励 2，战吼 3）。</summary>
+    public int[] MasterEnergy { get; set; } = [1, 1, 2];
+    /// <summary>第 1 回合额外能量（先手）。</summary>
+    public int MasterEnergyFirstTurnBonus { get; set; } = 1;
+    /// <summary>精英、Boss 房每回合额外能量。</summary>
+    public int MasterEnergyRoomBonus { get; set; } = 1;
+    /// <summary>塔主每回合抽几张。</summary>
+    public int MasterHandDraw { get; set; } = 4;
+
     // ---------------------------------------------------------------- 读写
     public static readonly JsonSerializerOptions JsonOptions = new()
     {

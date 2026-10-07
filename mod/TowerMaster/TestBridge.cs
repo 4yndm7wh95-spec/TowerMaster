@@ -212,6 +212,8 @@ internal static class TestBridge
                 "/config" => _ => Main(() => System.Text.Json.Nodes.JsonNode.Parse(ModEntry.Active.ToJson())),
                 "/traps" => _ => Main(Traps),
                 "/master/deck" => _ => Main(MasterDeckView),
+                "/master/hand" => _ => Main(MasterHandView),
+                "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
                 "/combat/hand" => _ => Main(CombatHand),
@@ -717,6 +719,62 @@ internal static class TestBridge
             }).ToList(),
         }).ToList();
         return new { registered = MasterCards.Enabled, types = MasterCards.Types.Count, players = cards };
+    }
+
+    /// <summary>塔主战斗中的手牌（塔主牌模式）：能量、是否塔主回合、每张牌能不能打。</summary>
+    private static object MasterHandView()
+    {
+        var master = MasterHand.MasterPlayer();
+        var pcs = master == null ? null : GameReflection.Get(master, "PlayerCombatState");
+        if (pcs == null) return new { active = MasterHand.Active, error = "塔主没有战斗状态（不在战斗中？）" };
+        List<object> Pile(string name) => (GameReflection.Get(GameReflection.Get(pcs, name)!, "Cards") as System.Collections.IEnumerable)?.Cast<object>().ToList() ?? [];
+        return new
+        {
+            active = MasterHand.Active,
+            energy = GameReflection.Get(pcs, "Energy"),
+            hand = Pile("Hand").Select((c, i) => new
+            {
+                index = i,
+                title = GameReflection.Get(c, "Title")?.ToString(),
+                key = MasterCards.DefOf(c)?.Key,
+                target = GameReflection.Get(c, "TargetType")?.ToString(),
+                can_play = CanPlay(c),
+            }),
+            draw_pile = Pile("DrawPile").Count,
+            discard_pile = Pile("DiscardPile").Count,
+        };
+    }
+
+    private static object CanPlay(object card)
+    {
+        var m = card.GetType().GetMethods(GameReflection.All).FirstOrDefault(x => x.Name == "CanPlay" && x.GetParameters().Length == 2);
+        if (m == null) return "unknown";
+        var args = new object?[] { null, null };
+        bool ok = (bool)m.Invoke(card, args)!;
+        return ok ? true : $"false:{args[0]}";
+    }
+
+    /// <summary>塔主打出手牌第 index 张（和在原版手牌上拖牌一样走 CardModel.TryManualPlay）。monster = 敌人下标，player = 玩家联机 id。</summary>
+    private static object MasterPlay(System.Text.Json.Nodes.JsonObject a)
+    {
+        var master = MasterHand.MasterPlayer() ?? throw new InvalidOperationException("找不到塔主");
+        var pcs = GameReflection.Get(master, "PlayerCombatState") ?? throw new InvalidOperationException("塔主不在战斗中");
+        var hand = (GameReflection.Get(GameReflection.Get(pcs, "Hand")!, "Cards") as System.Collections.IEnumerable)!.Cast<object>().ToList();
+        int index = a["index"]?.GetValue<int>() ?? 0;
+        if (index < 0 || index >= hand.Count) return new { error = "unknown_option", message = $"手牌只有 {hand.Count} 张" };
+        var card = hand[index];
+        object? target = null;
+        if (a["monster"] is { } mi && ThreatPhase.CombatState() is { } combat)
+            target = (GameReflection.Get(combat, "Enemies") as System.Collections.IEnumerable)?.Cast<object>().ElementAtOrDefault(mi.GetValue<int>());
+        else if (a["player"] is { } pi)
+        {
+            var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
+            var p = (GameReflection.Get(state!, "Players") as System.Collections.IEnumerable)?.Cast<object>().FirstOrDefault(x => Test2MasterOffField.NetIdOf(x) == pi.GetValue<ulong>());
+            target = p == null ? null : GameReflection.Get(p, "Creature");
+        }
+        var play = card.GetType().GetMethods(GameReflection.All).First(x => x.Name == "TryManualPlay" && x.GetParameters().Length == 1);
+        bool ok = (bool)play.Invoke(card, [target])!;
+        return new { played = ok, title = GameReflection.Get(card, "Title")?.ToString(), can_play = CanPlay(card) };
     }
 
     private static object Traps()
