@@ -9,7 +9,9 @@ namespace TowerMaster;
 /// - 战斗里隐藏塔主那名玩家的角色节点（NCreature），屏幕左上角玩家列表里也隐藏塔主那一项。
 /// - 在怪物身后（战斗房间右侧）放塔主形象：art/master_figure.png（没有就用头像 master_portrait.png），轻微上下浮动；
 ///   塔主回合操作、陷阱触发时闪一下（<see cref="Cast"/>）。
-/// - 战斗结束不再让塔主复活回血（Player.ReviveBeforeCombatEnd 对塔主直接跳过）。开关 <see cref="StayDead"/>。
+/// - 战斗结束：原版 Player.ReviveBeforeCombatEnd 会复活塔主并在他原来的位置播回血特效（用户反馈「凭空回血」）。
+///   改成对塔主直接写回生命（不播动画、不发复活事件）；开关 <see cref="StayDead"/> 打开时干脆不复活。
+/// - 塔主的角色节点在它 _Ready 时就藏起来（原来每 10 帧轮询，开战第一下会闪一下，用户反馈）。
 /// </summary>
 internal static class MasterPresence
 {
@@ -28,10 +30,17 @@ internal static class MasterPresence
         if (_patched) return;
         _patched = true;
         var revive = GameReflection.FindMethod("ReviveBeforeCombatEnd", "Player");
-        if (revive != null && stayDead)
+        if (revive != null)
         {
             harmony.Patch(revive, prefix: new HarmonyMethod(typeof(MasterPresence).GetMethod(nameof(SkipMasterRevive), GameReflection.All)!) { priority = Priority.First });
-            Log.Info($"塔主形象：战后不复活塔主，已挂到 {GameReflection.Describe(revive)}");
+            Log.Info($"塔主形象：战后{(stayDead ? "不复活塔主" : "悄悄复活塔主（不播回血特效）")}，已挂到 {GameReflection.Describe(revive)}");
+        }
+        else Log.Warn("塔主形象：找不到 Player.ReviveBeforeCombatEnd，战后塔主位置会播回血特效");
+        var ready = GameReflection.FindMethod("_Ready", "NCreature");
+        if (ready != null)
+        {
+            try { harmony.Patch(ready, postfix: new HarmonyMethod(typeof(MasterPresence).GetMethod(nameof(AfterCreatureReady), GameReflection.All)!)); }
+            catch (Exception e) { Log.Warn($"塔主形象：挂 NCreature._Ready 失败，开战时塔主可能闪一下：{e.Message}"); }
         }
         try
         {
@@ -40,12 +49,31 @@ internal static class MasterPresence
         catch (Exception e) { Log.Warn($"塔主形象：挂每帧检查失败，画面上不会显示塔主形象：{e.Message}"); }
     }
 
-    /// <summary>塔主（已退场）战后不复活、不回血。</summary>
+    /// <summary>塔主战后：直接写回满血（原版复活会播动画和回血特效）；StayDead 时不复活。</summary>
     internal static bool SkipMasterRevive(object __instance, ref Task __result)
     {
-        if (!StayDead || Test2MasterOffField.MasterId is not { } master || Test2MasterOffField.NetIdOf(__instance) != master) return true;
+        if (Test2MasterOffField.MasterId is not { } master || Test2MasterOffField.NetIdOf(__instance) != master) return true;
         __result = Task.CompletedTask;
+        if (StayDead) return false;
+        try
+        {
+            if (GameReflection.Get(__instance, "Creature") is { } creature)
+                Test2MasterOffField.SetHp(creature, Math.Max(1, Convert.ToInt32(GameReflection.Get(creature, "MaxHp") ?? 1)));
+        }
+        catch (Exception e) { Log.Warn($"塔主形象：战后写回塔主生命失败：{e.Message}"); }
         return false;
+    }
+
+    /// <summary>塔主的角色节点一建好就藏（各端，纯显示）。</summary>
+    private static void AfterCreatureReady(object __instance)
+    {
+        try
+        {
+            if (Test2MasterOffField.MasterId is not { } master || __instance is not G.CanvasItem item) return;
+            var player = GameReflection.Get(__instance, "Entity") is { } entity ? GameReflection.Get(entity, "Player") : null;
+            if (player != null && Test2MasterOffField.NetIdOf(player) == master) item.Visible = false;
+        }
+        catch { /* 纯显示，轮询还会再藏一次 */ }
     }
 
     private static int _frame;
