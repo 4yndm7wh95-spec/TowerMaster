@@ -35,6 +35,7 @@ public class ThreatPhaseTests
     {
         MasterCards.Enabled = false;
         MasterHand.ShowHand = _ => { };
+        MasterRewards.WhenRewardsShown = send => send();
         var run = new RunState();
         run.Players.Add(new Player(100001));
         var climber = new Player(100002);

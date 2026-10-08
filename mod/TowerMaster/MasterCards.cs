@@ -106,7 +106,7 @@ public static class MasterCards
                     "daze_all" => "将 1 张晕眩放入每名玩家的抽牌堆。\n计入每场的晕眩次数。",
                     "expose_all" => "给予每名玩家 1 层易伤。",
                     "scheme" => $"抽 {SchemeDraw(act)} 张牌。",
-                    _ => "获得 1 点能量。\n消耗。",
+                    _ => "获得 1 点能量。", // 「消耗。」由原版按关键词自动加（0.0.34 实测写了会重复）
                 };
                 defs.Add(new($"act:{op}@{act}", $"TowerMaster{Pascal(op)}{act}", act > 1 ? $"{name}+{act - 1}" : name, desc,
                     cost, CardType: 2, target, Unplayable: false, art, op, act, Exhaust: op == "surge"));

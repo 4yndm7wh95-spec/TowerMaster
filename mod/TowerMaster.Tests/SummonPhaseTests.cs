@@ -32,6 +32,8 @@ public class SummonPhaseTests
 
     private static ActionQueueSynchronizer Init(NetGameType type = NetGameType.Host)
     {
+        MasterCards.Enabled = false; // 塔主牌注册是整个进程共享的，这组测试按旧的威胁点模式跑
+        MasterRewards.WhenRewardsShown = send => send();
         var run = new RunState();
         run.Players.Add(new Player(100001));
         run.Players.Add(new Player(100002));

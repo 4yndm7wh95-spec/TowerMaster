@@ -31,8 +31,48 @@ internal static class MasterRewards
     {
         if (!MasterCards.Enabled || !Test3MasterAutoPilot.LocalIsMaster || room == Core.RoomKind.Monster || MasterLedger.RewardTaken(battle)) return;
         var offer = Offer(seed, battle);
-        ThreatPhase.Send(new ThreatCommand(1, 0, 0, actNo, "reward", MonsterId: string.Join(",", offer), Amount: battle));
-        Log.Info($"塔主牌：第 {battle} 场（{room}）奖励候选 {string.Join("、", offer)}");
+        Log.Info($"塔主牌：第 {battle} 场（{room}）奖励候选 {string.Join("、", offer)}，等原版奖励界面出来后再发");
+        WhenRewardsShown(() =>
+        {
+            try { ThreatPhase.Send(new ThreatCommand(1, 0, 0, actNo, "reward", MonsterId: string.Join(",", offer), Amount: battle)); }
+            catch (Exception e) { Log.Error("塔主牌：发送奖励失败", e); }
+        });
+    }
+
+    /// <summary>
+    /// 等原版战斗奖励界面压进覆盖栈之后再发奖励（0.0.34 实测：胜利就发的话，塔主的选牌先弹出、随后原版奖励界面压在上面，
+    /// 选牌被盖住、塔主的跟随移动排在它后面，两端都走不了）。最多等约 5 秒，没等到也发。测试里直接发。
+    /// </summary>
+    internal static Action<Action> WhenRewardsShown = WaitForRewardsScreen;
+
+    private static void WaitForRewardsScreen(Action send)
+    {
+        if (Godot.Engine.GetMainLoop() is not Godot.SceneTree tree) { send(); return; }
+        int frames = 0, seenAt = -1;
+        void Tick()
+        {
+            frames++;
+            if (seenAt < 0 && RewardsScreenShown()) seenAt = frames;
+            if ((seenAt >= 0 && frames - seenAt >= 15) || frames > 300)
+            {
+                tree.ProcessFrame -= Tick;
+                Log.Info(seenAt >= 0 ? $"塔主牌：原版奖励界面已出现（第 {seenAt} 帧），发塔主奖励" : "塔主牌：没等到原版奖励界面，直接发塔主奖励");
+                send();
+            }
+        }
+        tree.ProcessFrame += Tick;
+    }
+
+    private static bool RewardsScreenShown()
+    {
+        try
+        {
+            var stack = GameReflection.TypeNamed("NOverlayStack")?.GetProperty("Instance", GameReflection.All)?.GetValue(null);
+            if (stack != null && GameReflection.Get(stack, "_overlays") is IEnumerable overlays)
+                return overlays.Cast<object>().Any(o => o.GetType().Name == "NRewardsScreen");
+        }
+        catch { /* 退回 false，按超时发 */ }
+        return false;
     }
 
     /// <summary>各端执行 reward 指令。</summary>

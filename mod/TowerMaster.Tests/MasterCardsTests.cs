@@ -19,6 +19,8 @@ public class MasterCardsTests
         lock (Gate)
         {
             Log.Init();
+            MasterRewards.WhenRewardsShown = send => send();
+            MasterHand.ShowHand = _ => { };
             MasterCards.Register(new Harmony("towermaster.cards"), new TowerMasterConfig());
             ModelDb.Init(); // 仿游戏：ModelDb.Init 在 mod 入口之后，经 ReflectionHelper.ModTypes 收录
         }

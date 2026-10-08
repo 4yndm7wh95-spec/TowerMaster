@@ -889,8 +889,58 @@ internal static class TestBridge
         return null;
     }
 
+    /// <summary>原版「选一张牌」界面（药水/事件/塔主奖励 3 选 1），和卡牌奖励界面接口不同：点牌走 SelectHolder，跳过走 OnSkipButtonReleased。</summary>
+    private static Godot.Node? ChooseScreen()
+    {
+        var stack = new Stack<Godot.Node>();
+        stack.Push(SceneTree.Root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node is Godot.CanvasItem ci && !ci.IsVisibleInTree()) continue;
+            if (node.GetType().Name == "NChooseACardSelectionScreen") return node;
+            foreach (var child in node.GetChildren()) stack.Push(child);
+        }
+        return null;
+    }
+
+    private static List<Godot.Node> Holders(Godot.Node screen)
+    {
+        var found = new List<Godot.Node>();
+        var stack = new Stack<Godot.Node>();
+        stack.Push(screen);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node != screen && node.GetType().Name.EndsWith("CardHolder")) { found.Add(node); continue; }
+            foreach (var child in Enumerable.Reverse(node.GetChildren())) stack.Push(child);
+        }
+        return found;
+    }
+
+    private static object? HolderCard(Godot.Node holder)
+    {
+        foreach (var name in new[] { "CardModel", "Model", "Card" })
+            if (Try(() => GameReflection.Get(holder, name)) is { } v && v.GetType().Name != "NCard") return v;
+        var stack = new Stack<Godot.Node>();
+        stack.Push(holder);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node.GetType().Name == "NCard") return GameReflection.Get(node, "Model");
+            foreach (var child in node.GetChildren()) stack.Push(child);
+        }
+        return null;
+    }
+
     private static object Cards()
     {
+        if (CardScreen() == null && ChooseScreen() is { } choose)
+            return new
+            {
+                visible = true, screen = choose.GetType().Name, path = choose.GetPath().ToString(), can_skip = true,
+                cards = Holders(choose).Select((h, i) => new { index = i, card = HolderCard(h)?.GetType().Name, title = GameReflection.Get(HolderCard(h) ?? new object(), "Title")?.ToString() }).ToList(),
+            };
         var screen = CardScreen();
         if (screen == null) return new { visible = false };
         var cards = (GameReflection.Get(screen, "_cards") as IEnumerable)!.Cast<object>()
@@ -901,6 +951,19 @@ internal static class TestBridge
     /// <summary>点选第 index 张牌（和鼠标点一样）；confirm=true 时再按确认（ConfirmSelection）。</summary>
     private static object CardsPick(JsonObject a)
     {
+        if (CardScreen() == null && ChooseScreen() is { } choose)
+        {
+            if (a["skip"]?.GetValue<bool>() == true)
+            {
+                RuntimeNetAction.Call(choose, "OnSkipButtonReleased", (object?)null);
+                return new { skipped = true, screen = choose.GetType().Name };
+            }
+            var holders = Holders(choose);
+            int i = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index（或 skip=true）");
+            if (i < 0 || i >= holders.Count) throw Fail("bad_request", $"只有 {holders.Count} 张牌");
+            RuntimeNetAction.Call(choose, "SelectHolder", holders[i]);
+            return new { picked = i, card = HolderCard(holders[i])?.GetType().Name, screen = choose.GetType().Name };
+        }
         var screen = CardScreen() ?? throw Fail("invalid_phase", "没有显示选牌界面");
         int index = a["index"]?.GetValue<int>() ?? throw Fail("bad_request", "要 index");
         var cards = (GameReflection.Get(screen, "_cards") as IEnumerable)!.Cast<object>().ToList();
