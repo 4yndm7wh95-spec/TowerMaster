@@ -10,9 +10,10 @@ namespace TowerMaster;
 /// <param name="Op">begin、end、block、heal、strength、strength_all、weak、vulnerable、frail、dazed。</param>
 /// <param name="Monster">怪物在 CombatState.Enemies 里的下标；<paramref name="MonsterId"/> 用来核对是不是同一只。</param>
 /// <param name="Amount">房主算好的数值（格挡量、回血量、力量、层数），客户端照做不再计算。</param>
+/// <param name="Price">商店价格（Seed 发送时会被改成本局种子，不能拿来放别的数，0.0.36 实测）。</param>
 /// <param name="Amounts">和 <paramref name="Monsters"/> 一一对应的数值（陷阱力量按上限截断后每只可能不同）。</param>
 internal sealed record ThreatCommand(int Version, int Sequence, ulong Seed, int Round, string Op,
-    int Monster = -1, string? MonsterId = null, ulong Player = 0, int Amount = 0, int[]? Monsters = null, int[]? Amounts = null);
+    int Monster = -1, string? MonsterId = null, ulong Player = 0, int Amount = 0, int[]? Monsters = null, int[]? Amounts = null, int Price = 0);
 
 /// <summary>塔主回合面板；测试里替换。</summary>
 internal interface IThreatUi

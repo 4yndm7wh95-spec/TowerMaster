@@ -53,7 +53,8 @@ internal static class MasterLedger
     /// <summary>花召唤点（商店）。不够返回 false。</summary>
     public static bool SpendPoints(int amount, string reason)
     {
-        if (Wallet == null || Wallet.Points < amount) return false;
+        EnsureLoaded();
+        if (amount < 0 || Wallet == null || Wallet.Points < amount) return false;
         Wallet.Spend(amount);
         Log.Info($"塔主账本：{reason}，花 {amount} 召唤点，剩 {Wallet.Points}");
         Save();
@@ -188,6 +189,23 @@ internal static class MasterLedger
     }
 
     public static void CountBattle() => BattlesFought++;
+
+    /// <summary>
+    /// 账本还没读进来（换局/读档后清过内存，要到下一次召唤才读）就按当前对局的种子和幕读一次。
+    /// 0.0.36 实测：读档后直接进宝箱/商店/休息处，账本是空的——重复弹选牌、误报召唤点不够、新拿的牌存不下来。
+    /// </summary>
+    public static void EnsureLoaded()
+    {
+        if (Wallet != null) return;
+        try
+        {
+            var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
+            if (state == null) return;
+            var seed = Convert.ToUInt64(GameReflection.Get(GameReflection.Get(state, "Rng")!, "Seed"));
+            For(seed, ThreatPhase.ActNoOf(state));
+        }
+        catch (Exception e) { Log.Warn($"塔主账本：读账本失败：{e.Message}"); }
+    }
 
     public static void Save()
     {

@@ -17,7 +17,7 @@ namespace TowerMaster;
 /// 流程：房主定候选（按种子和房间，读档相同），发 reward 指令（NonCombat）；各端在指令里建候选、打开选牌
 /// （只有塔主屏幕上能选，原版把选择同步给其它端），选完注销候选；房主记账本、发新牌组。
 /// 指令字段：MonsterId = 候选（act:操作名 / trap:陷阱），Round = 等级（幕），Amount = 本次编号（读档去重），
-/// Monster = 种类（0 免费拿、1 购买、2 删牌），Seed = 价格。
+/// Monster = 种类（0 免费拿、1 购买、2 删牌），Price = 价格。
 /// </summary>
 internal static class MasterRewards
 {
@@ -97,12 +97,17 @@ internal static class MasterRewards
             var traps = TrapCatalog.All.Where(t => t.Effect != TrapEffect.None && MasterLedger.Traps.All(h => h.Id != t.Id)).Select(t => t.Id);
             var offer = Offer(seed, id, 2).Select(op => $"act:{op}").Concat(Offer(seed, id + 1, 1, traps).Select(t => $"trap:{t}")).ToList();
             Notice($"陷阱商店：花 {price} 召唤点买一张塔主牌（可以跳过）");
-            AfterUiSettles(() => Send(offer, act, id, KindBuy, (ulong)price));
+            AfterUiSettles(() => Send(offer, act, id, KindBuy, price));
         }
         catch (Exception e) { Log.Error("塔主商店：开店失败", e); }
     }
 
-    private static bool Ready() => MasterCards.Enabled && Test3MasterAutoPilot.LocalIsMaster;
+    private static bool Ready()
+    {
+        if (!MasterCards.Enabled || !Test3MasterAutoPilot.LocalIsMaster) return false;
+        MasterLedger.EnsureLoaded(); // 读档后先把账本读回来，再判断这个房间处理过没有、钱够不够
+        return true;
+    }
 
     private static (ulong Seed, int Floor, int Act)? Room()
     {
@@ -112,9 +117,9 @@ internal static class MasterRewards
         return (seed, Convert.ToInt32(GameReflection.Get(state, "TotalFloor")), ThreatPhase.ActNoOf(state));
     }
 
-    private static void Send(List<string> offer, int act, int id, int kind, ulong price)
+    private static void Send(List<string> offer, int act, int id, int kind, int price)
     {
-        try { ThreatPhase.Send(new ThreatCommand(1, 0, price, act, "reward", Monster: kind, MonsterId: string.Join(",", offer), Amount: id)); }
+        try { ThreatPhase.Send(new ThreatCommand(1, 0, 0, act, "reward", Monster: kind, MonsterId: string.Join(",", offer), Amount: id, Price: price)); }
         catch (Exception e) { Log.Error("塔主牌：发送选牌失败", e); }
     }
 
@@ -203,7 +208,7 @@ internal static class MasterRewards
             }
         }
         var def = MasterCards.DefOf(chosen);
-        string verb = c.Monster switch { KindBuy => "买了", KindRemove => "删掉", _ => "选了" };
+        string verb = c.Monster switch { KindBuy => "选中要买", KindRemove => "选中要删", _ => "选了" };
         Log.Info($"{tag}：塔主{(def != null ? $"{verb} {def.Title}" : "跳过")}");
         if (Test3MasterAutoPilot.LocalIsMaster) Record(c, def);
     }
@@ -211,11 +216,12 @@ internal static class MasterRewards
     /// <summary>房主记账本、发新牌组。</summary>
     private static void Record(ThreatCommand c, MasterCardDef? def)
     {
+        MasterLedger.EnsureLoaded();
         if (def == null) { MasterLedger.MarkReward(c.Amount); return; }
         if (c.Monster == KindRemove) MasterLedger.RemoveAction(c.Amount, def.Op);
         else
         {
-            if (c.Monster == KindBuy && !MasterLedger.SpendPoints((int)c.Seed, $"陷阱商店买 {def.Title}"))
+            if (c.Monster == KindBuy && !MasterLedger.SpendPoints(c.Price, $"陷阱商店买 {def.Title}"))
             {
                 Log.Warn($"塔主商店：召唤点不够，没买成 {def.Title}");
                 MasterLedger.MarkReward(c.Amount);

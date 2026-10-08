@@ -135,6 +135,7 @@ public class MasterCardsTests
         MasterLedger.Configure(new TowerMasterConfig());
         var wallet = MasterLedger.For(77, 1); // 12 点
         var run = new RunState();
+        run.Rng.Seed = 77;
         var master = new Player(100001);
         run.Players.Add(master);
         run.Players.Add(new Player(100002));
@@ -144,8 +145,8 @@ public class MasterCardsTests
 
         // 商店：买第 3 张（陷阱），花 6 点，陷阱进手里
         MegaCrit.Sts2.Core.Commands.CardSelectCmd.ChosenIndex = 2;
-        await MasterRewards.Execute(new ThreatCommand(1, 0, 6, 1, "reward", Monster: MasterRewards.KindBuy,
-            MonsterId: "act:fortify_all,act:scheme,trap:mire", Amount: -32), action, "测试");
+        await MasterRewards.Execute(new ThreatCommand(1, 0, 4211521589953351819, 1, "reward", Monster: MasterRewards.KindBuy,
+            MonsterId: "act:fortify_all,act:scheme,trap:mire", Amount: -32, Price: 6), action, "测试"); // Seed 是本局种子（0.0.36 实测曾被当成价格）
         Assert.Equal(6, wallet.Points);
         Assert.Equal("mire", Assert.Single(MasterLedger.Traps).Id);
         Assert.True(MasterLedger.RewardTaken(-32));
@@ -161,6 +162,15 @@ public class MasterCardsTests
         MegaCrit.Sts2.Core.Commands.CardSelectCmd.ChosenIndex = -1;
         await MasterRewards.Execute(new ThreatCommand(1, 0, 0, 1, "reward", Monster: MasterRewards.KindFree, MonsterId: "act:surge", Amount: -61), action, "测试");
         Assert.True(MasterLedger.RewardTaken(-61));
+        Assert.Equal(MasterCards.StartingActions.Length - 1, MasterLedger.ActionCards().Count);
+
+        // 读档：内存清空后，进非战斗房间前按当前对局种子把账本读回来（0.0.36 实测读档后重复弹选牌、误报召唤点不够）
+        MasterLedger.Configure(new TowerMasterConfig());
+        Assert.Null(MasterLedger.Wallet);
+        MasterLedger.EnsureLoaded();
+        Assert.Equal(6, MasterLedger.Wallet!.Points);
+        Assert.True(MasterLedger.RewardTaken(-32));
+        Assert.True(MasterLedger.RewardTaken(-53));
         Assert.Equal(MasterCards.StartingActions.Length - 1, MasterLedger.ActionCards().Count);
 
         // 牌组按账本：8 张行动牌 + 1 张陷阱

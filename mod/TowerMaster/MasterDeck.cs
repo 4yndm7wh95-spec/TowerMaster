@@ -24,6 +24,9 @@ internal static class MasterDeck
         harmony.Patch(setUp, postfix: new HarmonyMethod(typeof(MasterDeck).GetMethod(nameof(AfterNewRun), GameReflection.All)!));
     }
 
+    /// <summary>换局/读档：忘掉上次发过的牌组（0.0.36 实测读档后同样的牌组不再发，实际牌组和账本对不上）。</summary>
+    internal static void ResetRun() => _lastSent = null;
+
     /// <summary>某一幕塔主牌组的卡（行动牌 + 陷阱牌）的 key 列表。</summary>
     /// <param name="actions">行动牌（操作名）；不给就是初始 9 张加 extras。</param>
     internal static List<string> Keys(int actNo, IEnumerable<TrapCard> traps, IEnumerable<string>? extras = null, IEnumerable<string>? actions = null) =>
