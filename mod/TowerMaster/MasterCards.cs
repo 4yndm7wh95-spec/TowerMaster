@@ -184,6 +184,7 @@ public static class MasterCards
         PatchPortrait(harmony);
         MasterDeck.Apply(harmony);
         MasterHand.Apply(harmony);
+        MasterRewards.Apply(harmony);
         _registered = true;
         Enabled = true;
         Log.Info($"塔主牌：已生成 {types.Count} 种卡牌类型（{types[0].Name} …），等 ModelDb.Init 收录");

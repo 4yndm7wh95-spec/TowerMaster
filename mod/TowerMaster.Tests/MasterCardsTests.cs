@@ -126,4 +126,47 @@ public class MasterCardsTests
         Assert.Equal(CardKeyword.Exhaust, Assert.Single(Card("act:surge@1").CanonicalKeywords));
         Assert.Equal("坚壁+2", Card("act:fortify_all@3").Title);
     }
+
+    [Fact]
+    public async Task ShopBuysWithSummonPointsAndRestSiteRemovesACard()
+    {
+        Register();
+        MasterLedger.Clear();
+        MasterLedger.Configure(new TowerMasterConfig());
+        var wallet = MasterLedger.For(77, 1); // 12 点
+        var run = new RunState();
+        var master = new Player(100001);
+        run.Players.Add(master);
+        run.Players.Add(new Player(100002));
+        RunManager.Instance.State = run;
+        RunManager.Instance.NetService = new() { Type = MegaCrit.Sts2.Core.Entities.Multiplayer.NetGameType.Host, NetId = 100001, HostNetId = 100001 };
+        var action = new MegaCrit.Sts2.Core.GameActions.MoveToMapCoordAction(100001);
+
+        // 商店：买第 3 张（陷阱），花 6 点，陷阱进手里
+        MegaCrit.Sts2.Core.Commands.CardSelectCmd.ChosenIndex = 2;
+        await MasterRewards.Execute(new ThreatCommand(1, 0, 6, 1, "reward", Monster: MasterRewards.KindBuy,
+            MonsterId: "act:fortify_all,act:scheme,trap:mire", Amount: -32), action, "测试");
+        Assert.Equal(6, wallet.Points);
+        Assert.Equal("mire", Assert.Single(MasterLedger.Traps).Id);
+        Assert.True(MasterLedger.RewardTaken(-32));
+
+        // 休息处：删一张激励（初始牌），行动牌 9 → 8
+        MegaCrit.Sts2.Core.Commands.CardSelectCmd.ChosenIndex = 0;
+        await MasterRewards.Execute(new ThreatCommand(1, 0, 0, 1, "reward", Monster: MasterRewards.KindRemove,
+            MonsterId: "act:strength,act:block,act:heal", Amount: -53), action, "测试");
+        Assert.Equal(MasterCards.StartingActions.Length - 1, MasterLedger.ActionCards().Count);
+        Assert.DoesNotContain("strength", MasterLedger.ActionCards());
+
+        // 跳过：只记下处理过
+        MegaCrit.Sts2.Core.Commands.CardSelectCmd.ChosenIndex = -1;
+        await MasterRewards.Execute(new ThreatCommand(1, 0, 0, 1, "reward", Monster: MasterRewards.KindFree, MonsterId: "act:surge", Amount: -61), action, "测试");
+        Assert.True(MasterLedger.RewardTaken(-61));
+        Assert.Equal(MasterCards.StartingActions.Length - 1, MasterLedger.ActionCards().Count);
+
+        // 牌组按账本：8 张行动牌 + 1 张陷阱
+        var keys = MasterDeck.Keys(1, MasterLedger.Traps, actions: MasterLedger.ActionCards());
+        Assert.Equal(9, keys.Count);
+        Assert.Contains("trap:mire@1", keys);
+        MegaCrit.Sts2.Core.Commands.CardSelectCmd.ChosenIndex = 1;
+    }
 }

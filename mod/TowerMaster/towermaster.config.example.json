@@ -40,6 +40,8 @@
   "master_energy_first_turn_bonus": 1,
   "master_energy_room_bonus": 1,
   "master_hand_draw": 4,
+  "master_shop_price": 6,
+  "master_min_deck": 5,
 
   // —— 陷阱 ——
   "max_traps_per_battle": 2,

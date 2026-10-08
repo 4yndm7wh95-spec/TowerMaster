@@ -86,7 +86,13 @@ internal static class TestBridge
             var (method, path, headers, body) = await ReadRequest(stream);
             headers.TryGetValue("x-token", out var token);
             var (status, result) = await Route(method, path, token, body);
-            var json = JsonSerializer.Serialize(result, JsonOut);
+            string json;
+            try { json = JsonSerializer.Serialize(result, JsonOut); }
+            catch (Exception e) when (e is NotSupportedException or InvalidOperationException or JsonException)
+            {
+                // 结果里有不能序列化的游戏对象（IntPtr 等，0.0.35 实测 /reflect depth=2）：退回文字描述，不断开连接
+                json = JsonSerializer.Serialize(new { ok = true, unserializable = e.Message, text = GameReflection.Dump(result, 0) }, JsonOut);
+            }
             var bytes = Encoding.UTF8.GetBytes(json);
             var head = $"HTTP/1.1 {status} {(status == 200 ? "OK" : "Error")}\r\nContent-Type: application/json; charset=utf-8\r\n" +
                        $"Content-Length: {bytes.Length}\r\nConnection: close\r\n\r\n";

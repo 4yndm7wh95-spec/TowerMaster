@@ -1,62 +1,152 @@
 using System.Collections;
 using System.Reflection;
+using HarmonyLib;
+using TowerMaster.Core;
 
 namespace TowerMaster;
 
 /// <summary>
-/// 塔主牌的成长：精英、Boss 战胜利后，塔主像玩家拿卡牌奖励一样 3 选 1（可以跳过），选中的加进牌组。
-/// 用原版的选牌界面 CardSelectCmd.FromChooseACardScreen（药水、事件里「选一张牌」用的那个），不做自建面板。
-/// 流程：房主定候选（按种子和场次，各局不同、读档相同），发 reward 指令（NonCombat）；各端在指令里建候选牌、
-/// 打开选牌（只有塔主自己的屏幕上能选，原版负责把选择同步给其它端），选完注销候选牌；房主记账本、发新牌组。
+/// 塔主牌的成长和整备，全部用原版「选一张牌」界面（CardSelectCmd.FromChooseACardScreen，可以跳过），不做自建面板：
+///
+/// | 时机 | 塔主做什么 |
+/// | 精英、Boss 战胜利后（等原版奖励界面出来） | 免费 3 选 1 拿一张新行动牌 |
+/// | 宝箱房（塔主宝箱） | 免费 3 选 1 拿一张新行动牌 |
+/// | 商店（陷阱商店） | 花召唤点买 1 张：2 张行动牌 + 1 张陷阱牌 |
+/// | 休息处 | 从牌组里删 1 张行动牌（精简牌组） |
+///
+/// 流程：房主定候选（按种子和房间，读档相同），发 reward 指令（NonCombat）；各端在指令里建候选、打开选牌
+/// （只有塔主屏幕上能选，原版把选择同步给其它端），选完注销候选；房主记账本、发新牌组。
+/// 指令字段：MonsterId = 候选（act:操作名 / trap:陷阱），Round = 等级（幕），Amount = 本次编号（读档去重），
+/// Monster = 种类（0 免费拿、1 购买、2 删牌），Seed = 价格。
 /// </summary>
 internal static class MasterRewards
 {
     internal const int OfferSize = 3;
+    internal const int KindFree = 0, KindBuy = 1, KindRemove = 2;
+    private static bool _patched;
 
-    /// <summary>候选：奖励牌池里随机 3 种（同一场固定）。</summary>
-    internal static List<string> Offer(ulong seed, int battle)
+    internal static void Apply(Harmony harmony)
     {
-        var pool = MasterCards.RewardPool.ToList();
-        var rng = new Random(unchecked((int)(seed ^ (ulong)(battle * 31337 + 7))));
+        if (_patched) return;
+        _patched = true;
+        var loaded = GameReflection.FindMethod("AfterRoomIsLoaded", "NMerchantRoom");
+        if (loaded != null) harmony.Patch(loaded, postfix: new HarmonyMethod(typeof(MasterRewards).GetMethod(nameof(AfterMerchantLoaded), GameReflection.All)!));
+        else Log.Warn("塔主商店：找不到 NMerchantRoom.AfterRoomIsLoaded，商店里塔主不能买牌");
+    }
+
+    /// <summary>候选：奖励牌池里随机 n 种（同一个房间固定）。</summary>
+    internal static List<string> Offer(ulong seed, int id, int count = OfferSize, IEnumerable<string>? from = null)
+    {
+        var pool = (from ?? MasterCards.RewardPool).Distinct().ToList();
+        var rng = new Random(unchecked((int)(seed ^ (ulong)(id * 31337 + 7))));
         for (int i = pool.Count - 1; i > 0; i--)
         {
             int j = rng.Next(i + 1);
             (pool[i], pool[j]) = (pool[j], pool[i]);
         }
-        return pool.Take(OfferSize).ToList();
+        return pool.Take(count).ToList();
     }
 
-    /// <summary>房主：精英/Boss 胜利后发奖励（读档后同一场不再发）。</summary>
-    internal static void AfterWin(Core.RoomKind room, ulong seed, int battle, int actNo)
+    // ---------------------------------------------------------------- 触发（房主）
+
+    /// <summary>精英/Boss 胜利后（读档后同一场不再发）。</summary>
+    internal static void AfterWin(RoomKind room, ulong seed, int battle, int actNo)
     {
-        if (!MasterCards.Enabled || !Test3MasterAutoPilot.LocalIsMaster || room == Core.RoomKind.Monster || MasterLedger.RewardTaken(battle)) return;
-        var offer = Offer(seed, battle);
+        if (!Ready() || room == RoomKind.Monster || MasterLedger.RewardTaken(battle)) return;
+        var offer = Offer(seed, battle).Select(op => $"act:{op}").ToList();
         Log.Info($"塔主牌：第 {battle} 场（{room}）奖励候选 {string.Join("、", offer)}，等原版奖励界面出来后再发");
-        WhenRewardsShown(() =>
-        {
-            try { ThreatPhase.Send(new ThreatCommand(1, 0, 0, actNo, "reward", MonsterId: string.Join(",", offer), Amount: battle)); }
-            catch (Exception e) { Log.Error("塔主牌：发送奖励失败", e); }
-        });
+        WhenRewardsShown(() => Send(offer, actNo, battle, KindFree, 0));
     }
 
-    /// <summary>
-    /// 等原版战斗奖励界面压进覆盖栈之后再发奖励（0.0.34 实测：胜利就发的话，塔主的选牌先弹出、随后原版奖励界面压在上面，
-    /// 选牌被盖住、塔主的跟随移动排在它后面，两端都走不了）。最多等约 5 秒，没等到也发。测试里直接发。
-    /// </summary>
-    internal static Action<Action> WhenRewardsShown = WaitForRewardsScreen;
+    /// <summary>宝箱房：塔主宝箱，免费 3 选 1。</summary>
+    internal static void OnTreasure()
+    {
+        if (!Ready() || Room() is not var (seed, floor, act)) return;
+        int id = -(floor * 10 + 1);
+        if (MasterLedger.RewardTaken(id)) return;
+        var offer = Offer(seed, id).Select(op => $"act:{op}").ToList();
+        Notice("塔主宝箱：选一张塔主牌（可以跳过）");
+        AfterUiSettles(() => Send(offer, act, id, KindFree, 0));
+    }
 
-    private static void WaitForRewardsScreen(Action send)
+    /// <summary>休息处：从牌组里删 1 张行动牌（牌组至少留 5 张）。</summary>
+    internal static void OnRest()
+    {
+        if (!Ready() || Room() is not var (seed, floor, act)) return;
+        int id = -(floor * 10 + 3);
+        var actions = MasterLedger.ActionCards();
+        if (MasterLedger.RewardTaken(id) || actions.Count <= ModEntry.Active.MasterMinDeck) return;
+        var offer = Offer(seed, id, OfferSize, actions).Select(op => $"act:{op}").ToList();
+        Notice("休息处：选一张塔主牌移出牌组（可以跳过）");
+        AfterUiSettles(() => Send(offer, act, id, KindRemove, 0));
+    }
+
+    /// <summary>商店：花召唤点买 1 张（2 张行动牌 + 1 张手里没有的陷阱）。召唤点不够就不开。</summary>
+    private static void AfterMerchantLoaded()
+    {
+        try
+        {
+            if (!Ready() || Room() is not var (seed, floor, act)) return;
+            int id = -(floor * 10 + 2), price = ModEntry.Active.MasterShopPrice;
+            if (MasterLedger.RewardTaken(id)) return;
+            if ((MasterLedger.Wallet?.Points ?? 0) < price)
+            {
+                Notice($"陷阱商店：召唤点不够 {price}，这次买不了");
+                return;
+            }
+            var traps = TrapCatalog.All.Where(t => t.Effect != TrapEffect.None && MasterLedger.Traps.All(h => h.Id != t.Id)).Select(t => t.Id);
+            var offer = Offer(seed, id, 2).Select(op => $"act:{op}").Concat(Offer(seed, id + 1, 1, traps).Select(t => $"trap:{t}")).ToList();
+            Notice($"陷阱商店：花 {price} 召唤点买一张塔主牌（可以跳过）");
+            AfterUiSettles(() => Send(offer, act, id, KindBuy, (ulong)price));
+        }
+        catch (Exception e) { Log.Error("塔主商店：开店失败", e); }
+    }
+
+    private static bool Ready() => MasterCards.Enabled && Test3MasterAutoPilot.LocalIsMaster;
+
+    private static (ulong Seed, int Floor, int Act)? Room()
+    {
+        var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
+        if (state == null) return null;
+        var seed = Convert.ToUInt64(GameReflection.Get(GameReflection.Get(state, "Rng")!, "Seed"));
+        return (seed, Convert.ToInt32(GameReflection.Get(state, "TotalFloor")), ThreatPhase.ActNoOf(state));
+    }
+
+    private static void Send(List<string> offer, int act, int id, int kind, ulong price)
+    {
+        try { ThreatPhase.Send(new ThreatCommand(1, 0, price, act, "reward", Monster: kind, MonsterId: string.Join(",", offer), Amount: id)); }
+        catch (Exception e) { Log.Error("塔主牌：发送选牌失败", e); }
+    }
+
+    /// <summary>塔主屏幕上的提示；测试里换成空操作（没有 Godot 引擎时调界面会让进程崩溃，try 拦不住）。</summary>
+    internal static Action<string> NoticeSink = text => SummonPhase.Toast(text);
+
+    private static void Notice(string text)
+    {
+        Log.Info($"塔主牌：{text}");
+        NoticeSink(text);
+    }
+
+    // ---------------------------------------------------------------- 时机
+
+    /// <summary>等原版战斗奖励界面压进覆盖栈之后再发（0.0.34 实测：先发会被它盖住、两端卡住）。测试里直接发。</summary>
+    internal static Action<Action> WhenRewardsShown = send => WaitFrames(send, RewardsScreenShown, 15, 300, "原版奖励界面");
+
+    /// <summary>非战斗房间：等房间界面稳定（约半秒）再发。测试里直接发。</summary>
+    internal static Action<Action> AfterUiSettles = send => WaitFrames(send, () => true, 30, 30, "房间界面");
+
+    private static void WaitFrames(Action send, Func<bool> ready, int settle, int max, string what)
     {
         if (Godot.Engine.GetMainLoop() is not Godot.SceneTree tree) { send(); return; }
         int frames = 0, seenAt = -1;
         void Tick()
         {
             frames++;
-            if (seenAt < 0 && RewardsScreenShown()) seenAt = frames;
-            if ((seenAt >= 0 && frames - seenAt >= 15) || frames > 300)
+            if (seenAt < 0 && ready()) seenAt = frames;
+            if ((seenAt >= 0 && frames - seenAt >= settle) || frames > max)
             {
                 tree.ProcessFrame -= Tick;
-                Log.Info(seenAt >= 0 ? $"塔主牌：原版奖励界面已出现（第 {seenAt} 帧），发塔主奖励" : "塔主牌：没等到原版奖励界面，直接发塔主奖励");
+                Log.Info(seenAt >= 0 ? $"塔主牌：{what}已就绪（第 {seenAt} 帧），打开塔主选牌" : $"塔主牌：没等到{what}，直接打开塔主选牌");
                 send();
             }
         }
@@ -75,19 +165,23 @@ internal static class MasterRewards
         return false;
     }
 
-    /// <summary>各端执行 reward 指令。</summary>
+    // ---------------------------------------------------------------- 执行（各端）
+
     internal static async Task Execute(ThreatCommand c, object action, string tag)
     {
         var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
         var master = MasterHand.MasterPlayer();
-        if (state == null || master == null) { Log.Warn($"{tag}：找不到塔主，奖励跳过"); return; }
+        if (state == null || master == null) { Log.Warn($"{tag}：找不到塔主，选牌跳过"); return; }
+        int tier = Math.Clamp(c.Round, 1, 3);
         var cardModel = GameReflection.TypesNamed("CardModel").First(t => t.IsAbstract);
         var create = state.GetType().GetMethods(GameReflection.All).First(m => m.Name == "CreateCard" && !m.IsGenericMethod && m.GetParameters().Length == 2);
         var remove = state.GetType().GetMethods(GameReflection.All).FirstOrDefault(m => m.Name == "RemoveCard" && m.GetParameters().Length == 1);
         var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(cardModel))!;
-        foreach (var op in (c.MonsterId ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
-            if (MasterCards.TypeOf($"act:{op}@{Math.Clamp(c.Round, 1, 3)}") is { } type)
-                list.Add(create.Invoke(state, [MasterCards.Canonical(type), master]));
+        foreach (var entry in (c.MonsterId ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var key = (entry.Contains(':') ? entry : "act:" + entry) + $"@{tier}"; // 0.0.34 的指令只写操作名
+            if (MasterCards.TypeOf(key) is { } type) list.Add(create.Invoke(state, [MasterCards.Canonical(type), master]));
+        }
         if (list.Count == 0) return;
 
         object? chosen = null;
@@ -100,20 +194,42 @@ internal static class MasterRewards
             await task;
             chosen = task.GetType().GetProperty("Result")?.GetValue(task);
         }
-        catch (Exception e) { Log.Error($"{tag}：塔主奖励选牌失败（这次没有奖励）", e); }
+        catch (Exception e) { Log.Error($"{tag}：塔主选牌失败（这次跳过）", e); }
         finally
         {
-            foreach (var card in list) // 候选牌只是展示用：都注销，选中的由牌组指令按规范重建
+            foreach (var card in list) // 候选牌只是展示用：都注销，牌组由 deck 指令按规范重建
             {
                 try { remove?.Invoke(state, [card]); } catch { /* 已经不在了 */ }
             }
         }
-        var op2 = MasterCards.DefOf(chosen)?.Op;
-        Log.Info($"{tag}：塔主奖励 {(op2 != null ? $"选了 {MasterCards.DefOf(chosen)!.Title}" : "跳过")}");
-        if (Test3MasterAutoPilot.LocalIsMaster)
+        var def = MasterCards.DefOf(chosen);
+        string verb = c.Monster switch { KindBuy => "买了", KindRemove => "删掉", _ => "选了" };
+        Log.Info($"{tag}：塔主{(def != null ? $"{verb} {def.Title}" : "跳过")}");
+        if (Test3MasterAutoPilot.LocalIsMaster) Record(c, def);
+    }
+
+    /// <summary>房主记账本、发新牌组。</summary>
+    private static void Record(ThreatCommand c, MasterCardDef? def)
+    {
+        if (def == null) { MasterLedger.MarkReward(c.Amount); return; }
+        if (c.Monster == KindRemove) MasterLedger.RemoveAction(c.Amount, def.Op);
+        else
         {
-            MasterLedger.TakeReward(c.Amount, op2);
-            if (op2 != null) MasterDeck.Publish("塔主选了奖励牌");
+            if (c.Monster == KindBuy && !MasterLedger.SpendPoints((int)c.Seed, $"陷阱商店买 {def.Title}"))
+            {
+                Log.Warn($"塔主商店：召唤点不够，没买成 {def.Title}");
+                MasterLedger.MarkReward(c.Amount);
+                return;
+            }
+            if (def.Op == "trap")
+            {
+                var trap = TrapCatalog.Parse(def.Key["trap:".Length..]);
+                if (MasterLedger.Traps.Count < ModEntry.Active.TrapHandLimit) MasterLedger.AddTraps([trap], "陷阱商店");
+                else Log.Warn("塔主商店：陷阱手牌满了，这张没放进手里");
+                MasterLedger.MarkReward(c.Amount);
+            }
+            else MasterLedger.TakeReward(c.Amount, def.Op);
         }
+        MasterDeck.Publish(c.Monster switch { KindBuy => "陷阱商店买牌", KindRemove => "休息处删牌", _ => "塔主拿了新牌" });
     }
 }

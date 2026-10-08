@@ -139,6 +139,10 @@ public sealed class TowerMasterConfig
     public int MasterEnergyRoomBonus { get; set; } = 1;
     /// <summary>塔主每回合抽几张。</summary>
     public int MasterHandDraw { get; set; } = 4;
+    /// <summary>陷阱商店里塔主买一张牌的召唤点价格。</summary>
+    public int MasterShopPrice { get; set; } = 6;
+    /// <summary>休息处删牌后牌组至少留几张行动牌。</summary>
+    public int MasterMinDeck { get; set; } = 5;
 
     // ---------------------------------------------------------------- 读写
     public static readonly JsonSerializerOptions JsonOptions = new()

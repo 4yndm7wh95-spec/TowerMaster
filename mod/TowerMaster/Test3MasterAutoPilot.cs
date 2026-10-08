@@ -315,6 +315,7 @@ internal static class Test3MasterAutoPilot
             if (!LocalIsMaster) return;
             CallLocal(__instance, "SkipRelicLocally");
             Log.Info("测试3 宝箱：塔主跳过遗物");
+            MasterRewards.OnTreasure(); // 塔主宝箱：不拿原版遗物，改为 3 选 1 塔主牌
         }
         catch (Exception e) { Log.Error("测试3 宝箱：自动跳过失败，需要塔主手动跳过", e); }
     }
@@ -346,6 +347,7 @@ internal static class Test3MasterAutoPilot
             if (!LocalIsMaster) return;
             CallLocal(__instance, "BeforeLocalRestSiteExited");
             Log.Info("测试3 休息处：塔主跳过");
+            MasterRewards.OnRest(); // 塔主整备：删一张行动牌
         }
         catch (Exception e) { Log.Error("测试3 休息处：自动跳过失败，需要塔主手动选择", e); }
     }

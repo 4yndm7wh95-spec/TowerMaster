@@ -13,7 +13,7 @@ internal sealed record PendingBattle(RoomKind Room, int StandardCost, int Monste
 internal static class MasterLedger
 {
     private sealed record Saved(ulong Seed, int Points, int ActNo, ulong[] KnockedDown, int Battles,
-        string[]? Traps = null, int[]? PacksPicked = null, string[]? LastPlaced = null, string[]? ExtraCards = null, int[]? RewardsTaken = null);
+        string[]? Traps = null, int[]? PacksPicked = null, string[]? LastPlaced = null, string[]? ExtraCards = null, int[]? RewardsTaken = null, string[]? RemovedCards = null);
 
     private static readonly List<TrapCard> _traps = new();
     private static readonly HashSet<int> _packsPicked = new();
@@ -24,6 +24,41 @@ internal static class MasterLedger
     private static readonly HashSet<string> _lastPlaced = new();
     private static readonly List<string> _extraCards = new();
     private static readonly HashSet<int> _rewardsTaken = new();
+    private static readonly List<string> _removedCards = new();
+
+    /// <summary>塔主现在牌组里的行动牌（操作名）：初始 9 张减去休息处删掉的，加上奖励/商店拿到的。</summary>
+    public static List<string> ActionCards()
+    {
+        var cards = MasterCards.StartingActions.ToList();
+        foreach (var op in _removedCards) cards.Remove(op);
+        return cards.Concat(_extraCards).ToList();
+    }
+
+    /// <summary>休息处删一张行动牌：先删奖励拿到的同种，没有再记一次「初始牌删掉」。</summary>
+    public static void RemoveAction(int id, string op)
+    {
+        _rewardsTaken.Add(id);
+        if (!_extraCards.Remove(op)) _removedCards.Add(op);
+        Log.Info($"塔主牌：删掉 {op}，现在行动牌 {ActionCards().Count} 张");
+        Save();
+    }
+
+    /// <summary>某次奖励/商店/休息处处理过了但没拿也没删（跳过）。</summary>
+    public static void MarkReward(int id)
+    {
+        _rewardsTaken.Add(id);
+        Save();
+    }
+
+    /// <summary>花召唤点（商店）。不够返回 false。</summary>
+    public static bool SpendPoints(int amount, string reason)
+    {
+        if (Wallet == null || Wallet.Points < amount) return false;
+        Wallet.Spend(amount);
+        Log.Info($"塔主账本：{reason}，花 {amount} 召唤点，剩 {Wallet.Points}");
+        Save();
+        return true;
+    }
 
     /// <summary>塔主精英/Boss 战后选来的塔主牌（操作名，等级跟着幕走）。</summary>
     public static IReadOnlyList<string> ExtraCards => _extraCards;
@@ -110,6 +145,7 @@ internal static class MasterLedger
         _lastPlaced.Clear();
         _extraCards.Clear();
         _rewardsTaken.Clear();
+        _removedCards.Clear();
     }
 
     /// <summary>取当前这局的钱包：换了局就从文件读，没有就新开；进入新一幕时按新上限截断。</summary>
@@ -127,6 +163,7 @@ internal static class MasterLedger
             _lastPlaced.Clear();
             _extraCards.Clear();
             _rewardsTaken.Clear();
+            _removedCards.Clear();
             if (saved != null && saved.Seed == seed)
             {
                 Wallet.Restore(saved.Points, saved.ActNo, saved.KnockedDown);
@@ -136,6 +173,7 @@ internal static class MasterLedger
                 _lastPlaced.UnionWith(saved.LastPlaced ?? []);
                 _extraCards.AddRange(saved.ExtraCards ?? []);
                 _rewardsTaken.UnionWith(saved.RewardsTaken ?? []);
+                _removedCards.AddRange(saved.RemovedCards ?? []);
                 Log.Info($"塔主账本：读档，召唤点 {Wallet.Points}，已打 {BattlesFought} 场");
             }
             else Log.Info($"塔主账本：新的一局，召唤点 {Wallet.Points}");
@@ -158,7 +196,7 @@ internal static class MasterLedger
         {
             var saved = new Saved(_seed, Wallet.Points, Wallet.ActNo, Wallet.KnockedDownLastBattle.ToArray(), BattlesFought,
                 _traps.Select(t => t.ToString()).ToArray(), _packsPicked.Order().ToArray(), _lastPlaced.Order().ToArray(),
-                _extraCards.ToArray(), _rewardsTaken.Order().ToArray());
+                _extraCards.ToArray(), _rewardsTaken.Order().ToArray(), _removedCards.ToArray());
             var temp = FilePath + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(saved));
             File.Move(temp, FilePath, overwrite: true);
