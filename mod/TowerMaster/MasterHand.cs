@@ -22,7 +22,7 @@ internal static class MasterHand
     private static readonly Dictionary<object, int> Heals = new(ReferenceEqualityComparer.Instance);
     private static readonly Dictionary<object, int> Strength = new(ReferenceEqualityComparer.Instance);
     private static readonly Dictionary<object, int> DebuffsThisTurn = new(ReferenceEqualityComparer.Instance);
-    private static int _dazed, _strengthAll;
+    private static int _dazed, _strengthAll, _callHelp, _rolls;
     private static bool _patched;
 
     /// <summary>塔主回合进行中（各端在 begin/end 指令里同步切换）。</summary>
@@ -52,7 +52,7 @@ internal static class MasterHand
         Heals.Clear();
         Strength.Clear();
         DebuffsThisTurn.Clear();
-        _dazed = _strengthAll = 0;
+        _dazed = _strengthAll = _callHelp = _rolls = 0;
         Active = false;
     }
 
@@ -204,6 +204,7 @@ internal static class MasterHand
         if (def.Op == "strength_all")
             __result = _strengthAll < p.StrengthAllPerBattle && LivingEnemies().Any(e => Strength.GetValueOrDefault(e) + p.StrengthAllAmount <= Cap(def));
         else if (def.Op is "dazed" or "daze_all") __result = _dazed < p.DazedPerBattle;
+        else if (def.Op == "call_help") __result = _callHelp < 1 && LivingEnemies().Count() < MasterCards.CallHelpMaxEnemies;
         else if (def.Op == "heal_all") __result = LivingEnemies().Any(e => Heals.GetValueOrDefault(e) < p.HealPerMonsterPerBattle);
         else if (def.Op == "expose_all") __result = LivingClimbers().Any(c => DebuffsThisTurn.GetValueOrDefault(c) < p.DebuffPerPlayerPerTurn);
     }
@@ -221,7 +222,7 @@ internal static class MasterHand
         {
             "heal" => Heals.GetValueOrDefault(target) < p.HealPerMonsterPerBattle,
             "strength" => Strength.GetValueOrDefault(target) + TowerMasterConfig.ByAct(p.StrengthAmount, def.Tier) <= Cap(def),
-            "weak" or "vulnerable" or "frail" or "sap" => DebuffsThisTurn.GetValueOrDefault(target) < p.DebuffPerPlayerPerTurn,
+            "weak" or "vulnerable" or "frail" or "sap" or "heckle" => DebuffsThisTurn.GetValueOrDefault(target) < p.DebuffPerPlayerPerTurn,
             _ => true,
         };
     }
@@ -238,6 +239,7 @@ internal static class MasterHand
             case "strength_all": _strengthAll++; break;
             case "weak" or "vulnerable" or "frail" when target != null: DebuffsThisTurn[target] = DebuffsThisTurn.GetValueOrDefault(target) + 1; break;
             case "dazed": _dazed++; break;
+            case "call_help": _callHelp++; break;
         }
     }
 
@@ -250,6 +252,24 @@ internal static class MasterHand
     }
 
     internal static int StrengthOf(object creature) => Strength.GetValueOrDefault(creature);
+
+    /// <summary>
+    /// 各端一致的随机数（惊喜盲盒）：本局种子 + 回合 + 本场第几次掷，各端按同样顺序执行出牌，结果一样。
+    /// 不用游戏的随机数流，免得改变原版的随机序列。
+    /// </summary>
+    internal static int Roll(int sides)
+    {
+        ulong seed = 0;
+        try
+        {
+            if (GameReflection.Get(Test1bMixedEncounter.Run, "State") is { } st)
+                seed = Convert.ToUInt64(GameReflection.Get(GameReflection.Get(st, "Rng")!, "Seed"));
+        }
+        catch { /* 用 0 */ }
+        int round = ThreatPhase.CombatState() is { } c ? Convert.ToInt32(GameReflection.Get(c, "RoundNumber") ?? 0) : 0;
+        var rng = new Random(unchecked((int)(seed ^ (ulong)(round * 7919) ^ (ulong)(++_rolls * 104729))));
+        return rng.Next(sides);
+    }
 
     // ---------------------------------------------------------------- 工具
 

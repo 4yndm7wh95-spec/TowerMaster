@@ -125,6 +125,10 @@ public class MasterCardsTests
         Assert.All(keys, k => Assert.NotNull(MasterCards.TypeOf(k)));
         Assert.Equal(CardKeyword.Exhaust, Assert.Single(Card("act:surge@1").CanonicalKeywords));
         Assert.Equal("坚壁+2", Card("act:fortify_all@3").Title);
+        Assert.Equal("摇人", Card("act:call_help@1").Title);
+        Assert.Equal(TargetType.AnyEnemy, Card("act:infight@2").TargetType);
+        Assert.Equal(TargetType.AnyAlly, Card("act:heckle@1").TargetType);
+        Assert.Equal(0, Card("act:gamble@1").Cost);
     }
 
     [Fact]

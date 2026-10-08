@@ -154,12 +154,24 @@ internal static class MasterRewards
             if ((seenAt >= 0 && frames - seenAt >= settle) || frames > max)
             {
                 tree.ProcessFrame -= Tick;
-                if (seenAt < 0 && what == "读档完成") { Log.Warn("塔主牌：等不到读档完成（不是房主或没有对局），不同步牌组"); return; }
+                if (seenAt < 0 && what == "读档完成")
+                {
+                    // 爬塔玩家那边本来就不是房主，正常；房主等不到才是问题
+                    if (Test2MasterOffField.MasterId is { } host && RunNetId() == host) Log.Warn("塔主牌：读档后等了约 20 秒对局还没就绪，没有同步牌组");
+                    else Log.Info("塔主牌：本机不是塔主，读档后不需要同步牌组");
+                    return;
+                }
                 Log.Info(seenAt >= 0 ? $"塔主牌：{what}已就绪（第 {seenAt} 帧），打开塔主选牌" : $"塔主牌：没等到{what}，直接打开塔主选牌");
                 send();
             }
         }
         tree.ProcessFrame += Tick;
+    }
+
+    private static ulong? RunNetId()
+    {
+        try { return Convert.ToUInt64(GameReflection.Get(GameReflection.Get(Test1bMixedEncounter.Run, "NetService")!, "NetId")); }
+        catch { return null; }
     }
 
     private static bool RewardsScreenShown()

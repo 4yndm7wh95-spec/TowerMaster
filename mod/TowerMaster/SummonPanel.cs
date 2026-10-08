@@ -641,7 +641,7 @@ internal sealed class SummonPanel : ISummonUi
                 MouseFilter = G.Control.MouseFilterEnum.Ignore,
             };
             container.AddChild(viewport);
-            FitAndFreeze(viewport, visuals, _portraits++);
+            FitAndFreeze(viewport, visuals, _portraits++, monsterId);
             return container;
         }
         catch (Exception e)
@@ -661,10 +661,24 @@ internal sealed class SummonPanel : ISummonUi
             var skinModel = model;
             try { if (GameReflection.Get(model, "IsMutable") is false && model.GetType().GetMethod("ToMutable", Type.EmptyTypes) is { } m) skinModel = m.Invoke(model, null) ?? model; }
             catch { /* 用规范模型 */ }
-            visuals.GetType().GetMethod("SetUpSkin", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(visuals, [skinModel]);
-            if (GameReflection.Get(visuals, "SpineBody") is { } spine
-                && skinModel.GetType().GetMethod("GenerateAnimator", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(skinModel, [spine]) is { } animator)
+            // 原版 NCreature 的顺序：先建动画控制器，再套皮肤（0.0.38 测试助手查 NCreature.cs:310）
+            var spine = GameReflection.Get(visuals, "SpineBody");
+            if (spine == null) Log.Info($"召唤面板：{monsterId} 没有骨骼动画（SpineBody 为空），按原样显示");
+            else if (skinModel.GetType().GetMethod("GenerateAnimator", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(skinModel, [spine]) is { } animator)
                 Animators.AddOrUpdate(visuals, animator); // 留住动画控制器，别被回收
+            else Log.Info($"召唤面板：{monsterId} 没有建出动画控制器");
+            var setUpSkin = visuals.GetType().GetMethod("SetUpSkin", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (setUpSkin == null) Log.Info($"召唤面板：{monsterId} 外观没有 SetUpSkin");
+            else setUpSkin.Invoke(visuals, [skinModel]);
+            // 点击框（Bounds）在 _Ready 里才有：这时按它把怪缩到视口高度的 30%、放在正中，之后再精确取景
+            if (GameReflection.Get(visuals, "Bounds") is G.Control bounds && bounds.Size.X > 1 && bounds.Size.Y > 1
+                && visuals.GetParent() is G.SubViewport vp)
+            {
+                var size = new G.Vector2(vp.Size.X, vp.Size.Y);
+                float scale = Math.Min(size.X * 0.30f / bounds.Size.X, size.Y * 0.30f / bounds.Size.Y);
+                visuals.Scale = new G.Vector2(scale, scale);
+                visuals.Position = size / 2 - (bounds.Position + bounds.Size / 2) * scale;
+            }
         }
         catch (Exception e) { Log.Warn($"召唤面板：{monsterId} 套皮肤/启动动画失败，按原样显示：{e.InnerException?.Message ?? e.Message}"); }
     }
@@ -675,47 +689,68 @@ internal sealed class SummonPanel : ISummonUi
     /// 读到的范围碰到视口边（说明还是太大被裁了）就再缩小一半重来，最多 3 次。
     /// 每张卡片错开几帧，免得同一帧里几十次从显卡读图卡一下。
     /// </summary>
-    private static void FitAndFreeze(G.SubViewport viewport, G.Node2D visuals, int order)
+    private static void FitAndFreeze(G.SubViewport viewport, G.Node2D visuals, int order, string monsterId = "")
     {
-        // 有的怪开场有入场动画（碎片飞入、从水里升起），太早量会量到碎片；等约 0.6 秒再量
-        int wait = 36 + order % 12, tries = 0;
-        bool fitted = false;
+        // 0.0.38 实测很多怪缺头/上半身：旧做法用去掉 1.5% 像素后的范围判断「有没有被裁」，细长的头被当成零星像素去掉了，
+        // 被裁也看不出来；放大后也不再检查。新做法：
+        // 1. 等约 0.8 秒（入场动画、骨骼摆好）；2. 隔几帧量 3 次取并集（动画在动）；碰到视口边就缩小一半重来；
+        // 3. 按并集放大到 88%、脚底贴近下沿；4. 放大后再量，碰边就再缩 15% 直到完整；5. 定格。
+        int wait = 48 + order % 12, samples = 0, shrinks = 0, checks = 0;
+        var union = new G.Rect2I();
+        string phase = "measure";
+        void Freeze(string note)
+        {
+            Tree.ProcessFrame -= Tick;
+            viewport.RenderTargetUpdateMode = G.SubViewport.UpdateMode.Disabled;
+            visuals.ProcessMode = G.Node.ProcessModeEnum.Disabled;
+            if (note.Length > 0) Log.Info($"召唤面板：{monsterId} 取景 {note}");
+        }
         void Tick()
         {
             if (!G.GodotObject.IsInstanceValid(viewport) || !G.GodotObject.IsInstanceValid(visuals)) { Tree.ProcessFrame -= Tick; return; }
             if (--wait > 0) return;
-            if (fitted)
-            {
-                Tree.ProcessFrame -= Tick;
-                viewport.RenderTargetUpdateMode = G.SubViewport.UpdateMode.Disabled;
-                visuals.ProcessMode = G.Node.ProcessModeEnum.Disabled;
-                return;
-            }
             try
             {
                 var size = new G.Vector2(viewport.Size.X, viewport.Size.Y);
-                var used = OpaqueRect(viewport.GetTexture().GetImage());
-                if (used.Size.X <= 0 || used.Size.Y <= 0) { fitted = true; wait = 1; return; } // 什么都没画出来，保持原样
-                bool clipped = used.Position.X <= 0 || used.Position.Y <= 0 || used.End.X >= size.X || used.End.Y >= size.Y;
-                if (clipped && ++tries < 3)
+                var used = OpaqueRect(viewport.GetTexture().GetImage(), 0.002);
+                bool Touches(G.Rect2I r) => r.Position.X <= 1 || r.Position.Y <= 1 || r.End.X >= size.X - 1 || r.End.Y >= size.Y - 1;
+                if (phase == "measure")
                 {
-                    Rescale(visuals, 0.5f, size / 2, size / 2); // 以视口中心缩小一半再量
-                    wait = 3;
+                    if (used.Size.X <= 0 || used.Size.Y <= 0) { Freeze("什么都没画出来"); return; }
+                    union = samples == 0 ? used : union.Merge(used);
+                    if (Touches(used) && shrinks < 4)
+                    {
+                        Rescale(visuals, 0.5f, size / 2, size / 2); // 太大被裁：以视口中心缩小一半，重新量
+                        shrinks++;
+                        samples = 0;
+                        wait = 4;
+                        return;
+                    }
+                    if (++samples < 3) { wait = 6; return; }
+                    var rect = new G.Rect2(union.Position, union.Size);
+                    float f = Math.Min(Math.Min(size.X * 0.88f / rect.Size.X, size.Y * 0.88f / rect.Size.Y), 6f); // 很小的怪也别放大到糊
+                    var center = rect.Position + rect.Size / 2;
+                    var target = new G.Vector2(size.X / 2, Math.Max(size.Y * 0.95f - rect.Size.Y * f / 2, rect.Size.Y * f / 2 + size.Y * 0.03f));
+                    Rescale(visuals, f, center, target);
+                    phase = "verify";
+                    wait = 4;
                     return;
                 }
-                var rect = new G.Rect2(used.Position, used.Size);
-                float f = Math.Min(size.X * 0.90f / rect.Size.X, size.Y * 0.90f / rect.Size.Y);
-                f = Math.Min(f, 6f); // 很小的怪也别放大到糊
-                var center = rect.Position + rect.Size / 2;
-                var target = new G.Vector2(size.X / 2, size.Y * 0.96f - rect.Size.Y * f / 2);
-                Rescale(visuals, f, center, target);
+                // verify：放大后还碰边就缩小 15% 再看
+                if (used.Size.X > 0 && Touches(used) && ++checks <= 5)
+                {
+                    var c = new G.Vector2(used.Position.X + used.Size.X / 2f, used.Position.Y + used.Size.Y / 2f);
+                    Rescale(visuals, 0.85f, c, new G.Vector2(size.X / 2, size.Y / 2));
+                    wait = 4;
+                    return;
+                }
+                Freeze(checks > 0 || shrinks > 0 ? $"缩小 {shrinks} 次、校正 {checks} 次，范围 {used}" : "");
             }
             catch (Exception e)
             {
-                Log.Warn($"召唤面板：自动取景失败，保持原样：{e.Message}");
+                Log.Warn($"召唤面板：{monsterId} 自动取景失败，保持原样：{e.Message}");
+                Freeze("");
             }
-            fitted = true;
-            wait = 3;
         }
         Tree.ProcessFrame += Tick;
     }
@@ -723,7 +758,7 @@ internal sealed class SummonPanel : ISummonUi
     /// <summary>
     /// 不透明像素的范围，去掉两头各 1.5% 的零星像素（飘散的粒子、远处的小特效），免得一点火星把主体缩得很小。
     /// </summary>
-    private static G.Rect2I OpaqueRect(G.Image image)
+    private static G.Rect2I OpaqueRect(G.Image image, double trimRatio = 0.015)
     {
         if (image.GetFormat() != G.Image.Format.Rgba8) image.Convert(G.Image.Format.Rgba8);
         int w = image.GetWidth(), h = image.GetHeight();
@@ -740,7 +775,7 @@ internal sealed class SummonPanel : ISummonUi
             total++;
         }
         if (total == 0) return new G.Rect2I();
-        int trim = (int)(total * 0.015);
+        int trim = (int)(total * trimRatio);
         (int lo, int hi) Range(int[] counts)
         {
             int lo = 0, hi = counts.Length - 1, acc = 0;

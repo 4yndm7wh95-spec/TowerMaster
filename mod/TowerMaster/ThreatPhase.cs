@@ -562,6 +562,33 @@ internal static class ThreatPhase
         return (Task)method.Invoke(null, [context, target, amount, null, null, false])!;
     }
 
+    /// <summary>往一名玩家的某个牌堆塞状态牌（原版 CardPileCmd.AddToCombatAndPreview）。牌的类型找不到就退回晕眩。</summary>
+    internal static Task AddStatus(string cardType, object target, string pile, int count)
+    {
+        var card = GameReflection.TypesNamed(cardType).FirstOrDefault(t => IsSubclassNamed(t, "CardModel"))
+                   ?? GameReflection.TypesNamed("Dazed").FirstOrDefault(t => IsSubclassNamed(t, "CardModel")) ?? throw new TypeLoadException(cardType);
+        var method = Static("CardPileCmd", "AddToCombatAndPreview", m => m.IsGenericMethodDefinition && m.GetParameters().Length == 5
+                                                                         && m.GetParameters()[0].ParameterType.Name == "Creature").MakeGenericMethod(card);
+        var ps = method.GetParameters();
+        return (Task)method.Invoke(null, [target, Enum.Parse(ps[1].ParameterType, pile), count, null, Enum.Parse(ps[4].ParameterType, "Random")])!;
+    }
+
+    /// <summary>对一个生物造成伤害（原版 CreatureCmd.Damage，无来源）。</summary>
+    internal static Task Damage(object context, object target, decimal amount)
+    {
+        var method = Static("CreatureCmd", "Damage", m => m.GetParameters().Length == 5 && m.GetParameters()[2].ParameterType == typeof(decimal));
+        var props = Enum.ToObject(method.GetParameters()[3].ParameterType, 0);
+        return (Task)method.Invoke(null, [context, target, amount, props, null])!;
+    }
+
+    /// <summary>往战斗里加一只怪（原版 CreatureCmd.Add，默认在敌人一侧）。</summary>
+    internal static Task AddMonster(object monster, object combat)
+    {
+        var method = Static("CreatureCmd", "Add", m => m.GetParameters().Length == 4 && m.GetParameters()[0].ParameterType.Name == "MonsterModel");
+        var ps = method.GetParameters();
+        return (Task)method.Invoke(null, [monster, combat, ps[2].HasDefaultValue ? ps[2].DefaultValue : Enum.ToObject(ps[2].ParameterType, 2), null])!;
+    }
+
     internal static Task AddDazed(object target)
     {
         var card = GameReflection.TypesNamed("Dazed").FirstOrDefault(t => IsSubclassNamed(t, "CardModel")) ?? throw new TypeLoadException("Dazed");

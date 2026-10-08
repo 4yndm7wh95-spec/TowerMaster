@@ -56,7 +56,8 @@ public static class MasterCards
     internal static readonly string[] StartingActions = ["block", "block", "heal", "strength", "strength_all", "weak", "vulnerable", "frail", "dazed"];
 
     /// <summary>精英/Boss 战后塔主 3 选 1 的奖励牌（不在初始牌组里）。</summary>
-    internal static readonly string[] RewardPool = ["fortify_all", "heal_all", "sap", "daze_all", "expose_all", "scheme", "surge"];
+    internal static readonly string[] RewardPool = ["fortify_all", "heal_all", "sap", "daze_all", "expose_all", "scheme", "surge",
+        "feast", "slime_gift", "thorns", "artifact", "call_help", "infight", "gamble", "heckle"];
 
     /// <summary>奖励牌：操作名、名字、卡图、目标类型（3 所有敌人、6 一名队友、7 所有队友、1 自己）、费用。</summary>
     private static readonly (string Op, string Name, string Art, int Target, int Cost)[] RewardOps =
@@ -64,7 +65,20 @@ public static class MasterCards
         ("fortify_all", "坚壁", "act_block", 3, 2), ("heal_all", "复苏", "act_heal", 3, 2), ("sap", "衰竭", "act_weak", 6, 2),
         ("daze_all", "迷雾", "act_dazed", 7, 1), ("expose_all", "弱点暴露", "act_vulnerable", 7, 2),
         ("scheme", "筹谋", "icon_trap", 1, 0), ("surge", "鼓动", "icon_threat_point", 1, 0),
+        // 0.0.39 娱乐牌（用户：和朋友玩、娱乐为主，可以恶搞）：笑点放在看得懂、能应对的场面变化上
+        ("feast", "请客", "act_heal", 0, 1), ("slime_gift", "黏液大礼包", "act_dazed", 6, 1), ("thorns", "荆棘丛", "act_block", 2, 1),
+        ("artifact", "金身", "act_block", 2, 1), ("call_help", "摇人", "master_portrait", 0, 2), ("infight", "内讧", "act_strength", 2, 1),
+        ("gamble", "惊喜盲盒", "icon_trap", 0, 0), ("heckle", "起哄", "act_vulnerable", 6, 0),
     ];
+
+    internal static int FeastHeal(int tier) => new[] { 5, 7, 9 }[Math.Clamp(tier, 1, 3) - 1];
+    internal static int SlimeCount(int tier) => tier >= 3 ? 3 : 2;
+    internal static int ThornsAmount(int tier) => new[] { 3, 4, 5 }[Math.Clamp(tier, 1, 3) - 1];
+    internal static int ArtifactAmount(int tier) => tier >= 3 ? 2 : 1;
+    internal static int InfightDamage(int tier) => new[] { 6, 8, 10 }[Math.Clamp(tier, 1, 3) - 1];
+    internal const int CallHelpMaxEnemies = 5;
+    /// <summary>「摇人」各幕召唤的小怪（按顺序取第一个游戏里有的）。</summary>
+    internal static readonly string[][] CallHelpMonsters = [["LeafSlimeS", "TwigSlimeS", "Inklet"], ["BowlbugEgg", "Exoskeleton", "BowlbugSilk"], ["PunchConstruct", "ScrollOfBiting", "TurretOperator"]];
 
     internal static int FortifyAmount(int tier) => new[] { 4, 6, 8 }[Math.Clamp(tier, 1, 3) - 1];
     internal const int HealAllPercent = 8;
@@ -106,6 +120,14 @@ public static class MasterCards
                     "daze_all" => "将 1 张晕眩放入每名玩家的抽牌堆。\n计入每场的晕眩次数。",
                     "expose_all" => "给予每名玩家 1 层易伤。",
                     "scheme" => $"抽 {SchemeDraw(act)} 张牌。",
+                    "feast" => $"每名玩家回复 {FeastHeal(act)} 点生命。\n所有敌人获得 1 点力量。",
+                    "slime_gift" => $"将 {SlimeCount(act)} 张黏液放入一名玩家的弃牌堆。",
+                    "thorns" => $"选择一名敌人，使其获得 {ThornsAmount(act)} 层荆棘。",
+                    "artifact" => $"选择一名敌人，使其获得 {ArtifactAmount(act)} 层人工制品。",
+                    "call_help" => $"召唤一只本幕的小怪加入战斗。\n每场战斗限 1 次，场上最多 {CallHelpMaxEnemies} 名敌人。",
+                    "infight" => $"选择一名敌人，使其受到 {InfightDamage(act)} 点伤害。\n其余敌人各获得 1 点力量。",
+                    "gamble" => "随机发生一件事：所有敌人获得 5 点格挡，或每名玩家获得 1 层虚弱，或每名玩家抽 1 张牌，或塔主获得 2 点能量。",
+                    "heckle" => "给予一名玩家 1 层易伤。\n该玩家抽 1 张牌。",
                     _ => "获得 1 点能量。", // 「消耗。」由原版按关键词自动加（0.0.34 实测写了会重复）
                 };
                 defs.Add(new($"act:{op}@{act}", $"TowerMaster{Pascal(op)}{act}", act > 1 ? $"{name}+{act - 1}" : name, desc,
@@ -366,6 +388,72 @@ public static class MasterCards
                         .First(x => x.Name == "Draw" && x.GetParameters().Length == 4 && x.GetParameters()[1].ParameterType == typeof(decimal))
                         .Invoke(null, [context, (decimal)SchemeDraw(def.Tier), m, false])!;
                     break;
+                case "feast":
+                    foreach (var c in MasterHand.LivingClimbers().ToList()) await ThreatPhase.Heal(c, FeastHeal(def.Tier));
+                    foreach (var e in MasterHand.LivingEnemies().ToList())
+                        if (MasterHand.StrengthOf(e) + 1 <= TowerMasterConfig.ByAct(p.StrengthCap, def.Tier))
+                        {
+                            await ThreatPhase.ApplyPowerWith("StrengthPower", context, e, 1);
+                            MasterHand.RecordStrength(e, 1, fromCard: true);
+                        }
+                    break;
+                case "slime_gift" when target != null:
+                    await ThreatPhase.AddStatus("Slimed", target, "Discard", SlimeCount(def.Tier));
+                    break;
+                case "thorns" when target != null:
+                    await ThreatPhase.ApplyPowerWith("ThornsPower", context, target, ThornsAmount(def.Tier));
+                    break;
+                case "artifact" when target != null:
+                    await ThreatPhase.ApplyPowerWith("ArtifactPower", context, target, ArtifactAmount(def.Tier));
+                    break;
+                case "call_help":
+                    if (ThreatPhase.CombatState() is { } combatState && CallHelpMonster(def.Tier) is { } monster)
+                    {
+                        await ThreatPhase.AddMonster(monster, combatState);
+                        MasterHand.Record(def, null, 0);
+                    }
+                    else Log.Warn("塔主牌：摇人找不到可召唤的小怪");
+                    break;
+                case "infight" when target != null:
+                    await ThreatPhase.Damage(context, target, InfightDamage(def.Tier));
+                    foreach (var e in MasterHand.LivingEnemies().Where(e => !ReferenceEquals(e, target)).ToList())
+                        if (MasterHand.StrengthOf(e) + 1 <= TowerMasterConfig.ByAct(p.StrengthCap, def.Tier))
+                        {
+                            await ThreatPhase.ApplyPowerWith("StrengthPower", context, e, 1);
+                            MasterHand.RecordStrength(e, 1, fromCard: true);
+                        }
+                    break;
+                case "gamble":
+                {
+                    int roll = MasterHand.Roll(4); // 各端同一个种子、同一次计数，结果一样
+                    Log.Info($"塔主牌：惊喜盲盒开出第 {roll + 1} 种");
+                    switch (roll)
+                    {
+                        case 0:
+                            foreach (var e in MasterHand.LivingEnemies().ToList()) await ThreatPhase.GainBlock(e, 5);
+                            break;
+                        case 1:
+                            foreach (var c in MasterHand.LivingClimbers().ToList()) await ThreatPhase.ApplyPowerWith("WeakPower", context, c, 1);
+                            break;
+                        case 2:
+                            foreach (var c in MasterHand.LivingClimbers().ToList())
+                                if (GameReflection.Get(c, "Player") is { } pl) await DrawFor(context, pl, 1);
+                            break;
+                        default:
+                            if (MasterHand.MasterPlayer() is { } mp)
+                                await (Task)RuntimeNetAction.Required("PlayerCmd").GetMethods(BindingFlags.Public | BindingFlags.Static)
+                                    .First(x => x.Name == "GainEnergy" && x.GetParameters().Length == 2).Invoke(null, [2m, mp])!;
+                            break;
+                    }
+                    try { SummonPhase.Toast(new[] { "惊喜盲盒：敌人全体 +5 格挡", "惊喜盲盒：每名玩家 1 层虚弱", "惊喜盲盒：每名玩家抽 1 张牌（塔主亏了）", "惊喜盲盒：塔主 +2 能量" }[roll]); }
+                    catch { /* 测试里没有界面 */ }
+                    break;
+                }
+                case "heckle" when target != null:
+                    await ThreatPhase.ApplyPowerWith("VulnerablePower", context, target, 1);
+                    MasterHand.Record(def with { Op = "vulnerable" }, target, 0);
+                    if (GameReflection.Get(target, "Player") is { } hp) await DrawFor(context, hp, 1);
+                    break;
                 case "surge" when MasterHand.MasterPlayer() is { } m:
                     await (Task)RuntimeNetAction.Required("PlayerCmd").GetMethods(BindingFlags.Public | BindingFlags.Static)
                         .First(x => x.Name == "GainEnergy" && x.GetParameters().Length == 2).Invoke(null, [1m, m])!;
@@ -374,6 +462,27 @@ public static class MasterCards
             Log.Info($"塔主牌：打出 {def.Title}{(target != null ? $" → {GameReflection.Get(target, "Monster")?.GetType().Name ?? Test2MasterOffField.NetIdOf(target)?.ToString()}" : "")}");
         }
         catch (Exception e) { Log.Error($"塔主牌：{def.Title} 效果失败", e); }
+    }
+
+    private static Task DrawFor(object context, object player, int count) =>
+        (Task)RuntimeNetAction.Required("CardPileCmd").GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .First(x => x.Name == "Draw" && x.GetParameters().Length == 4 && x.GetParameters()[1].ParameterType == typeof(decimal))
+            .Invoke(null, [context, (decimal)count, player, false])!;
+
+    /// <summary>「摇人」：本幕小怪列表里第一个游戏里有的，做成可变实例。</summary>
+    private static object? CallHelpMonster(int tier)
+    {
+        foreach (var id in CallHelpMonsters[Math.Clamp(tier, 1, 3) - 1])
+        {
+            try
+            {
+                if (GameReflection.TypeNamed(id) == null) continue;
+                var canonical = Test1bMixedEncounter.Model("Monster", id);
+                return canonical.GetType().GetMethod("ToMutable", Type.EmptyTypes)?.Invoke(canonical, null) ?? canonical;
+            }
+            catch { /* 试下一个 */ }
+        }
+        return null;
     }
 
     // ---------------------------------------------------------------- 本地化：cards 表里补标题和说明

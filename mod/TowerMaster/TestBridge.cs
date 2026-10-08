@@ -633,8 +633,6 @@ internal static class TestBridge
     private static object CombatHand()
     {
         var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
-        // 塔主回合里爬塔玩家的出牌会排队、之后多半被取消；直接拒绝，免得测试脚本重复提交堆出一串（0.0.37 实测）
-        if (ThreatPhase.PausedHere && !Test3MasterAutoPilot.LocalIsMaster) throw Fail("invalid_phase", "塔主回合中，玩家出牌暂停，等塔主结束再出");
         var player = LocalPlayer(state);
         var pcs = GameReflection.Get(player, "PlayerCombatState") ?? throw Fail("invalid_phase", "不在战斗中");
         var cards = (GameReflection.Get(GameReflection.Get(pcs, "Hand")!, "Cards") as IEnumerable)!.Cast<object>()
@@ -668,6 +666,8 @@ internal static class TestBridge
     /// </summary>
     private static object CombatPlay(JsonObject a)
     {
+        // 塔主回合里爬塔玩家的出牌会排队、之后多半被取消；直接拒绝，免得测试脚本重复提交堆出一串（0.0.37 实测）
+        if (ThreatPhase.PausedHere && !Test3MasterAutoPilot.LocalIsMaster) throw Fail("invalid_phase", "塔主回合中，玩家出牌暂停，等塔主结束再出");
         var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
         var player = LocalPlayer(state);
         var pcs = GameReflection.Get(player, "PlayerCombatState") ?? throw Fail("invalid_phase", "不在战斗中");
@@ -700,6 +700,8 @@ internal static class TestBridge
     /// <summary>本机玩家结束回合：入队 EndPlayerTurnAction(Player, 回合数)，和按结束回合按钮一样。</summary>
     private static object CombatEndTurn()
     {
+        // 塔主回合里爬塔玩家的出牌会排队、之后多半被取消；直接拒绝，免得测试脚本重复提交堆出一串（0.0.37 实测）
+        if (ThreatPhase.PausedHere && !Test3MasterAutoPilot.LocalIsMaster) throw Fail("invalid_phase", "塔主回合中，玩家出牌暂停，等塔主结束再出");
         var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
         var player = LocalPlayer(state);
         var pcs = GameReflection.Get(player, "PlayerCombatState") ?? throw Fail("invalid_phase", "不在战斗中");

@@ -13,5 +13,6 @@ internal static class NoGodotUi
         MasterRewards.AfterUiSettles = send => send();
         MasterRewards.WhenTrue = (ready, act) => { if (ready()) act(); };
         MasterRewards.NoticeSink = _ => { };
+        SummonPhase.Toast = _ => { }; // 需要记录提示的测试在自己的 Init 里再换
     }
 }
