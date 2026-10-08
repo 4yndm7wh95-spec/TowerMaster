@@ -137,6 +137,9 @@ internal static class MasterRewards
     /// <summary>等原版战斗奖励界面压进覆盖栈之后再发（0.0.34 实测：先发会被它盖住、两端卡住）。测试里直接发。</summary>
     internal static Action<Action> WhenRewardsShown = send => WaitFrames(send, RewardsScreenShown, 15, 300, "原版奖励界面");
 
+    /// <summary>等条件成立（最多约 20 秒）再做；测试里条件成立就直接做。</summary>
+    internal static Action<Func<bool>, Action> WhenTrue = (ready, act) => WaitFrames(act, ready, 30, 1200, "读档完成");
+
     /// <summary>非战斗房间：等房间界面稳定（约半秒）再发。测试里直接发。</summary>
     internal static Action<Action> AfterUiSettles = send => WaitFrames(send, () => true, 30, 30, "房间界面");
 
@@ -151,6 +154,7 @@ internal static class MasterRewards
             if ((seenAt >= 0 && frames - seenAt >= settle) || frames > max)
             {
                 tree.ProcessFrame -= Tick;
+                if (seenAt < 0 && what == "读档完成") { Log.Warn("塔主牌：等不到读档完成（不是房主或没有对局），不同步牌组"); return; }
                 Log.Info(seenAt >= 0 ? $"塔主牌：{what}已就绪（第 {seenAt} 帧），打开塔主选牌" : $"塔主牌：没等到{what}，直接打开塔主选牌");
                 send();
             }

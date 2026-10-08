@@ -11,6 +11,7 @@ internal static class NoGodotUi
         MasterHand.ShowHand = _ => { };
         MasterRewards.WhenRewardsShown = send => send();
         MasterRewards.AfterUiSettles = send => send();
+        MasterRewards.WhenTrue = (ready, act) => { if (ready()) act(); };
         MasterRewards.NoticeSink = _ => { };
     }
 }

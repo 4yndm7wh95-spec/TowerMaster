@@ -34,9 +34,13 @@ internal static class RunLifecycle
     {
         try
         {
-            if (!Test3MasterAutoPilot.LocalIsMaster) return;
-            MasterLedger.EnsureLoaded();
-            if (MasterCards.Enabled) MasterRewards.AfterUiSettles(() => MasterDeck.Publish("读档后按账本同步牌组"));
+            // 原版 SetUpSavedMultiplayer 是异步的：这里运行时，重开游戏后的读档还没设好联机身份（0.0.37 实测：关游戏重开读档，
+            // 被当成不是塔主而跳过，删掉的牌回来了）。所以等到「是房主且有对局」再读账本、重发牌组。
+            MasterRewards.WhenTrue(() => Test3MasterAutoPilot.LocalIsMaster && GameReflection.Get(Test1bMixedEncounter.Run, "State") != null, () =>
+            {
+                MasterLedger.EnsureLoaded();
+                if (MasterCards.Enabled) MasterDeck.Publish("读档后按账本同步牌组");
+            });
         }
         catch (Exception e) { Log.Error("读档：恢复塔主账本失败", e); }
     }

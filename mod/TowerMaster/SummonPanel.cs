@@ -616,6 +616,9 @@ internal sealed class SummonPanel : ISummonUi
                 RenderTargetUpdateMode = G.SubViewport.UpdateMode.Always,
             };
             viewport.AddChild(visuals);
+            // 原版战斗里建完外观还会套皮肤、启动动画（NCreatureVisuals.SetUpSkin、MonsterModel.GenerateAnimator）；
+            // 不做的话有的怪缺零件（头在皮肤里）、骨骼停在没摆好的姿势、零件散开（0.0.37 用户截图）
+            visuals.Ready += () => SetUpLikeCombat(visuals, model, monsterId);
 
             // 先按点击框（Bounds）缩得很小、放在正中画几帧（高个子、带特效的怪画出来常比点击框大很多），
             // 再读出实际画了像素的范围，按这个范围缩放、脚底贴底；见 FitAndFreeze
@@ -649,6 +652,22 @@ internal sealed class SummonPanel : ISummonUi
     }
 
     private static int _portraits;
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<G.Node, object> Animators = new();
+
+    private static void SetUpLikeCombat(G.Node2D visuals, object model, string monsterId)
+    {
+        try
+        {
+            var skinModel = model;
+            try { if (GameReflection.Get(model, "IsMutable") is false && model.GetType().GetMethod("ToMutable", Type.EmptyTypes) is { } m) skinModel = m.Invoke(model, null) ?? model; }
+            catch { /* 用规范模型 */ }
+            visuals.GetType().GetMethod("SetUpSkin", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(visuals, [skinModel]);
+            if (GameReflection.Get(visuals, "SpineBody") is { } spine
+                && skinModel.GetType().GetMethod("GenerateAnimator", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(skinModel, [spine]) is { } animator)
+                Animators.AddOrUpdate(visuals, animator); // 留住动画控制器，别被回收
+        }
+        catch (Exception e) { Log.Warn($"召唤面板：{monsterId} 套皮肤/启动动画失败，按原样显示：{e.InnerException?.Message ?? e.Message}"); }
+    }
 
     /// <summary>
     /// 自动取景：画几帧后读视口图片里不透明像素的范围（Image.GetUsedRect），按它放大到视口 90%、水平居中、底部贴近下沿，
