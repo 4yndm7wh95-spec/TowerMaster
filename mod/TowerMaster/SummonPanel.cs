@@ -670,6 +670,16 @@ internal sealed class SummonPanel : ISummonUi
             var setUpSkin = visuals.GetType().GetMethod("SetUpSkin", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
             if (setUpSkin == null) Log.Info($"召唤面板：{monsterId} 外观没有 SetUpSkin");
             else setUpSkin.Invoke(visuals, [skinModel]);
+            // 预览里不要粒子特效：会把取景范围撑大（淤泥旋螺被粒子柱挤成小点），头上的飘散粒子也不是本体
+            var stack = new Stack<G.Node>();
+            stack.Push(visuals);
+            while (stack.Count > 0)
+            {
+                var n = stack.Pop();
+                if (n is G.GpuParticles2D gpu) { gpu.Emitting = false; gpu.Visible = false; }
+                else if (n is G.CpuParticles2D cpu) { cpu.Emitting = false; cpu.Visible = false; }
+                foreach (var child in n.GetChildren()) stack.Push(child);
+            }
             // 点击框（Bounds）在 _Ready 里才有：这时按它把怪缩到视口高度的 30%、放在正中，之后再精确取景
             if (GameReflection.Get(visuals, "Bounds") is G.Control bounds && bounds.Size.X > 1 && bounds.Size.Y > 1
                 && visuals.GetParent() is G.SubViewport vp)
@@ -695,7 +705,8 @@ internal sealed class SummonPanel : ISummonUi
         // 被裁也看不出来；放大后也不再检查。新做法：
         // 1. 等约 0.8 秒（入场动画、骨骼摆好）；2. 隔几帧量 3 次取并集（动画在动）；碰到视口边就缩小一半重来；
         // 3. 按并集放大到 88%、脚底贴近下沿；4. 放大后再量，碰边就再缩 15% 直到完整；5. 定格。
-        int wait = 48 + order % 12, samples = 0, shrinks = 0, checks = 0;
+        int wait = 48 + order % 12, samples = 0, shrinks = 0, checks = 0, empties = 0;
+        bool shown = false;
         var union = new G.Rect2I();
         string phase = "measure";
         void Freeze(string note)
@@ -708,6 +719,9 @@ internal sealed class SummonPanel : ISummonUi
         void Tick()
         {
             if (!G.GodotObject.IsInstanceValid(viewport) || !G.GodotObject.IsInstanceValid(visuals)) { Tree.ProcessFrame -= Tick; return; }
+            // 隐藏的卡片（别的幕分页、筛掉的）不渲染，量出来是空的（0.0.39 实测第二、三幕 20 只怪因此定格成很小）：等它显示出来再开始量
+            if (viewport.GetParent() is G.CanvasItem holder && !holder.IsVisibleInTree()) { shown = false; return; }
+            if (!shown) { shown = true; wait = Math.Max(wait, 20); }
             if (--wait > 0) return;
             try
             {
@@ -716,7 +730,12 @@ internal sealed class SummonPanel : ISummonUi
                 bool Touches(G.Rect2I r) => r.Position.X <= 1 || r.Position.Y <= 1 || r.End.X >= size.X - 1 || r.End.Y >= size.Y - 1;
                 if (phase == "measure")
                 {
-                    if (used.Size.X <= 0 || used.Size.Y <= 0) { Freeze("什么都没画出来"); return; }
+                    if (used.Size.X <= 0 || used.Size.Y <= 0)
+                    {
+                        if (++empties < 10) { wait = 6; return; } // 可能还没画出来，再等等
+                        Freeze("什么都没画出来");
+                        return;
+                    }
                     union = samples == 0 ? used : union.Merge(used);
                     if (Touches(used) && shrinks < 4)
                     {

@@ -565,6 +565,8 @@ TOOLS = [
          lambda a: call(host_or(a), "/master/deck")),
     tool("tm_master_hand", "塔主战斗中的手牌（塔主牌模式）：是否塔主回合、能量、每张牌（序号、标题、目标类型、能不能打及原因）、抽牌/弃牌堆张数。", INST, [],
          lambda a: call(host_or(a), "/master/hand")),
+    tool("tm_master_grant", "测试用：给塔主牌组加一张塔主牌（op=操作名，如 call_help、gamble、infight），记进账本并同步牌组，下一场战斗起能抽到。",
+         {**INST, "op": S}, ["op"], lambda a: call(host_or(a), "/master/grant", {"op": a["op"]})),
     tool("tm_master_play", "塔主打出手牌第 index 张（等同原版拖牌，走 TryManualPlay）：给怪用 monster=敌人下标，给玩家用 player=联机 id。",
          {**INST, "index": I, "monster": I, "player": I}, ["index"],
          lambda a: call(host_or(a), "/master/play", {k: a[k] for k in ("index", "monster", "player") if a.get(k) is not None})),

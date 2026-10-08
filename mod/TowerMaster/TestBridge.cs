@@ -219,6 +219,7 @@ internal static class TestBridge
                 "/traps" => _ => Main(Traps),
                 "/master/deck" => _ => Main(MasterDeckView),
                 "/master/hand" => _ => Main(MasterHandView),
+                "/master/grant" => a => Main(() => MasterGrant(a)),
                 "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
@@ -753,6 +754,18 @@ internal static class TestBridge
             draw_pile = Pile("DrawPile").Count,
             discard_pile = Pile("DiscardPile").Count,
         };
+    }
+
+    /// <summary>测试用：给塔主牌组加一张行动牌（记进账本、发牌组指令，两端一致；下一场战斗起能抽到）。op 用操作名，如 call_help。</summary>
+    private static object MasterGrant(JsonObject a)
+    {
+        var op = a["op"]?.GetValue<string>() ?? throw Fail("bad_request", "要 op（操作名，如 call_help）");
+        if (!MasterCards.StartingActions.Contains(op) && !MasterCards.RewardPool.Contains(op)) throw Fail("unknown_option", $"没有塔主牌 {op}");
+        if (!Test3MasterAutoPilot.LocalIsMaster) throw Fail("invalid_phase", "只能在塔主（房主）上调用");
+        MasterLedger.EnsureLoaded();
+        MasterLedger.TakeReward(-900000 - MasterLedger.ExtraCards.Count, op);
+        MasterDeck.Publish($"测试接口加牌 {op}");
+        return new { granted = op, extra_cards = MasterLedger.ExtraCards, note = "下一场战斗起在抽牌堆里" };
     }
 
     private static object CanPlay(object card)
