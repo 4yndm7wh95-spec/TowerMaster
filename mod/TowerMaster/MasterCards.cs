@@ -317,6 +317,7 @@ public static class MasterCards
     {
         var def = DefOf(self);
         if (def == null || def.Unplayable) return;
+        MasterStats.RecordCard(def.Title);
         var target = GameReflection.Get(cardPlay, "Target");
         var p = ModEntry.Active.Threat;
         try

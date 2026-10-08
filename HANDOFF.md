@@ -1,3 +1,13 @@
+## 0.0.41 实测 → 0.0.42：塔主信息条、塔主战报、面板重开（2026-10-08）
+
+0.0.41 实测（`docs/ui-041-result.md`）：图鉴式预览通过（53 只全部完整，三只散件修好，NCreature 失败 0 次）；内讧、盲盒提示排队、筛选按钮悬停通过；23/23 摘要一致。
+问题：同一个召唤面板 Close 后再 Show（测试接口压力调用）碰到已释放的筛选按钮，Close 解绑了没绑过的 process_frame。
+0.0.42：
+- 面板重开先清掉旧按钮登记、会话事件先解再绑，Close 只解绑真的绑过的 process_frame；取景开始前再关一遍后加的粒子。
+- 塔主信息条（MasterInfoHud）：挂在原版顶栏（NTopBar）下方右侧。手里陷阱张数（deck 指令里 trap: 牌数）、本场盖下（trap_info）、已触发（trap 指令，悬停看名字）、本幕候选 Boss（SummonPhase.PublicBossNames，各端自己算）。
+- 塔主战报（RunReport 在 Core，可测；MasterStats 按种子记陷阱触发和塔主出牌到 *.stats.json；召唤和 Boss 从 PlanStore 清单读；RunReportPanel 挂 NGameOverScreen._Ready，1.2 秒后弹）。测试接口 /master/report（MCP tm_master_report：won/show/close）。
+- 掉线：塔主=房主，原版房主断线整局断开，靠读档恢复（已验证）；挂机有限时配置。设计文档对应三项勾掉。
+
 ## 0.0.40 实测 → 0.0.41：图鉴式预览、内讧、筛选按钮、提示排队（2026-10-08）
 
 0.0.40 实测（`docs/ui-040-result.md`）：隐藏分页取景修好（53 只候选正常）；淤泥旋螺、缩小甲虫正常；黏液大礼包、荆棘丛、金身、摇人通过；盲盒两端结果一致；27 条摘要一致。

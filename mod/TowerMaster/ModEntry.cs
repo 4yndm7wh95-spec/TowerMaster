@@ -31,6 +31,7 @@ public static class ModEntry
         var settings = TestSettings.Load();
         var prices = PriceBook.Load(Path.Combine(Log.ModDir, "price_book.data"));
         Log.Info($"价格表 {prices.Version}，{prices.Acts.Count} 幕");
+        Prices = prices;
 
         if (settings.Probe) GameProbe.Run();
 
@@ -45,7 +46,13 @@ public static class ModEntry
         if (settings.Test3MasterAutoPilot) Test3MasterAutoPilot.Apply(harmony, settings);
         // 召唤阶段要用测试 1b 的清单通道（上面已经挂好），塔主身份沿用测试 2
         var config = LoadConfig();
-        if (settings.SummonPhase && settings.Test1bMixedEncounter) SummonPhase.Apply(harmony, config, prices);
+        if (settings.SummonPhase && settings.Test1bMixedEncounter)
+        {
+            SummonPhase.Apply(harmony, config, prices);
+            MasterInfoHud.Start();
+            try { RunReportPanel.Apply(harmony); }
+            catch (Exception e) { Log.Error("塔主战报：初始化失败（不影响游戏）", e); }
+        }
         else if (settings.SummonPhase) Log.Warn("召唤阶段需要 test1b_mixed_encounter 开着（复用它的清单通道），没有启用");
         if (settings.MasterTurn && settings.SummonPhase && settings.Test1bMixedEncounter) ThreatPhase.Apply(harmony, config, prices);
         else if (settings.MasterTurn) Log.Warn("塔主回合需要 summon_phase 和 test1b_mixed_encounter 开着，没有启用");
@@ -93,6 +100,8 @@ public static class ModEntry
 
     /// <summary>当前生效的数值（测试接口读）。</summary>
     internal static TowerMasterConfig Active { get; private set; } = new();
+    /// <summary>加载好的价格表（怪物、遭遇的中文名等）；还没加载时为 null。</summary>
+    internal static PriceBook? Prices { get; private set; }
 
     private static Assembly? ResolveFromModDir(object? sender, ResolveEventArgs args)
     {

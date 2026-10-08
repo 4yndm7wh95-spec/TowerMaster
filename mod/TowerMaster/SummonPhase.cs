@@ -144,7 +144,7 @@ internal static class SummonPhase
     }
 
     private static object State => GameReflection.Get(Test1bMixedEncounter.Run, "State") ?? throw new InvalidOperationException("没有进行中的对局");
-    private static ulong Seed(object state) => Convert.ToUInt64(GameReflection.Get(GameReflection.Get(state, "Rng")!, "Seed"));
+    internal static ulong Seed(object state) => Convert.ToUInt64(GameReflection.Get(GameReflection.Get(state, "Rng")!, "Seed"));
     private static string ActId(object state) => GameReflection.Get(state, "Act")!.GetType().Name;
 
     private static int Climbers(object state) =>
@@ -240,6 +240,17 @@ internal static class SummonPhase
             "Boss" => RoomKind.Boss,
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// 本幕公开的候选 Boss 中文名（玩家信息条用；各端用同一个种子和规则算，结果相同，不用发网络消息）。没有对局/没有规则时为空。
+    /// </summary>
+    internal static IReadOnlyList<string> PublicBossNames()
+    {
+        if (_rules == null || GameReflection.Get(Test1bMixedEncounter.Run, "State") is not { } state) return [];
+        if (!_rules.Prices.Acts.TryGetValue(ActId(state), out var act)) return [];
+        return BossCandidates(state, ActId(state), act.ActNo)
+            .Select(id => act.Encounters.TryGetValue(id, out var e) ? e.NameZh : id).ToList();
     }
 
     /// <summary>候选 Boss：游戏本来为本幕选的 Boss 在前，再按种子抽一个本幕其他 Boss（只在房主算，结果随清单广播）。</summary>

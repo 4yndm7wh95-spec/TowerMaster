@@ -102,6 +102,7 @@ internal static class MasterDeck
             var card = create.Invoke(state, [MasterCards.Canonical(type), player])!;
             RuntimeNetAction.Call(deck, "AddInternal", card, -1, true);
         }
+        MasterInfoHud.OnDeck(keys);
         Log.Info($"塔主牌组：{reason}，换成 {keys.Count} 张：{string.Join("、", keys.Select(k => MasterCards.TypeOf(k) is { } t ? MasterCards.DefOf(MasterCards.Canonical(t))?.Title : k))}");
     }
 }

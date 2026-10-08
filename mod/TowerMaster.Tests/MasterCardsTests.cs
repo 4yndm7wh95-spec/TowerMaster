@@ -132,6 +132,19 @@ public class MasterCardsTests
     }
 
     [Fact]
+    public void InfoHudCountsTrapCardsInTheMastersDeck()
+    {
+        MasterInfoHud.ResetRun();
+        Assert.Contains("手里 ?", MasterInfoHud.Describe([]).Line1);
+        MasterInfoHud.OnDeck(["act:block@1", "trap:harden@1", "trap:rally@2"]);
+        var (line1, line2, tip) = MasterInfoHud.Describe(["甲", "乙"]);
+        Assert.Contains("手里 2", line1);
+        Assert.Equal("本幕 Boss：甲 / 乙", line2);
+        Assert.Contains("内容保密", tip);
+        MasterInfoHud.ResetRun();
+    }
+
+    [Fact]
     public async Task DamagePicksTheSingleTargetOverload()
     {
         var target = new MegaCrit.Sts2.Core.Entities.Creatures.Creature(20);

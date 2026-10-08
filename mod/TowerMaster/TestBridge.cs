@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using TowerMaster.Core;
 
 namespace TowerMaster;
 
@@ -220,6 +221,7 @@ internal static class TestBridge
                 "/master/deck" => _ => Main(MasterDeckView),
                 "/master/hand" => _ => Main(MasterHandView),
                 "/master/grant" => a => Main(() => MasterGrant(a)),
+                "/master/report" => a => Main(() => MasterReport(a)),
                 "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
@@ -766,6 +768,21 @@ internal static class TestBridge
         MasterLedger.TakeReward(-900000 - MasterLedger.ExtraCards.Count, op);
         MasterDeck.Publish($"测试接口加牌 {op}");
         return new { granted = op, extra_cards = MasterLedger.ExtraCards, note = "下一场战斗起在抽牌堆里" };
+    }
+
+    /// <summary>塔主战报：按当前对局凑数据（won 不给就按爬塔玩家是否全灭）；show=true 时弹出面板（截图用），close=true 关掉。</summary>
+    private static object MasterReport(JsonObject a)
+    {
+        if (a["close"]?.GetValue<bool>() == true) { RunReportPanel.Close(); return new { closed = true }; }
+        var state = GameReflection.Get(Test1bMixedEncounter.Run, "State") ?? throw Fail("invalid_phase", "没有进行中的对局");
+        var input = MasterStats.Collect(state, a["won"]?.GetValue<bool>());
+        var view = RunReport.Build(input);
+        if (a["show"]?.GetValue<bool>() == true) RunReportPanel.Show(view);
+        return new
+        {
+            master_won = input.MasterWon, input.Floor, input.Fights, summoned = input.Summoned, bosses = input.Bosses, traps = input.Traps, cards = input.Cards,
+            view.Title, view.Subtitle, view.Honor, honor_reason = view.HonorReason, lines = view.Lines.Select(l => new { l.Label, l.Value }),
+        };
     }
 
     private static object CanPlay(object card)

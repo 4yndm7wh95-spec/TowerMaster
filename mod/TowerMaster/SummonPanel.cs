@@ -66,6 +66,11 @@ internal sealed class SummonPanel : ISummonUi
     /// </summary>
     public void Show()
     {
+        // 同一个面板关了再开（0.0.41 测试接口压力调用）：先把上一次的界面和按钮登记清掉，不然改样式时碰到已释放的按钮
+        Close();
+        _cards.Clear();
+        _trapButtons.Clear();
+        _filterButtons.Clear();
         _layer = new G.CanvasLayer { Layer = 100 };
         var backdrop = new G.ColorRect { Color = Backdrop, MouseFilter = G.Control.MouseFilterEnum.Stop };
         backdrop.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
@@ -106,19 +111,26 @@ internal sealed class SummonPanel : ISummonUi
         body.AddChild(Sidebar());
 
         ApplyGameFont(_layer);
-        _session.Finished += _ => Close();
+        _session.Finished -= OnFinished;
+        _session.Finished += OnFinished;
+        _session.Changed -= Render;
         _session.Changed += Render;
         _lastTicks = G.Time.GetTicksMsec();
         Tree.ProcessFrame += OnFrame;
+        _frameHooked = true;
         AddDeferred(_layer);
         Render();
     }
 
+    private void OnFinished(SummonSession _) => Close();
+    private bool _frameHooked;
+
     public void Close()
     {
-        if (_layer == null) return; // 关两次时不再解绑（Godot 报「disconnect a nonexistent connection」，0.0.29 实测塔主端还剩 2 次）
-        Tree.ProcessFrame -= OnFrame;
-        _layer?.QueueFree();
+        // 只解绑真的绑过的（Godot 解绑不存在的连接会报 ERROR：0.0.29 关两次、0.0.41 Show 中途失败后关）
+        if (_frameHooked) Tree.ProcessFrame -= OnFrame;
+        _frameHooked = false;
+        if (_layer != null && G.GodotObject.IsInstanceValid(_layer)) _layer.QueueFree();
         _layer = null;
     }
 
@@ -796,6 +808,8 @@ internal sealed class SummonPanel : ISummonUi
             if (--wait > 0) return;
             try
             {
+                // 有的粒子是动画跑起来后才加的（缩小甲虫头上的白粒子，0.0.41 实测），量之前再关一遍
+                if (phase == "measure" && samples == 0) Quiet(visuals);
                 var size = new G.Vector2(viewport.Size.X, viewport.Size.Y);
                 var used = OpaqueRect(viewport.GetTexture().GetImage(), 0.002);
                 bool Touches(G.Rect2I r) => r.Position.X <= 1 || r.Position.Y <= 1 || r.End.X >= size.X - 1 || r.End.Y >= size.Y - 1;

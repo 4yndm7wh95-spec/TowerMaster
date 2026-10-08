@@ -57,6 +57,16 @@ internal static class PlanStore
         }
     }
 
+    /// <summary>这一局（种子）用过的所有清单，每场一份（文件里一场有按楼层、按坐标两条，去重）。</summary>
+    public static List<SummonPlan> All(ulong seed)
+    {
+        lock (Lock)
+        {
+            return Read().Values.Where(p => p.Seed == seed).GroupBy(p => (p.Act, p.SourceFloor)).Select(g => g.OrderByDescending(p => p.Sequence).First())
+                .OrderBy(p => p.SourceFloor).ToList();
+        }
+    }
+
     public static void Clear()
     {
         lock (Lock)

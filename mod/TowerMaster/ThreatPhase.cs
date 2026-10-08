@@ -387,6 +387,7 @@ internal static class ThreatPhase
                 case "trap_info":
                     // Amount = 本场盖下几张（公开张数、不公开内容，空陷阱才有诈唬的意义），Monster = 塔主手里还剩几张
                     Log.Info($"{tag}：塔主盖下 {command.Amount} 张陷阱，手里还有 {Math.Max(0, command.Monster)} 张");
+                    MasterInfoHud.OnTrapInfo(command.Amount, command.Monster);
                     if (!Test3MasterAutoPilot.LocalIsMaster)
                         SummonPhase.Toast(command.Amount > 0 ? $"塔主盖下了 {command.Amount} 张陷阱" : "塔主这场没有盖陷阱");
                     break;
@@ -470,6 +471,8 @@ internal static class ThreatPhase
         if (!TrapCatalog.Exists(card.Id)) { Log.Warn($"{tag}：不认识的陷阱 {c.MonsterId}，跳过"); return; }
         var combat = CombatState();
         if (combat == null) { Log.Info($"{tag}：已不在战斗中，陷阱 {card} 跳过"); return; }
+        MasterInfoHud.OnTrapTriggered(card.Name);
+        MasterStats.RecordTrap(card.Name);
         var def = card.Def;
         var enemies = Enemies(combat).Where(Alive).ToList();
         var players = c.Player != 0

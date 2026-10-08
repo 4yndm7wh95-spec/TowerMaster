@@ -53,6 +53,7 @@ internal static class RunLifecycle
             ThreatPhase.ResetRun();
             SummonPhase.ResetRun();
             MasterDeck.ResetRun();
+            MasterInfoHud.ResetRun();
             Test3MasterAutoPilot.ResetRun();
         }
         catch (Exception e) { Log.Error("局开始/结束：清理失败", e); }
