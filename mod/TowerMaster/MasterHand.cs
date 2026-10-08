@@ -88,27 +88,53 @@ internal static class MasterHand
     /// <summary>显示塔主手牌界面；测试里换成空操作（没有 Godot 引擎）。</summary>
     internal static Action<string> ShowHand = ShowHandUi;
 
+    /// <summary>
+    /// 原版结束回合按钮在回合开始时按「塔主死着」处理过（藏起来了）。塔主救活后在塔主屏幕上再调一次它自己的回合开始处理
+    /// （NEndTurnButton.OnTurnStarted），让它像正常玩家那样出现；不行就直接调入场动画。
+    /// </summary>
+    private static void ShowEndTurnButton(Godot.Node root, string tag)
+    {
+        var button = Find(root, "NEndTurnButton");
+        if (button == null) { Log.Warn($"{tag}：没找到原版结束回合按钮 NEndTurnButton"); return; }
+        try
+        {
+            var state = ThreatPhase.CombatState();
+            var onTurn = button.GetType().GetMethods(GameReflection.All).FirstOrDefault(m => m.Name == "OnTurnStarted" && m.GetParameters().Length == 1);
+            if (onTurn != null && state != null) onTurn.Invoke(button, [state]);
+            else button.GetType().GetMethods(GameReflection.All).FirstOrDefault(m => m.Name == "AnimIn" && m.GetParameters().Length == 0)?.Invoke(button, null);
+            if (button is Godot.CanvasItem item) item.Visible = true;
+            Log.Info($"{tag}：原版结束回合按钮已显示（状态 {GameReflection.Get(button, "_state")}）");
+        }
+        catch (Exception e) { Log.Warn($"{tag}：显示原版结束回合按钮失败：{e.InnerException?.Message ?? e.Message}"); }
+    }
+
+    private static Godot.Node? Find(Godot.Node root, string typeName)
+    {
+        var stack = new Stack<Godot.Node>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node.GetType().Name == typeName) return node;
+            foreach (var child in node.GetChildren()) stack.Push(child);
+        }
+        return null;
+    }
+
     /// <summary>塔主自己的屏幕：原版对死亡的本机玩家可能隐藏手牌界面，找到 NPlayerHand 记下状态并显示出来。</summary>
     private static void ShowHandUi(string tag)
     {
         try
         {
             if (Godot.Engine.GetMainLoop() is not Godot.SceneTree tree) return;
-            var stack = new Stack<Godot.Node>();
-            stack.Push(tree.Root);
-            while (stack.Count > 0)
+            if (Find(tree.Root, "NPlayerHand") is Godot.CanvasItem hand)
             {
-                var node = stack.Pop();
-                if (node.GetType().Name == "NPlayerHand" && node is Godot.CanvasItem item)
-                {
-                    Log.Info($"{tag}：原版手牌界面 {node.GetPath()} visible={item.Visible} modulate={item.Modulate}");
-                    item.Visible = true;
-                    item.Modulate = Godot.Colors.White;
-                    return;
-                }
-                foreach (var child in node.GetChildren()) stack.Push(child);
+                Log.Info($"{tag}：原版手牌界面 {hand.GetPath()} visible={hand.Visible} modulate={hand.Modulate}");
+                hand.Visible = true;
+                hand.Modulate = Godot.Colors.White;
             }
-            Log.Warn($"{tag}：没找到原版手牌界面 NPlayerHand");
+            else Log.Warn($"{tag}：没找到原版手牌界面 NPlayerHand");
+            ShowEndTurnButton(tree.Root, tag);
         }
         catch (Exception e) { Log.Warn($"{tag}：显示手牌界面失败：{e.Message}"); }
     }

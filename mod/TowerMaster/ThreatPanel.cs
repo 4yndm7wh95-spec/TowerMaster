@@ -89,7 +89,10 @@ internal sealed class ThreatPanel : IThreatUi
         _layer.AddChild(_targets);
 
         _layer.AddChild(InfoPanel());
-        _layer.AddChild(BottomBar());
+        var bar = BottomBar();
+        // 塔主牌模式：能量看原版左下角，结束回合用原版按钮；这块面板会挡住原版手牌（0.0.32 用户反馈），不显示
+        bar.Visible = !MasterCards.Enabled;
+        _layer.AddChild(bar);
 
         ThreatPhase.Applied += Rebuild;
         _lastTicks = G.Time.GetTicksMsec();
