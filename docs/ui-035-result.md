@@ -74,14 +74,14 @@
 - [第一次自然三选一](screenshots/ui035-first-choice.png)（也能核对鼓动只有一行消耗）
 - [B 同时显示原版奖励](screenshots/ui035-B-choice.png)
 - [选后塔主下一房间](screenshots/ui035-follow-A.png)、[爬塔玩家同一房间](screenshots/ui035-follow-B.png)
-- [第二次自然三选一](screenshots/ui035-second-choice.png)、[跳过后正常进入休息处](screenshots/ui035-after-skip-follow.png)
+- [第二次自然三选一](screenshots/ui035-second-choice.png)（跳过后的截图抓到了切房过渡黑帧，未作为通过证据；正常进入休息处由两端坐标、后续休息操作和读档继续确认）
 - [第三次候选](screenshots/ui035-third-choice.png)、[第四次候选](screenshots/ui035-fourth-choice.png)
 
 ## 新牌效果
 
 | 卡牌 | 结论 | 实测 |
 |---|---|---|
-| 衰竭 | 通过 | 第一局下一场普通战，对 B 打出；两端 B 的 `WeakPower=1`、`FrailPower=1`。能量 2 点支付后进入弃牌。 |
+| 衰竭 | 通过 | 第一局下一场普通战，对 B 打出；两端 B 的 `WeakPower=1`、`FrailPower=1`。 |
 | 复苏 | 通过（辅助能量） | 第二局化石追踪者自然战斗，B 先打三张打击将怪物 51→33；第 2 回合抽到复苏并补能量，打出后两端均 33→37。此场只有一只怪，全体多目标回血未覆盖。 |
 | 坚壁 | 通过 | 第二局 `(5,12)` 普通战召唤两只蟾蜍蝌蚪，抽到坚壁并支付 2 能量；两端两只怪的格挡均 0→4。 |
 | 迷雾 | 效果未覆盖 | 两次出现在候选，未选入牌组；不能用普通“晕眩”代替本牌验证。 |
@@ -97,7 +97,7 @@
 
 - 两端完整 92 条“动作摘要 #”去时间戳后逐条完全相同。
 - 退出后用原 `compare_logs` 对比实现读取落盘日志（只在本地进程替换日志读取函数，没有改仓库代码）：摘要/清单/替换/开始生成/降血关键词共 137 行/端，`equal=true`、`diffs=[]`。
-- 两端游戏日志 `StateDivergence` 0、`[ERROR]` 0；没有断线、黑屏、奖励阻塞或战斗结束卡住。
+- 两端游戏日志 `StateDivergence` 0、`[ERROR]` 0；没有断线、持续黑屏、奖励阻塞或战斗结束卡住。
 
 ## 警告与测试调用问题
 
