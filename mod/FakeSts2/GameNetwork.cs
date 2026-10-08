@@ -19,6 +19,10 @@ namespace MegaCrit.Sts2.Core.Entities.Players
         public PlayerCombatState PlayerCombatState { get; } = new();
         public int Gold { get; set; } = 99;
         public MegaCrit.Sts2.Core.Entities.Cards.CardPile Deck { get; } = new();
+        private readonly List<object> _relics = new();
+        public IReadOnlyList<object> Relics => _relics;
+        public void AddRelicInternal(object relic, int index = -1, bool silent = false) => _relics.Add(relic);
+        public void RemoveRelicInternal(object relic, bool silent = false) => _relics.Remove(relic);
         private void PopulateDeck(IEnumerable<MegaCrit.Sts2.Core.Models.CardModel> cards, bool silent = false)
         {
             if (Deck.Cards.Count > 0) throw new InvalidOperationException("牌组不是空的");

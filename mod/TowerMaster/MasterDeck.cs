@@ -42,6 +42,7 @@ internal static class MasterDeck
             var master = Master(state);
             if (master == null) { Log.Warn("塔主牌组：新局里找不到塔主"); return; }
             Replace(master, Keys(1, []), "新的一局", state);
+            StripRelics(master, "新的一局");
         }
         catch (Exception e) { Log.Error("塔主牌组：新局换牌组失败（塔主仍是英雄牌）", e); }
     }
@@ -69,6 +70,24 @@ internal static class MasterDeck
         var master = state == null ? null : Master(state);
         if (master == null) { Log.Warn($"{tag}：找不到塔主，牌组没换"); return; }
         Replace(master, (list ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(), tag, state);
+        StripRelics(master, tag); // 旧存档里塔主还带着角色遗物的，下一次换牌组时一起去掉（各端同一条指令，结果一致）
+    }
+
+    /// <summary>
+    /// 去掉塔主身上的原版遗物（角色初始遗物）。塔主不是那个角色，遗物还会生效：铁甲的燃烧之血战后给隐藏的塔主回 6 血，
+    /// 原塔主位置飘绿色数字（0.0.43 实测）。用 Player.RemoveRelicInternal(relic, silent: true)，不播动画；各端在同一时刻执行。
+    /// </summary>
+    internal static void StripRelics(object master, string reason)
+    {
+        try
+        {
+            var relics = (GameReflection.Get(master, "Relics") as IEnumerable)?.Cast<object>().ToList() ?? [];
+            if (relics.Count == 0) return;
+            var remove = master.GetType().GetMethods(GameReflection.All).First(m => m.Name == "RemoveRelicInternal" && m.GetParameters().Length == 2);
+            foreach (var relic in relics) remove.Invoke(master, [relic, true]);
+            Log.Info($"塔主牌组：{reason}，去掉塔主的原版遗物 {string.Join("、", relics.Select(r => r.GetType().Name))}");
+        }
+        catch (Exception e) { Log.Warn($"塔主牌组：去掉塔主原版遗物失败（战后可能飘回血数字）：{e.InnerException?.Message ?? e.Message}"); }
     }
 
     private static object? Master(object state)

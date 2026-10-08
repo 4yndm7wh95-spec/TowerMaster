@@ -115,12 +115,25 @@ internal static class MasterInfoHud
             _panel!.TooltipText = tip;
             _panel.Visible = _bar.IsVisibleInTree();
             _panel.ResetSize();
-            _panel.Position = new G.Vector2(_bar.Size.X - _panel.Size.X - 18, _bar.Size.Y + 6);
+            // NTopBar 节点是整屏大小（0.0.43 实测按它的高度摆到了屏幕外），按顶栏带子里按钮的实际下沿摆
+            _panel.Position = new G.Vector2(_bar.Size.X - _panel.Size.X - 18, BandBottom(_bar) + 6);
         }
         catch (Exception e)
         {
             if (_frames % 600 == 0) Log.Warn($"塔主信息条：刷新失败：{e.Message}");
         }
+    }
+
+    /// <summary>顶栏带子的下沿（相对 NTopBar）：直接子节点里高度不到 200 的可见控件的最低处；量不出来按 84。</summary>
+    private static float BandBottom(G.Control bar)
+    {
+        float bottom = 0;
+        foreach (var child in bar.GetChildren())
+        {
+            if (child is not G.Control c || c == _panel || !c.Visible || c.Size.Y <= 1 || c.Size.Y >= 200) continue;
+            bottom = Math.Max(bottom, c.Position.Y + c.Size.Y * c.Scale.Y);
+        }
+        return bottom is > 20 and < 240 ? bottom : 84;
     }
 
     private static void Hide()

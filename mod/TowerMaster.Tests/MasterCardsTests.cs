@@ -74,11 +74,15 @@ public class MasterCardsTests
         var master = new Player(100001);
         var climber = new Player(100002);
         master.Deck.Cards.Add(new MegaCrit.Sts2.Core.Models.Cards.Strike());
+        master.AddRelicInternal("燃烧之血");
+        climber.AddRelicInternal("燃烧之血");
         run.Players.Add(master);
         run.Players.Add(climber);
         RunManager.Instance.NetService = new() { Type = MegaCrit.Sts2.Core.Entities.Multiplayer.NetGameType.Host, NetId = 100001, HostNetId = 100001 };
         RunManager.Instance.SetUpNewMultiplayer(run, null!, false);
         Assert.Equal(MasterCards.StartingActions.Length, master.Deck.Cards.Count);
+        Assert.Empty(master.Relics); // 塔主不带角色遗物（燃烧之血战后给隐藏的塔主回血）
+        Assert.Single(climber.Relics);
         Assert.Equal("加固", master.Deck.Cards[0].Title);
         Assert.All(master.Deck.Cards, c => Assert.Same(master, c.Owner));
         Assert.All(master.Deck.Cards, c => Assert.Contains(c, run.AllCards)); // 经 RunState.CreateCard 登记

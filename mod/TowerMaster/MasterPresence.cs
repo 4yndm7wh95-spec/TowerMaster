@@ -36,6 +36,12 @@ internal static class MasterPresence
             Log.Info($"塔主形象：战后{(stayDead ? "不复活塔主" : "悄悄复活塔主（不播回血特效）")}，已挂到 {GameReflection.Describe(revive)}");
         }
         else Log.Warn("塔主形象：找不到 Player.ReviveBeforeCombatEnd，战后塔主位置会播回血特效");
+        var portrait = GameReflection.FindMethod("Initialize", "NTopBarPortrait");
+        if (portrait != null)
+        {
+            try { harmony.Patch(portrait, postfix: new HarmonyMethod(typeof(MasterPresence).GetMethod(nameof(AfterTopBarPortrait), GameReflection.All)!)); }
+            catch (Exception e) { Log.Warn($"塔主形象：挂顶栏头像失败，塔主顶栏仍显示角色头像：{e.Message}"); }
+        }
         var ready = GameReflection.FindMethod("_Ready", "NCreature");
         if (ready != null)
         {
@@ -76,15 +82,39 @@ internal static class MasterPresence
         catch { /* 纯显示，轮询还会再藏一次 */ }
     }
 
+    /// <summary>塔主本机顶栏左上的角色头像换成塔主头像，关掉角色说明提示（0.0.43：塔主顶栏仍是铁甲头像）。</summary>
+    private static void AfterTopBarPortrait(object __instance, object[] __args)
+    {
+        try
+        {
+            if (Test2MasterOffField.MasterId is not { } master || __args.FirstOrDefault() is not { } player || Test2MasterOffField.NetIdOf(player) != master) return;
+            if (__instance is not G.Node node || Art.Get("master_portrait") is not { } texture) return;
+            int replaced = 0;
+            var stack = new Stack<G.Node>();
+            stack.Push(node);
+            while (stack.Count > 0)
+            {
+                var n = stack.Pop();
+                if (n is G.TextureRect rect && rect.Texture != null) { rect.Texture = texture; replaced++; }
+                foreach (var child in n.GetChildren()) stack.Push(child);
+            }
+            Log.Info($"塔主形象：顶栏头像换成塔主（{replaced} 处）");
+        }
+        catch (Exception e) { Log.Warn($"塔主形象：换顶栏头像失败：{e.Message}"); }
+    }
+
     private static int _frame;
 
     private static void OnFrame()
     {
-        if (++_frame % 10 != 0) return; // 每 10 帧看一次就够
+        _frame++;
         try
         {
             if (Test2MasterOffField.MasterId is not { } master) return;
+            HideInRooms(master); // 每帧：都是静态 Instance，便宜；隔几帧才藏会闪一下
+            if (_frame % 10 != 0) return; // 下面的遍历每 10 帧一次
             HideMasterInPlayerList(master);
+            HidePortraitTip(master);
             var room = RuntimeNetAction.Required("NCombatRoom").GetProperty("Instance", GameReflection.All)?.GetValue(null) as G.Control;
             if (room == null || !G.GodotObject.IsInstanceValid(room) || !room.IsInsideTree()) { _decoratedRoom = null; return; }
             HideMasterCreature(room, master);
@@ -95,6 +125,78 @@ internal static class MasterPresence
             if (_frame % 600 == 0) Log.Warn($"塔主形象：{e.Message}");
         }
     }
+
+    /// <summary>
+    /// 商店、篝火、结算画面里的塔主角色（0.0.43 实测商店里两个铁甲、结算画面有塔主的铁甲）。
+    /// 商店 NMerchantRoom.PlayerVisuals 和 _players 同顺序；篝火 NRestSiteCharacter.Player；结算画面的 NCreature 看 Entity.Player。
+    /// </summary>
+    private static void HideInRooms(ulong master)
+    {
+        if (Instance("NMerchantRoom") is { } shop)
+        {
+            var players = (GameReflection.Get(shop, "_players") as IEnumerable)?.Cast<object>().ToList();
+            var visuals = (GameReflection.Get(shop, "PlayerVisuals") as IEnumerable)?.Cast<object>().ToList();
+            if (players != null && visuals != null)
+                for (int i = 0; i < players.Count && i < visuals.Count; i++)
+                    if (Test2MasterOffField.NetIdOf(players[i]) == master && visuals[i] is G.CanvasItem v && v.Visible) { v.Visible = false; Log.Info("塔主形象：藏起商店里的塔主角色"); }
+        }
+        if (Instance("NRestSiteRoom") is { } rest && GameReflection.Get(rest, "Characters") is IEnumerable characters)
+            foreach (var c in characters.Cast<object>())
+                if (c is G.CanvasItem v && v.Visible && Test2MasterOffField.NetIdOf(GameReflection.Get(c, "Player")) == master) { v.Visible = false; Log.Info("塔主形象：藏起篝火边的塔主角色"); }
+        if (_gameOver != null && G.GodotObject.IsInstanceValid(_gameOver) && _frame % 5 == 0)
+            HideCreaturesUnder(_gameOver, master);
+    }
+
+    private static G.Node? _gameOver;
+
+    /// <summary>结算画面出现时登记一下（RunReportPanel 调），之后每几帧把搬到结算画面里的塔主角色藏起来。</summary>
+    internal static void WatchGameOver(G.Node screen) => _gameOver = screen;
+
+    private static void HideCreaturesUnder(G.Node root, ulong master)
+    {
+        var stack = new Stack<G.Node>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            if (n.GetType().Name == "NCreature")
+            {
+                var player = GameReflection.Get(n, "Entity") is { } e ? GameReflection.Get(e, "Player") : null;
+                if (n is G.CanvasItem v && v.Visible && player != null && Test2MasterOffField.NetIdOf(player) == master) v.Visible = false;
+                continue;
+            }
+            foreach (var child in n.GetChildren()) stack.Push(child);
+        }
+    }
+
+    private static object? Instance(string type)
+    {
+        var node = RuntimeNetAction.Required(type).GetProperty("Instance", GameReflection.All)?.GetValue(null) as G.Node;
+        return node != null && G.GodotObject.IsInstanceValid(node) && node.IsInsideTree() ? node : null;
+    }
+
+    /// <summary>塔主本机顶栏头像的悬停说明是角色介绍，关掉（顶栏换局会重建，节点失效就重新找）。</summary>
+    private static void HidePortraitTip(ulong master)
+    {
+        if (!Test3MasterAutoPilot.LocalIsMaster) return;
+        if (_tip == null || !G.GodotObject.IsInstanceValid(_tip) || !_tip.IsInsideTree())
+        {
+            _tip = null;
+            var stack = new Stack<G.Node>();
+            stack.Push(((G.SceneTree)G.Engine.GetMainLoop()).Root);
+            int visited = 0;
+            while (stack.Count > 0 && visited++ < 4000 && _tip == null)
+            {
+                var n = stack.Pop();
+                if (n.GetType().Name == "NTopBarPortraitTip") { _tip = n; break; }
+                foreach (var child in n.GetChildren()) stack.Push(child);
+            }
+        }
+        if (_tip != null && GameReflection.Get(_tip, "ShowTip") is true)
+            try { GameReflection.Set(_tip, "ShowTip", false); } catch { /* 下次再试 */ }
+    }
+
+    private static G.Node? _tip;
 
     private static void HideMasterCreature(G.Control room, ulong master)
     {

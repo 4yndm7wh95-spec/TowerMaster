@@ -24,10 +24,11 @@ internal static class RunReportPanel
         catch (Exception e) { Log.Error("塔主战报：挂结算画面失败", e); }
     }
 
-    private static void AfterGameOver()
+    private static void AfterGameOver(object __instance)
     {
         try
         {
+            if (__instance is G.Node screen) MasterPresence.WatchGameOver(screen);
             if (Test2MasterOffField.MasterId == null) return;
             if (GameReflection.Get(Test1bMixedEncounter.Run, "State") is not { } state) { Log.Warn("塔主战报：结算时没有对局状态，不弹"); return; }
             var input = MasterStats.Collect(state);

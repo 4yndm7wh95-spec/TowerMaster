@@ -42,6 +42,8 @@ public static class ModEntry
         {
             Test2MasterOffField.Apply(harmony, settings);
             MasterPresence.Apply(harmony, settings.MasterStayDead);
+            try { MasterLobby.Apply(harmony); }
+            catch (Exception e) { Log.Error("塔主大厅：初始化失败（大厅按原版选角色）", e); }
         }
         if (settings.Test3MasterAutoPilot) Test3MasterAutoPilot.Apply(harmony, settings);
         // 召唤阶段要用测试 1b 的清单通道（上面已经挂好），塔主身份沿用测试 2
