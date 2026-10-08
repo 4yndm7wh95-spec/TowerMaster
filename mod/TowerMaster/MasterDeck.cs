@@ -25,8 +25,8 @@ internal static class MasterDeck
     }
 
     /// <summary>某一幕塔主牌组的卡（行动牌 + 陷阱牌）的 key 列表。</summary>
-    internal static List<string> Keys(int actNo, IEnumerable<TrapCard> traps) =>
-        MasterCards.StartingActions.Select(op => $"act:{op}@{Math.Clamp(actNo, 1, 3)}")
+    internal static List<string> Keys(int actNo, IEnumerable<TrapCard> traps, IEnumerable<string>? extras = null) =>
+        MasterCards.StartingActions.Concat(extras ?? []).Select(op => $"act:{op}@{Math.Clamp(actNo, 1, 3)}")
             .Concat(traps.Select(t => $"trap:{t.Id}@{Math.Clamp(t.Tier, 1, 3)}")).ToList();
 
     private static void AfterNewRun(object[] __args)
@@ -48,7 +48,7 @@ internal static class MasterDeck
         if (!MasterCards.Enabled || !Test3MasterAutoPilot.LocalIsMaster) return;
         try
         {
-            var keys = string.Join(",", Keys(MasterLedger.Wallet?.ActNo ?? 1, MasterLedger.Traps));
+            var keys = string.Join(",", Keys(MasterLedger.Wallet?.ActNo ?? 1, MasterLedger.Traps, MasterLedger.ExtraCards));
             if (keys == _lastSent) return;
             _lastSent = keys;
             ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "deck", MonsterId: keys));

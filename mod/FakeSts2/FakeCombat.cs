@@ -203,4 +203,16 @@ namespace MegaCrit.Sts2.Core.Commands
             return Task.CompletedTask;
         }
     }
+    /// <summary>仿原版选牌界面：测试里固定选第 2 张（ChosenIndex 可改，-1 = 跳过）。</summary>
+    public static class CardSelectCmd
+    {
+        public static int ChosenIndex { get; set; } = 1;
+        public static List<CardModel> LastOffer { get; } = new();
+        public static Task<CardModel?> FromChooseACardScreen(PlayerChoiceContext context, IReadOnlyList<CardModel> cards, MegaCrit.Sts2.Core.Entities.Players.Player player, bool canSkip = false)
+        {
+            LastOffer.Clear();
+            LastOffer.AddRange(cards);
+            return Task.FromResult(ChosenIndex >= 0 && ChosenIndex < cards.Count ? cards[ChosenIndex] : null);
+        }
+    }
 }

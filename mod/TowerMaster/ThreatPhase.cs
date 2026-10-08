@@ -45,7 +45,7 @@ internal static class ThreatPhase
     /// 陷阱触发（trap）和陷阱数提示（trap_info）同理用 CombatPlayPhaseOnly；躲过奖励（trap_dodge）在战斗结束后发金币，用 NonCombat。
     internal static string ActionKind(string payload) =>
         payload.Contains("\"Op\":\"begin\"") || payload.Contains("\"Op\":\"trap\"") || payload.Contains("\"Op\":\"trap_info\"") ? "CombatPlayPhaseOnly"
-        : payload.Contains("\"Op\":\"trap_dodge\"") || payload.Contains("\"Op\":\"deck\"") ? "NonCombat"
+        : payload.Contains("\"Op\":\"trap_dodge\"") || payload.Contains("\"Op\":\"deck\"") || payload.Contains("\"Op\":\"reward\"") ? "NonCombat"
         : "Any";
 
     private static TowerMasterConfig _config = new();
@@ -394,6 +394,9 @@ internal static class ThreatPhase
                     break;
                 case "deck":
                     MasterDeck.Execute(command.MonsterId, tag);
+                    break;
+                case "reward":
+                    await MasterRewards.Execute(command, action, tag);
                     break;
                 default:
                     await ApplyEffect(command, action, tag);

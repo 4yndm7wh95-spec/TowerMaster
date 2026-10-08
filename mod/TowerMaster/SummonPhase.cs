@@ -395,6 +395,7 @@ internal static class SummonPhase
             MasterLedger.CountBattle();
             if (ThreatPhase.Enabled) TrapPhase.KnockdownReward(rewarded.Count, wallet.ActNo, Seed(state), MasterLedger.BattlesFought, _config.TrapHandLimit);
             MasterDeck.Publish("战斗结束（陷阱用掉/收回、击倒奖励）");
+            MasterRewards.AfterWin(pending.Room, Seed(state), MasterLedger.BattlesFought, wallet.ActNo);
             MasterLedger.Save();
             BalanceLog.Finish(true, wallet.ActNo, MasterLedger.BattlesFought, StartHp, ClimberPlayers(), KnockedDown, damage, income, wallet.Points);
             var text = $"战斗收入 +{income.Credited}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +

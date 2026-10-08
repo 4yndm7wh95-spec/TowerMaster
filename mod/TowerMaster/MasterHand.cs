@@ -135,6 +135,8 @@ internal static class MasterHand
             }
             else Log.Warn($"{tag}：没找到原版手牌界面 NPlayerHand");
             ShowEndTurnButton(tree.Root, tag);
+            // 塔主自己英雄的生命没有意义（战斗里死着、塔主回合临时是 1），顶栏不显示
+            if (Find(tree.Root, "NTopBarHp") is Godot.CanvasItem hp && hp.Visible) { hp.Visible = false; Log.Info($"{tag}：隐藏塔主顶栏生命"); }
         }
         catch (Exception e) { Log.Warn($"{tag}：显示手牌界面失败：{e.Message}"); }
     }
@@ -201,7 +203,9 @@ internal static class MasterHand
         var p = ModEntry.Active.Threat;
         if (def.Op == "strength_all")
             __result = _strengthAll < p.StrengthAllPerBattle && LivingEnemies().Any(e => Strength.GetValueOrDefault(e) + p.StrengthAllAmount <= Cap(def));
-        else if (def.Op == "dazed") __result = _dazed < p.DazedPerBattle;
+        else if (def.Op is "dazed" or "daze_all") __result = _dazed < p.DazedPerBattle;
+        else if (def.Op == "heal_all") __result = LivingEnemies().Any(e => Heals.GetValueOrDefault(e) < p.HealPerMonsterPerBattle);
+        else if (def.Op == "expose_all") __result = LivingClimbers().Any(c => DebuffsThisTurn.GetValueOrDefault(c) < p.DebuffPerPlayerPerTurn);
     }
 
     private static void AfterIsValidTarget(object __instance, object? __0, ref bool __result)
@@ -217,7 +221,7 @@ internal static class MasterHand
         {
             "heal" => Heals.GetValueOrDefault(target) < p.HealPerMonsterPerBattle,
             "strength" => Strength.GetValueOrDefault(target) + TowerMasterConfig.ByAct(p.StrengthAmount, def.Tier) <= Cap(def),
-            "weak" or "vulnerable" or "frail" => DebuffsThisTurn.GetValueOrDefault(target) < p.DebuffPerPlayerPerTurn,
+            "weak" or "vulnerable" or "frail" or "sap" => DebuffsThisTurn.GetValueOrDefault(target) < p.DebuffPerPlayerPerTurn,
             _ => true,
         };
     }
@@ -259,7 +263,7 @@ internal static class MasterHand
             : (GameReflection.Get(state, "Players") as IEnumerable)?.Cast<object>().FirstOrDefault(p => Test2MasterOffField.NetIdOf(p) == id);
     }
 
-    private static IEnumerable<object> LivingClimbers()
+    internal static IEnumerable<object> LivingClimbers()
     {
         var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
         var id = Test2MasterOffField.MasterId;
@@ -268,7 +272,7 @@ internal static class MasterHand
             .Select(p => GameReflection.Get(p, "Creature")).Where(c => c != null && GameReflection.Get(c, "IsDead") is not true).Cast<object>();
     }
 
-    private static IEnumerable<object> LivingEnemies() =>
+    internal static IEnumerable<object> LivingEnemies() =>
         ThreatPhase.CombatState() is { } combat
             ? ((GameReflection.Get(combat, "Enemies") as IEnumerable)?.Cast<object>() ?? []).Where(e => GameReflection.Get(e, "IsDead") is not true)
             : [];

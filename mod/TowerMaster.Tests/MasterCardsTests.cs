@@ -30,7 +30,7 @@ public class MasterCardsTests
     public void CardsAreRealCardModelsRegisteredBeforeModelDbInit()
     {
         Register();
-        Assert.Equal(8 * 3 + TrapCatalog.All.Count * 3, MasterCards.Types.Count);
+        Assert.Equal((8 + MasterCards.RewardPool.Length) * 3 + TrapCatalog.All.Count * 3, MasterCards.Types.Count);
         Assert.All(MasterCards.Types, t => Assert.Contains(t, ReflectionHelper.ModTypes));
 
         var block = Card("act:block@1");
@@ -90,5 +90,38 @@ public class MasterCardsTests
         Assert.Equal("泥沼+1", master.Deck.Cards[^1].Title);
         Assert.Equal(master.Deck.Cards.Count, run.AllCards.Count); // 旧牌注销了
         run.CheckDecks();
+    }
+
+    [Fact]
+    public async Task EliteRewardOpensTheVanillaChooseACardScreenAndTheChoiceJoinsTheDeck()
+    {
+        Register();
+        MasterLedger.Clear();
+        var run = new RunState();
+        var master = new Player(100001);
+        run.Players.Add(master);
+        run.Players.Add(new Player(100002));
+        RunManager.Instance.State = run;
+        RunManager.Instance.NetService = new() { Type = MegaCrit.Sts2.Core.Entities.Multiplayer.NetGameType.Host, NetId = 100001, HostNetId = 100001 };
+
+        var offer = MasterRewards.Offer(123, 5);
+        Assert.Equal(offer, MasterRewards.Offer(123, 5)); // 同一场固定（读档相同）
+        Assert.Equal(3, offer.Distinct().Count());
+        Assert.All(offer, op => Assert.Contains(op, MasterCards.RewardPool));
+
+        var action = new MegaCrit.Sts2.Core.GameActions.MoveToMapCoordAction(100001);
+        MegaCrit.Sts2.Core.Commands.CardSelectCmd.ChosenIndex = 1;
+        await MasterRewards.Execute(new ThreatCommand(1, 0, 0, 2, "reward", MonsterId: string.Join(",", offer), Amount: 5), action, "测试");
+        Assert.Equal(3, MegaCrit.Sts2.Core.Commands.CardSelectCmd.LastOffer.Count);
+        Assert.EndsWith("+1", MegaCrit.Sts2.Core.Commands.CardSelectCmd.LastOffer[0].Title); // 第二幕的等级
+        Assert.Equal(offer[1], Assert.Single(MasterLedger.ExtraCards));
+        Assert.True(MasterLedger.RewardTaken(5));
+        Assert.Empty(run.AllCards); // 候选牌都注销了
+
+        var keys = MasterDeck.Keys(2, [], MasterLedger.ExtraCards);
+        Assert.Contains($"act:{offer[1]}@2", keys);
+        Assert.All(keys, k => Assert.NotNull(MasterCards.TypeOf(k)));
+        Assert.Equal(CardKeyword.Exhaust, Assert.Single(Card("act:surge@1").CanonicalKeywords));
+        Assert.Equal("坚壁+2", Card("act:fortify_all@3").Title);
     }
 }

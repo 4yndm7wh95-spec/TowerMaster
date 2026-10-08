@@ -10,7 +10,7 @@ namespace TowerMaster;
 
 /// <summary>一张塔主牌的定义。Key 形如「act:block@2」「trap:harden@1」（@ 后是等级：行动牌 = 幕数，陷阱 = 陷阱等级）。</summary>
 internal sealed record MasterCardDef(string Key, string TypeName, string Title, string Description, int Cost,
-    int CardType, int TargetType, bool Unplayable, string Art, string Op, int Tier);
+    int CardType, int TargetType, bool Unplayable, string Art, string Op, int Tier, bool Exhaust = false);
 
 /// <summary>
 /// 塔主的真实卡牌（用户要求：塔主的牌是游戏里真正的牌，原版牌组界面能看到，不是借卡框的面板）。
@@ -55,6 +55,21 @@ public static class MasterCards
     /// <summary>新一局塔主的牌组（每幕换成对应等级）。</summary>
     internal static readonly string[] StartingActions = ["block", "block", "heal", "strength", "strength_all", "weak", "vulnerable", "frail", "dazed"];
 
+    /// <summary>精英/Boss 战后塔主 3 选 1 的奖励牌（不在初始牌组里）。</summary>
+    internal static readonly string[] RewardPool = ["fortify_all", "heal_all", "sap", "daze_all", "expose_all", "scheme", "surge"];
+
+    /// <summary>奖励牌：操作名、名字、卡图、目标类型（3 所有敌人、6 一名队友、7 所有队友、1 自己）、费用。</summary>
+    private static readonly (string Op, string Name, string Art, int Target, int Cost)[] RewardOps =
+    [
+        ("fortify_all", "坚壁", "act_block", 3, 2), ("heal_all", "复苏", "act_heal", 3, 2), ("sap", "衰竭", "act_weak", 6, 2),
+        ("daze_all", "迷雾", "act_dazed", 7, 1), ("expose_all", "弱点暴露", "act_vulnerable", 7, 2),
+        ("scheme", "筹谋", "icon_trap", 1, 0), ("surge", "鼓动", "icon_threat_point", 1, 0),
+    ];
+
+    internal static int FortifyAmount(int tier) => new[] { 4, 6, 8 }[Math.Clamp(tier, 1, 3) - 1];
+    internal const int HealAllPercent = 8;
+    internal static int SchemeDraw(int tier) => tier >= 2 ? 2 : 1;
+
     internal static List<MasterCardDef> BuildDefs(ThreatPrices p)
     {
         var defs = new List<MasterCardDef>();
@@ -79,6 +94,22 @@ public static class MasterCards
                 };
                 defs.Add(new($"act:{op}@{act}", $"TowerMaster{Pascal(op)}{act}", act > 1 ? $"{name}+{act - 1}" : name, desc,
                     cost, CardType: 2, target, Unplayable: false, art, op, act));
+            }
+        foreach (var (op, name, art, target, cost) in RewardOps)
+            for (int act = 1; act <= 3; act++)
+            {
+                string desc = op switch
+                {
+                    "fortify_all" => $"所有敌人获得 {FortifyAmount(act)} 点格挡。",
+                    "heal_all" => $"所有敌人回复 {HealAllPercent}% 最大生命值。\n计入每名敌人每场的治疗次数。",
+                    "sap" => "给予一名玩家 1 层虚弱和 1 层脆弱。",
+                    "daze_all" => "将 1 张晕眩放入每名玩家的抽牌堆。\n计入每场的晕眩次数。",
+                    "expose_all" => "给予每名玩家 1 层易伤。",
+                    "scheme" => $"抽 {SchemeDraw(act)} 张牌。",
+                    _ => "获得 1 点能量。\n消耗。",
+                };
+                defs.Add(new($"act:{op}@{act}", $"TowerMaster{Pascal(op)}{act}", act > 1 ? $"{name}+{act - 1}" : name, desc,
+                    cost, CardType: 2, target, Unplayable: false, art, op, act, Exhaust: op == "surge"));
             }
         foreach (var t in TrapCatalog.All)
             for (int tier = 1; tier <= 3; tier++)
@@ -236,19 +267,19 @@ public static class MasterCards
         return _pool;
     }
 
-    private static Array? _unplayable, _noKeywords;
+    private static Array? _unplayable, _exhaust, _noKeywords;
     public static object? Keywords(object self, object?[] args)
     {
         var keyword = RuntimeNetAction.Required("CardKeyword");
-        if (DefOf(self)?.Unplayable == true)
+        Array One(string name)
         {
-            if (_unplayable == null)
-            {
-                _unplayable = Array.CreateInstance(keyword, 1);
-                _unplayable.SetValue(Enum.Parse(keyword, "Unplayable"), 0);
-            }
-            return _unplayable;
+            var a = Array.CreateInstance(keyword, 1);
+            a.SetValue(Enum.Parse(keyword, name), 0);
+            return a;
         }
+        var def = DefOf(self);
+        if (def?.Unplayable == true) return _unplayable ??= One("Unplayable");
+        if (def?.Exhaust == true) return _exhaust ??= One("Exhaust");
         return _noKeywords ??= Array.CreateInstance(keyword, 0);
     }
 
@@ -300,6 +331,43 @@ public static class MasterCards
                 case "dazed" when target != null:
                     await ThreatPhase.AddDazed(target);
                     MasterHand.Record(def, target, 0);
+                    break;
+                case "fortify_all":
+                    foreach (var e in MasterHand.LivingEnemies().ToList()) await ThreatPhase.GainBlock(e, FortifyAmount(def.Tier));
+                    break;
+                case "heal_all":
+                    foreach (var e in MasterHand.LivingEnemies().ToList())
+                    {
+                        if (!MasterHand.Allowed(def with { Op = "heal" }, e)) continue; // 治疗次数用完的跳过
+                        await ThreatPhase.Heal(e, Math.Max(1, Convert.ToInt32(GameReflection.Get(e, "MaxHp")) * HealAllPercent / 100));
+                        MasterHand.Record(def with { Op = "heal" }, e, 0);
+                    }
+                    break;
+                case "sap" when target != null:
+                    await ThreatPhase.ApplyPowerWith("WeakPower", context, target, 1);
+                    await ThreatPhase.ApplyPowerWith("FrailPower", context, target, 1);
+                    MasterHand.Record(def with { Op = "weak" }, target, 0);
+                    break;
+                case "daze_all":
+                    foreach (var c in MasterHand.LivingClimbers().ToList()) await ThreatPhase.AddDazed(c);
+                    MasterHand.Record(def with { Op = "dazed" }, null, 0);
+                    break;
+                case "expose_all":
+                    foreach (var c in MasterHand.LivingClimbers().ToList())
+                    {
+                        if (!MasterHand.Allowed(def with { Op = "vulnerable" }, c)) continue; // 本回合已经被上过减益的跳过
+                        await ThreatPhase.ApplyPowerWith("VulnerablePower", context, c, 1);
+                        MasterHand.Record(def with { Op = "vulnerable" }, c, 0);
+                    }
+                    break;
+                case "scheme" when MasterHand.MasterPlayer() is { } m:
+                    await (Task)RuntimeNetAction.Required("CardPileCmd").GetMethods(BindingFlags.Public | BindingFlags.Static)
+                        .First(x => x.Name == "Draw" && x.GetParameters().Length == 4 && x.GetParameters()[1].ParameterType == typeof(decimal))
+                        .Invoke(null, [context, (decimal)SchemeDraw(def.Tier), m, false])!;
+                    break;
+                case "surge" when MasterHand.MasterPlayer() is { } m:
+                    await (Task)RuntimeNetAction.Required("PlayerCmd").GetMethods(BindingFlags.Public | BindingFlags.Static)
+                        .First(x => x.Name == "GainEnergy" && x.GetParameters().Length == 2).Invoke(null, [1m, m])!;
                     break;
             }
             Log.Info($"塔主牌：打出 {def.Title}{(target != null ? $" → {GameReflection.Get(target, "Monster")?.GetType().Name ?? Test2MasterOffField.NetIdOf(target)?.ToString()}" : "")}");
