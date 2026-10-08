@@ -245,9 +245,16 @@ internal sealed class SummonPanel : ISummonUi
         }
         foreach (var (button, on) in _filterButtons)
         {
+            // 各状态的边框、圆角、内边距要一样：原来只改了 normal，悬停时换回 MakeButton 的粗边框大内边距，按钮变形（0.0.40 用户反馈）
             bool active = on();
-            button.AddThemeStyleboxOverride("normal", Box(active ? new G.Color(0.24f, 0.19f, 0.10f) : Sunk, active ? Gold : CardBorder, 1, 8, 10));
+            var bg = active ? new G.Color(0.24f, 0.19f, 0.10f) : Sunk;
+            var border = active ? Gold : CardBorder;
+            button.AddThemeStyleboxOverride("normal", Box(bg, border, 1, 8, 10));
+            button.AddThemeStyleboxOverride("hover", Box(active ? bg.Lightened(0.12f) : CardHover, active ? Gold : TextDim, 1, 8, 10));
+            button.AddThemeStyleboxOverride("pressed", Box(active ? bg : CardHover, Gold, 1, 8, 10));
             button.AddThemeColorOverride("font_color", active ? Gold : TextDim);
+            button.AddThemeColorOverride("font_hover_color", active ? Gold : G.Colors.White);
+            button.AddThemeColorOverride("font_pressed_color", Gold);
         }
     }
 
@@ -597,17 +604,16 @@ internal sealed class SummonPanel : ISummonUi
     }
 
     /// <summary>
-    /// 怪物形象：游戏没有现成的怪物头像图（图鉴也是现场摆出战斗模型），所以把战斗模型（MonsterModel.CreateVisuals）
-    /// 放进一个小视口里画，按模型的 Bounds 缩放、居中。失败就返回 null，卡片只显示文字。
+    /// 怪物形象：游戏没有现成的怪物头像图（图鉴也是现场摆出战斗模型），所以把战斗模型放进一个小视口里画，自动取景后定格。
+    /// 0.0.41 起照原版图鉴（NBestiaryLayoutDefault.Setup）建完整的 NCreature：可变模型 → 随机数 → SetUpForCombat →
+    /// Creature（NullCombatState）→ NCreature.Create → SetupForBestiary。只建外观（CreateVisuals）时化石追踪者、幽灵船、
+    /// 鬼祟珊瑚群缺主体、零件散开（0.0.40 和图鉴并排对照）。这条路走不通就退回只建外观。失败返回 null，卡片只显示文字。
     /// </summary>
     private static G.Control? Portrait(string monsterId, G.Vector2 size)
     {
         try
         {
             var model = Test1bMixedEncounter.Model("Monster", monsterId);
-            var create = model.GetType().GetMethod("CreateVisuals", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance, Type.EmptyTypes);
-            if (create?.Invoke(model, null) is not G.Node2D visuals) return null;
-
             var viewport = new G.SubViewport
             {
                 TransparentBg = true,
@@ -615,24 +621,9 @@ internal sealed class SummonPanel : ISummonUi
                 Size = new G.Vector2I((int)size.X, (int)size.Y),
                 RenderTargetUpdateMode = G.SubViewport.UpdateMode.Always,
             };
-            viewport.AddChild(visuals);
-            // 原版战斗里建完外观还会套皮肤、启动动画（NCreatureVisuals.SetUpSkin、MonsterModel.GenerateAnimator）；
-            // 不做的话有的怪缺零件（头在皮肤里）、骨骼停在没摆好的姿势、零件散开（0.0.37 用户截图）
-            visuals.Ready += () => SetUpLikeCombat(visuals, model, monsterId);
-
-            // 先按点击框（Bounds）缩得很小、放在正中画几帧（高个子、带特效的怪画出来常比点击框大很多），
-            // 再读出实际画了像素的范围，按这个范围缩放、脚底贴底；见 FitAndFreeze
-            if (GameReflection.Get(visuals, "Bounds") is G.Control bounds && bounds.Size.X > 1 && bounds.Size.Y > 1)
-            {
-                float scale = Math.Min(size.X * 0.30f / bounds.Size.X, size.Y * 0.30f / bounds.Size.Y);
-                visuals.Scale = new G.Vector2(scale, scale);
-                visuals.Position = size / 2 - (bounds.Position + bounds.Size / 2) * scale;
-            }
-            else
-            {
-                visuals.Scale = new G.Vector2(0.25f, 0.25f);
-                visuals.Position = size / 2;
-            }
+            var rig = (_creaturePathBroken ? null : CreatureRig(model, monsterId, size)) ?? VisualsRig(model, monsterId, size);
+            if (rig == null) return null;
+            viewport.AddChild(rig);
 
             var container = new G.SubViewportContainer
             {
@@ -641,13 +632,112 @@ internal sealed class SummonPanel : ISummonUi
                 MouseFilter = G.Control.MouseFilterEnum.Ignore,
             };
             container.AddChild(viewport);
-            FitAndFreeze(viewport, visuals, _portraits++, monsterId);
+            FitAndFreeze(viewport, rig, _portraits++, monsterId);
             return container;
         }
         catch (Exception e)
         {
             Log.Warn($"召唤面板：画不出 {monsterId} 的形象，只显示名字：{e.InnerException?.Message ?? e.Message}");
             return null;
+        }
+    }
+
+    private static bool _creaturePathBroken;
+
+    /// <summary>原版图鉴的做法：完整 NCreature，放在一个 Node2D 架子里（取景只动架子）。</summary>
+    private static G.Node2D? CreatureRig(object canonical, string monsterId, G.Vector2 size)
+    {
+        try
+        {
+            var monster = canonical.GetType().GetMethod("ToMutable", Type.EmptyTypes)?.Invoke(canonical, null) ?? throw new MissingMethodException("MonsterModel.ToMutable");
+            var rngType = GameReflection.TypesNamed("Rng").FirstOrDefault(t => t.Namespace == "MegaCrit.Sts2.Core.Random") ?? throw new TypeLoadException("Rng");
+            var rng = rngType.GetConstructor([typeof(ulong)])?.Invoke([(ulong)(uint)monsterId.GetHashCode()])
+                      ?? Activator.CreateInstance(rngType, [(ulong)1]);
+            GameReflection.Set(monster, "Rng", rng);
+            RuntimeNetAction.Call(monster, "SetUpForCombat");
+
+            var creatureType = GameReflection.TypesNamed("Creature").First(t => t.Namespace == "MegaCrit.Sts2.Core.Entities.Creatures");
+            var ctor = creatureType.GetConstructors().First(c => c.GetParameters().Length == 3 && c.GetParameters()[0].ParameterType.Name == "MonsterModel");
+            var side = Enum.ToObject(ctor.GetParameters()[1].ParameterType, 2); // CombatSide.Enemy
+            var creature = ctor.Invoke([monster, side, null]);
+            var nullState = GameReflection.TypesNamed("NullCombatState").First().GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)!.GetValue(null);
+            GameReflection.Set(creature, "CombatState", nullState);
+
+            var create = RuntimeNetAction.Required("NCreature").GetMethod("Create", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                         ?? throw new MissingMethodException("NCreature.Create");
+            if (create.Invoke(null, [creature]) is not G.Control node) throw new InvalidOperationException("NCreature.Create 没返回节点");
+            node.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+            var rig = new G.Node2D();
+            rig.AddChild(node);
+            node.Ready += () =>
+            {
+                try
+                {
+                    RuntimeNetAction.Call(node, "SetupForBestiary");
+                    Quiet(node);
+                    InitialPlace(rig, GameReflection.Get(node, "Visuals") is G.Node visuals ? GameReflection.Get(visuals, "Bounds") as G.Control : null, size);
+                }
+                catch (Exception e) { Log.Warn($"召唤面板：{monsterId} 图鉴式初始化后半段失败，按原样显示：{e.InnerException?.Message ?? e.Message}"); }
+            };
+            return rig;
+        }
+        catch (Exception e)
+        {
+            _creaturePathBroken = true; // 一只走不通，其他的大概也走不通：之后都直接用旧做法，免得刷屏
+            Log.Warn($"召唤面板：{monsterId} 按原版图鉴建 NCreature 失败，退回只建外观：{e.InnerException?.Message ?? e.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>旧做法（0.0.37–0.0.40）：只建外观（MonsterModel.CreateVisuals），自己建动画控制器、套皮肤。</summary>
+    private static G.Node2D? VisualsRig(object model, string monsterId, G.Vector2 size)
+    {
+        var create = model.GetType().GetMethod("CreateVisuals", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance, Type.EmptyTypes);
+        if (create?.Invoke(model, null) is not G.Node2D visuals) return null;
+        var rig = new G.Node2D();
+        rig.AddChild(visuals);
+        visuals.Ready += () =>
+        {
+            SetUpLikeCombat(visuals, model, monsterId);
+            Quiet(visuals);
+            InitialPlace(rig, GameReflection.Get(visuals, "Bounds") as G.Control, size);
+        };
+        return rig;
+    }
+
+    /// <summary>
+    /// 先按点击框（Bounds）缩到视口的 30%、放在正中（高个子、带特效的怪画出来常比点击框大很多），之后 FitAndFreeze 再按实际像素取景。
+    /// </summary>
+    private static void InitialPlace(G.Node2D rig, G.Control? bounds, G.Vector2 size)
+    {
+        rig.Scale = G.Vector2.One;
+        rig.Position = G.Vector2.Zero;
+        if (bounds != null && bounds.Size.X > 1 && bounds.Size.Y > 1)
+        {
+            var rect = bounds.GetGlobalRect(); // 架子没缩放时，视口里的坐标
+            float scale = Math.Min(size.X * 0.30f / rect.Size.X, size.Y * 0.30f / rect.Size.Y);
+            rig.Scale = new G.Vector2(scale, scale);
+            rig.Position = size / 2 - (rect.Position + rect.Size / 2) * scale;
+        }
+        else
+        {
+            rig.Scale = new G.Vector2(0.25f, 0.25f);
+            rig.Position = size / 2;
+        }
+    }
+
+    /// <summary>预览里不要粒子特效（会把取景范围撑大，淤泥旋螺被粒子柱挤成小点），也不要任何控件吃鼠标。</summary>
+    private static void Quiet(G.Node root)
+    {
+        var stack = new Stack<G.Node>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            if (n is G.GpuParticles2D gpu) { gpu.Emitting = false; gpu.Visible = false; }
+            else if (n is G.CpuParticles2D cpu) { cpu.Emitting = false; cpu.Visible = false; }
+            else if (n is G.Control c) c.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+            foreach (var child in n.GetChildren()) stack.Push(child);
         }
     }
 
@@ -670,25 +760,6 @@ internal sealed class SummonPanel : ISummonUi
             var setUpSkin = visuals.GetType().GetMethod("SetUpSkin", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
             if (setUpSkin == null) Log.Info($"召唤面板：{monsterId} 外观没有 SetUpSkin");
             else setUpSkin.Invoke(visuals, [skinModel]);
-            // 预览里不要粒子特效：会把取景范围撑大（淤泥旋螺被粒子柱挤成小点），头上的飘散粒子也不是本体
-            var stack = new Stack<G.Node>();
-            stack.Push(visuals);
-            while (stack.Count > 0)
-            {
-                var n = stack.Pop();
-                if (n is G.GpuParticles2D gpu) { gpu.Emitting = false; gpu.Visible = false; }
-                else if (n is G.CpuParticles2D cpu) { cpu.Emitting = false; cpu.Visible = false; }
-                foreach (var child in n.GetChildren()) stack.Push(child);
-            }
-            // 点击框（Bounds）在 _Ready 里才有：这时按它把怪缩到视口高度的 30%、放在正中，之后再精确取景
-            if (GameReflection.Get(visuals, "Bounds") is G.Control bounds && bounds.Size.X > 1 && bounds.Size.Y > 1
-                && visuals.GetParent() is G.SubViewport vp)
-            {
-                var size = new G.Vector2(vp.Size.X, vp.Size.Y);
-                float scale = Math.Min(size.X * 0.30f / bounds.Size.X, size.Y * 0.30f / bounds.Size.Y);
-                visuals.Scale = new G.Vector2(scale, scale);
-                visuals.Position = size / 2 - (bounds.Position + bounds.Size / 2) * scale;
-            }
         }
         catch (Exception e) { Log.Warn($"召唤面板：{monsterId} 套皮肤/启动动画失败，按原样显示：{e.InnerException?.Message ?? e.Message}"); }
     }
@@ -939,12 +1010,18 @@ internal sealed class SummonPanel : ISummonUi
     // ---------------------------------------------------------------- 结算提示
 
     /// <summary>屏幕上方显示几秒的提示条（战斗收入等）。</summary>
+    /// <summary>正在显示的提示占了哪些行：连着出几张盲盒时提示往下排，不叠在一起（0.0.40 实测重叠）。</summary>
+    private static readonly HashSet<int> ToastSlots = [];
+
     public static void ShowToast(string text, double seconds = 6)
     {
+        int slot = 0;
+        while (ToastSlots.Contains(slot)) slot++;
+        ToastSlots.Add(slot);
         var layer = new G.CanvasLayer { Layer = 101 };
         var holder = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
         holder.SetAnchorsPreset(G.Control.LayoutPreset.TopWide);
-        holder.Position = new G.Vector2(0, 90);
+        holder.Position = new G.Vector2(0, 90 + slot % 6 * 72);
         var panel = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
         panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 2, 12, 16, shadow: 12));
         var label = Text(text, 24, Gold);
@@ -954,6 +1031,6 @@ internal sealed class SummonPanel : ISummonUi
         layer.AddChild(holder);
         ApplyGameFont(layer);
         AddDeferred(layer);
-        Tree.CreateTimer(seconds).Timeout += () => layer.QueueFree();
+        Tree.CreateTimer(seconds).Timeout += () => { ToastSlots.Remove(slot); layer.QueueFree(); };
     }
 }

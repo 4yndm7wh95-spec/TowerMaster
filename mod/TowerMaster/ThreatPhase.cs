@@ -576,7 +576,9 @@ internal static class ThreatPhase
     /// <summary>对一个生物造成伤害（原版 CreatureCmd.Damage，无来源）。</summary>
     internal static Task Damage(object context, object target, decimal amount)
     {
-        var method = Static("CreatureCmd", "Damage", m => m.GetParameters().Length == 5 && m.GetParameters()[2].ParameterType == typeof(decimal));
+        // 原版有单体（Creature target）和群体（IEnumerable<Creature> targets）两个同参数个数的重载，要挑单体的（0.0.40 实测挑错抛异常）
+        var method = Static("CreatureCmd", "Damage", m => m.GetParameters().Length == 5 && m.GetParameters()[2].ParameterType == typeof(decimal)
+                                                          && m.GetParameters()[1].ParameterType.Name == "Creature");
         var props = Enum.ToObject(method.GetParameters()[3].ParameterType, 0);
         return (Task)method.Invoke(null, [context, target, amount, props, null])!;
     }

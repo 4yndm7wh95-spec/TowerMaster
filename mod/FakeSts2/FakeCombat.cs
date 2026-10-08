@@ -130,6 +130,14 @@ namespace MegaCrit.Sts2.Core.Commands
             creature.Block += (int)amount;
             return Task.FromResult(amount);
         }
+        // 原版两个重载参数个数相同：群体（放前面，挑错就会抛参数类型异常）和单体
+        public static Task<IEnumerable<int>> Damage(PlayerChoiceContext choiceContext, IEnumerable<Creature> targets, decimal amount, MegaCrit.Sts2.Core.ValueProps.ValueProp props, Creature? dealer)
+            => throw new NotSupportedException();
+        public static Task<int> Damage(PlayerChoiceContext choiceContext, Creature target, decimal amount, MegaCrit.Sts2.Core.ValueProps.ValueProp props, Creature? dealer)
+        {
+            target.Damage((int)amount);
+            return Task.FromResult((int)amount);
+        }
         public static Task Heal(Creature creature, decimal amount, bool playAnim = true)
         {
             creature.HealBy((int)amount);

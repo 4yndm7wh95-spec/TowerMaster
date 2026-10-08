@@ -132,6 +132,14 @@ public class MasterCardsTests
     }
 
     [Fact]
+    public async Task DamagePicksTheSingleTargetOverload()
+    {
+        var target = new MegaCrit.Sts2.Core.Entities.Creatures.Creature(20);
+        await ThreatPhase.Damage(new MegaCrit.Sts2.Core.GameActions.Multiplayer.GameActionPlayerChoiceContext(new MegaCrit.Sts2.Core.GameActions.MoveToMapCoordAction(100001)), target, 6);
+        Assert.Equal(14, target.CurrentHp);
+    }
+
+    [Fact]
     public async Task ShopBuysWithSummonPointsAndRestSiteRemovesACard()
     {
         Register();

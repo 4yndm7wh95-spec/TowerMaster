@@ -75,6 +75,19 @@ internal static class GameReflection
         return null;
     }
 
+    /// <summary>写属性（有 setter，含非公开）或字段（含基类）；都没有就抛异常。</summary>
+    public static void Set(object obj, string name, object? value)
+    {
+        for (var t = obj.GetType(); t != null; t = t.BaseType)
+        {
+            var p = t.GetProperty(name, All | BindingFlags.DeclaredOnly);
+            if (p != null && p.GetIndexParameters().Length == 0 && p.CanWrite) { p.SetValue(obj, value); return; }
+            var f = t.GetField(name, All | BindingFlags.DeclaredOnly);
+            if (f != null) { f.SetValue(obj, value); return; }
+        }
+        throw new MissingMemberException(obj.GetType().Name, name);
+    }
+
     /// <summary>找出对象上「类型能装下 value」的属性或字段，返回它们的名字和当前值。</summary>
     public static List<(string Name, Type Type, object? Value)> SlotsAssignableFrom(object obj, Type valueType)
     {
