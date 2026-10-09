@@ -60,6 +60,7 @@ public class SummonPhaseTests
         Test1FixedEncounter.SetEnabled(false); // 同一进程里测试 1a 的补丁也挂着，关掉免得它再换一次遭遇
         ThreatPhase.Disable();                 // 塔主回合测试可能打开过：这里不要陷阱包
         SummonPhase.Toast = Toasts.Add;
+        SummonPhase.Notify = (t, d, _) => Toasts.Add($"{t}｜{d}");
         Shown.Clear();
         Toasts.Clear();
         return queue;
@@ -204,7 +205,7 @@ public class SummonPhaseTests
         // 收入 = 基础 5 + 节约 0 + 战果 1（掉 23 血，每 15 点 +1）= 6；12 − 2 + 6 = 16
         Assert.Equal(16, MasterLedger.Wallet!.Points);
         Assert.Equal(1, MasterLedger.BattlesFought);
-        Assert.Contains("战斗收入 +6", Assert.Single(Toasts));
+        Assert.Contains("召唤点 +6", Assert.Single(Toasts));
 
         // 读档：换一个进程状态，从文件恢复
         MasterLedger.Configure(new TowerMasterConfig());

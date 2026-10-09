@@ -95,7 +95,7 @@ internal static class MasterHand
             {
                 foreach (var e in LivingEnemies().ToList()) await ThreatPhase.GainBlock(e, 3);
                 Log.Info($"{tag}：怪物便当，所有敌人 +3 格挡");
-                SummonPhase.Toast("塔主遗物「怪物便当」：所有敌人 +3 格挡");
+                SummonPhase.Notify("怪物便当", "所有敌人 +3 格挡", "relic_bento");
             }
             if (MasterRelics.Has("blacklist") && LivingClimbers().ToList() is { Count: > 0 } climbers)
             {
@@ -103,7 +103,7 @@ internal static class MasterHand
                 var target = climbers.Aggregate((a, b) => Convert.ToInt32(GameReflection.Get(b, "CurrentHp")) > Convert.ToInt32(GameReflection.Get(a, "CurrentHp")) ? b : a);
                 await ThreatPhase.ApplyPowerWith("VulnerablePower", context, target, 1);
                 Log.Info($"{tag}：黑名单，玩家 {Test2MasterOffField.NetIdOf(GameReflection.Get(target, "Player"))} 易伤 1");
-                SummonPhase.Toast("塔主遗物「黑名单」：生命最高的玩家 1 层易伤");
+                SummonPhase.Notify("黑名单", "生命最高的玩家获得 1 层易伤", "relic_blacklist");
             }
         }
         catch (Exception e) { Log.Error($"{tag}：塔主遗物开场效果失败", e); }

@@ -389,8 +389,12 @@ internal static class ThreatPhase
                     Log.Info($"{tag}：塔主盖下 {command.Amount} 张陷阱，手里还有 {Math.Max(0, command.Monster)} 张");
                     MasterInfoHud.OnTrapInfo(command.Amount, command.Monster);
                     if (!Test3MasterAutoPilot.LocalIsMaster)
-                        SummonPhase.Toast(MasterRelics.Has("fog_censer") ? "塔主的迷雾香炉在冒烟……看不清盖了几张陷阱" // 塔主遗物「迷雾香炉」
-                            : command.Amount > 0 ? $"塔主盖下了 {command.Amount} 张陷阱" : "塔主这场没有盖陷阱");
+                    {
+                        int gold = ModEntry.Active.DodgeRewardGold / (MasterRelics.Has("stingy_purse") ? 2 : 1);
+                        if (MasterRelics.Has("fog_censer")) SummonPhase.Notify("看不清有没有陷阱", "塔主的迷雾香炉在冒烟", "relic_fog_censer"); // 塔主遗物「迷雾香炉」
+                        else if (command.Amount > 0) SummonPhase.Notify($"塔主盖下了 {command.Amount} 张陷阱", $"打完都没触发的，每张每人得 {gold} 金币", "icon_trap");
+                        else SummonPhase.Notify("塔主这场没盖陷阱", "", "icon_trap");
+                    }
                     break;
                 case "trap_dodge":
                     await DodgeReward(command, tag);
@@ -515,7 +519,7 @@ internal static class ThreatPhase
                 break;
         }
         Log.Info($"{tag}：陷阱 {card} 触发{(c.Player != 0 ? $"，玩家 {c.Player}" : "")}，数值 {c.Amount}");
-        SummonPhase.Toast($"陷阱「{card.Name}」：{card.Def.ShortWhat(card.Tier)}");
+        SummonPhase.Notify($"陷阱「{card.Name}」生效", def.Plain(card.Tier), $"trap_{card.Id}");
     }
 
     /// <summary>躲过奖励：每名爬塔玩家 +金币（PlayerCmd.GainGold，各端同样执行）。</summary>
@@ -528,7 +532,8 @@ internal static class ThreatPhase
             foreach (var p in Climbers(state))
                 await (Task)gain.Invoke(null, [(decimal)c.Amount, p, false])!;
         Log.Info($"{tag}：陷阱翻开 {c.MonsterId}，每名玩家 +{c.Amount} 金币");
-        SummonPhase.Toast(c.Amount > 0 ? $"躲过陷阱：{c.MonsterId} · 每人 +{c.Amount} 金币" : $"陷阱翻开：{c.MonsterId}（空陷阱，没有金币）");
+        if (c.Amount > 0) SummonPhase.Notify($"躲过了陷阱，每人 +{c.Amount} 金币", $"没触发的：{c.MonsterId}", "icon_trap");
+        else SummonPhase.Notify("塔主的陷阱是空的", $"翻开一看：{c.MonsterId}", "trap_bluff");
     }
 
     /// <summary>还有爬塔玩家活着、敌人都死了（或跑了）。</summary>

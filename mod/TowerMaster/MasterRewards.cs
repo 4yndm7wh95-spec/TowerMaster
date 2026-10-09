@@ -68,13 +68,13 @@ internal static class MasterRewards
         if (relics.Count > 0)
         {
             var choices = Offer(seed, id, OfferSize, relics).Select(r => $"relic:{r}").ToList();
-            Notice("塔主宝箱：选一件塔主遗物（可以跳过）");
+            Notice("塔主宝箱｜选一件遗物，不想要可以跳过");
             AfterUiSettles(() => Send(choices, 1, id, KindRelic, 0));
             return;
         }
         if (!MasterRelics.Enabled) Log.Warn($"塔主宝箱：塔主遗物没开成（{MasterRelics.FailReason ?? "没有遗物类型"}），改送塔主牌");
         var offer = Offer(seed, id).Select(op => $"act:{op}").ToList();
-        Notice("塔主宝箱：选一张塔主牌（可以跳过）");
+        Notice("塔主宝箱｜选一张新牌，不想要可以跳过");
         AfterUiSettles(() => Send(offer, act, id, KindFree, 0));
     }
 
@@ -86,7 +86,7 @@ internal static class MasterRewards
         var actions = MasterLedger.ActionCards();
         if (MasterLedger.RewardTaken(id) || actions.Count <= ModEntry.Active.MasterMinDeck) return;
         var offer = Offer(seed, id, OfferSize, actions).Select(op => $"act:{op}").ToList();
-        Notice("休息处：选一张塔主牌移出牌组（可以跳过）");
+        Notice("篝火｜可以从塔主牌组里删掉一张牌");
         AfterUiSettles(() => Send(offer, act, id, KindRemove, 0));
     }
 
@@ -100,12 +100,12 @@ internal static class MasterRewards
             if (MasterLedger.RewardTaken(id)) return;
             if ((MasterLedger.Wallet?.Points ?? 0) < price)
             {
-                Notice($"陷阱商店：召唤点不够 {price}，这次买不了");
+                Notice($"陷阱商店｜要 {price} 召唤点，现在不够");
                 return;
             }
             var traps = TrapCatalog.All.Where(t => t.Effect != TrapEffect.None && MasterLedger.Traps.All(h => h.Id != t.Id)).Select(t => t.Id);
             var offer = Offer(seed, id, 2).Select(op => $"act:{op}").Concat(Offer(seed, id + 1, 1, traps).Select(t => $"trap:{t}")).ToList();
-            Notice($"陷阱商店：花 {price} 召唤点买一张塔主牌（可以跳过）");
+            Notice($"陷阱商店｜花 {price} 召唤点买一张牌，也可以不买");
             AfterUiSettles(() => Send(offer, act, id, KindBuy, price));
         }
         catch (Exception e) { Log.Error("塔主商店：开店失败", e); }
@@ -133,8 +133,9 @@ internal static class MasterRewards
     }
 
     /// <summary>塔主屏幕上的提示；测试里换成空操作（没有 Godot 引擎时调界面会让进程崩溃，try 拦不住）。</summary>
-    internal static Action<string> NoticeSink = text => SummonPhase.Toast(text);
+    internal static Action<string> NoticeSink = text => { var parts = text.Split('｜'); SummonPhase.Notify(parts[0], parts.Length > 1 ? parts[1] : "", "master_portrait"); };
 
+    /// <summary>塔主屏幕上的提示：「标题｜一行补充」。</summary>
     private static void Notice(string text)
     {
         Log.Info($"塔主牌：{text}");

@@ -141,12 +141,13 @@ public class MasterCardsTests
     public void InfoHudCountsTrapCardsInTheMastersDeck()
     {
         MasterInfoHud.ResetRun();
-        Assert.Contains("手里 ?", MasterInfoHud.Describe([]).Line1);
+        Assert.Equal("?", MasterInfoHud.Describe([]).Hand);
         MasterInfoHud.OnDeck(["act:block@1", "trap:harden@1", "trap:rally@2"]);
-        var (line1, line2, tip) = MasterInfoHud.Describe(["甲", "乙"]);
-        Assert.Contains("手里 2", line1);
-        Assert.Equal("本幕 Boss：甲 / 乙", line2);
-        Assert.Contains("内容保密", tip);
+        var view = MasterInfoHud.Describe(["甲", "乙"]);
+        Assert.Equal("2", view.Hand);
+        Assert.Equal("甲 / 乙", view.Bosses);
+        Assert.Contains("保密", view.Tip);
+        Assert.Contains("甲 或 乙", view.Tip);
         MasterInfoHud.ResetRun();
     }
 

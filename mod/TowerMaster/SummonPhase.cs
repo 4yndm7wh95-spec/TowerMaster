@@ -89,6 +89,9 @@ internal static class SummonPhase
     /// <summary>结算提示（收入等）；游戏里显示在屏幕上，测试里只记日志。</summary>
     internal static Action<string> Toast = text => SummonPanel.ShowToast(text);
 
+    /// <summary>新样式提示：标题（结果）、一行补充、图标（art 名，可空）。测试里换成空操作。</summary>
+    internal static Action<string, string, string?> Notify = (title, detail, icon) => SummonPanel.ShowNotice(title, detail, icon);
+
     /// <summary>
     /// 一局结束（回主菜单、断线、放弃）或新开一局时：关掉还开着的面板，丢掉扣住的移动和本场记录，
     /// 账本只清内存（下次按新一局的种子从文件读或新开）。0.0.26 实测：断线后新局还显示上一局的召唤点和暂停状态。
@@ -415,7 +418,11 @@ internal static class SummonPhase
                        (cat > 0 ? $"，招财猫 +{cat}" : "") +
                        $"），召唤点 {wallet.Points}/{wallet.Cap}";
             Log.Info($"召唤阶段：{text}；玩家掉血 {damage}，击倒 [{string.Join(",", KnockedDown)}]，有奖励 [{string.Join(",", rewarded)}]");
-            Toast(text);
+            // 塔主屏幕上只说结果：得了多少、现在多少；怎么算的写日志（用户反馈「节约、战果这些说法难懂」）
+            int gained = income.Credited + cat;
+            Notify(gained > 0 ? $"召唤点 +{gained}" : "这场没有收入", wallet.Points >= wallet.Cap
+                ? $"已存满 {wallet.Points}" + (income.Wasted > 0 ? $"，多出的 {income.Wasted} 点没存下" : "")
+                : $"现在 {wallet.Points}，最多存 {wallet.Cap}", "icon_summon_point");
         }
         catch (Exception e) { Log.Error("召唤阶段：结算收入失败", e); }
     }

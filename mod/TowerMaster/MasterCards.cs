@@ -457,7 +457,7 @@ public static class MasterCards
                                     .First(x => x.Name == "GainEnergy" && x.GetParameters().Length == 2).Invoke(null, [2m, mp])!;
                             break;
                     }
-                    try { SummonPhase.Toast(new[] { "惊喜盲盒：敌人全体 +5 格挡", "惊喜盲盒：每名玩家 1 层虚弱", "惊喜盲盒：每名玩家抽 1 张牌（塔主亏了）", "惊喜盲盒：塔主 +2 能量" }[roll]); }
+                    try { SummonPhase.Notify("惊喜盲盒", new[] { "所有敌人 +5 格挡", "每名玩家获得 1 层虚弱", "每名玩家抽 1 张牌（塔主亏了）", "塔主多了 2 点能量" }[roll], "icon_trap"); }
                     catch { /* 测试里没有界面 */ }
                     break;
                 }

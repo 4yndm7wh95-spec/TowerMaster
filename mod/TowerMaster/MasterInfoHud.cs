@@ -62,28 +62,35 @@ internal static class MasterInfoHud
         catch { return null; }
     }
 
-    /// <summary>信息条的两行文字和悬停说明。</summary>
-    internal static (string Line1, string Line2, string Tip) Describe(IReadOnlyList<string> bosses)
+    /// <summary>信息条显示的内容。Placed = -1 表示看不到（迷雾香炉）。</summary>
+    internal sealed record HudView(string Hand, int Placed, int Fired, bool InFight, string Bosses, string Tip);
+
+    /// <summary>
+    /// 信息条内容（0.0.47 重做，用户反馈「字多、难懂、不好看」）：只放图标和数字，说明全在悬停提示里用大白话写。
+    /// </summary>
+    internal static HudView Describe(IReadOnlyList<string> bosses)
     {
         bool fog = !Test3MasterAutoPilot.LocalIsMaster && MasterRelics.Has("fog_censer"); // 塔主遗物「迷雾香炉」：玩家看不到张数
         var hand = TrapsInHand >= 0 && !fog ? $"{TrapsInHand}" : "?";
-        var placed = fog ? "?" : $"{_placed}";
         bool inFight = EnsureFight();
-        var line1 = inFight ? $"塔主陷阱  手里 {hand} · 本场盖下 {placed} · 已触发 {Triggered.Count}" : $"塔主陷阱  手里 {hand}";
         var relics = MasterRelics.Owned().Select(id => MasterRelics.Find(id)?.Title).OfType<string>().ToList();
-        var line2 = bosses.Count > 0 ? $"本幕 Boss：{string.Join(" / ", bosses)}" : "";
-        var tip = "塔主手里的陷阱牌张数公开，内容保密。\n每场战斗开始时公开塔主盖下几张（可能有空陷阱诈唬），触发时所有人都会看到。"
-                  + (Triggered.Count > 0 ? $"\n本场已触发：{string.Join("、", Triggered)}" : "")
-                  + (bosses.Count > 0 ? "\n本幕的 Boss 会是这几个之一，塔主进 Boss 房时挑一个。" : "")
-                  + (relics.Count > 0 ? $"\n塔主遗物：{string.Join("、", relics)}" : "");
-        return (line1, line2, tip);
+        var tip = new List<string> { $"塔主手里有 {hand} 张陷阱牌（是什么保密）。" };
+        if (inFight)
+            tip.Add(fog ? "迷雾香炉在冒烟，看不清这场盖了几张。" : $"这场盖下了 {_placed} 张，已经触发 {Triggered.Count} 张（红色的）。可能有空陷阱在吓唬人。");
+        if (Triggered.Count > 0) tip.Add($"触发过：{string.Join("、", Triggered)}");
+        if (bosses.Count > 0) tip.Add($"这一幕的 Boss 会是 {string.Join(" 或 ", bosses)}，塔主到 Boss 房时挑一个。");
+        if (relics.Count > 0) tip.Add($"塔主的遗物：{string.Join("、", relics)}");
+        return new HudView(hand, fog ? -1 : _placed, Triggered.Count, inFight, string.Join(" / ", bosses), string.Join("\n", tip));
     }
 
     // ---------------------------------------------------------------- 界面
 
     private static G.Control? _bar;
     private static G.PanelContainer? _panel;
-    private static G.Label? _line1, _line2;
+    private static G.Label? _hand, _bossLine;
+    private static G.HBoxContainer? _fightRow, _pips;
+    private static G.Control? _bossRow;
+    private static string _pipKey = "";
     private static int _frames;
     private static string _bossKey = "";
     private static IReadOnlyList<string> _bosses = [];
@@ -112,10 +119,14 @@ internal static class MasterInfoHud
             var key = $"{GameReflection.Get(state, "Act")?.GetType().Name}|{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(state)}";
             if (key != _bossKey) { _bossKey = key; _bosses = SummonPhase.PublicBossNames(); }
 
-            var (line1, line2, tip) = Describe(_bosses);
-            _line1!.Text = line1;
-            _line2!.Text = line2;
-            _line2.Visible = line2.Length > 0;
+            var view = Describe(_bosses);
+            _hand!.Text = view.Hand;
+            _fightRow!.Visible = view.InFight;
+            var pipKey = $"{view.Placed}/{view.Fired}";
+            if (pipKey != _pipKey) { _pipKey = pipKey; Pips(view.Placed, view.Fired); }
+            _bossLine!.Text = view.Bosses;
+            _bossRow!.Visible = view.Bosses.Length > 0;
+            var tip = view.Tip;
             _panel!.TooltipText = tip;
             _panel.Visible = _bar.IsVisibleInTree();
             _panel.ResetSize();
@@ -145,23 +156,66 @@ internal static class MasterInfoHud
         if (_panel != null && G.GodotObject.IsInstanceValid(_panel)) _panel.Visible = false;
     }
 
+    /// <summary>
+    /// 样子：一块半透明深色小牌子，右上角对齐。
+    /// 第一行：陷阱牌背图标 + 手里张数（大号金字）；战斗中右边再跟「本场」和一排小方块，每块是一张盖下的陷阱，触发了就变红。
+    /// 第二行：小字「Boss」+ 本幕两个候选的名字。
+    /// </summary>
     private static void Build(G.Control bar)
     {
         if (_panel != null && G.GodotObject.IsInstanceValid(_panel)) _panel.QueueFree();
+        _pipKey = "";
         _panel = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Pass, ZIndex = 1 };
-        var sb = SummonPanel.Box(new G.Color(0.075f, 0.09f, 0.13f, 0.86f), SummonPanel.GoldDim, 1, 10, 0);
-        sb.ContentMarginLeft = sb.ContentMarginRight = 12;
-        sb.ContentMarginTop = sb.ContentMarginBottom = 5;
+        var sb = SummonPanel.Box(new G.Color(0.05f, 0.06f, 0.09f, 0.78f), new G.Color(0.55f, 0.45f, 0.26f, 0.6f), 1, 12, 0);
+        sb.ContentMarginLeft = 10; sb.ContentMarginRight = 14; sb.ContentMarginTop = 4; sb.ContentMarginBottom = 6;
         _panel.AddThemeStyleboxOverride("panel", sb);
         var box = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-        box.AddThemeConstantOverride("separation", 2);
-        _line1 = SummonPanel.Text("", 17, SummonPanel.Gold);
-        _line2 = SummonPanel.Text("", 15, SummonPanel.TextDim);
-        foreach (var l in new[] { _line1, _line2 }) { l.MouseFilter = G.Control.MouseFilterEnum.Ignore; l.HorizontalAlignment = G.HorizontalAlignment.Right; box.AddChild(l); }
+        box.AddThemeConstantOverride("separation", 0);
+
+        var top = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.End };
+        top.AddThemeConstantOverride("separation", 6);
+        if (Art.Icon("icon_trap", 30) is { } icon) top.AddChild(icon);
+        _hand = SummonPanel.Text("?", 24, SummonPanel.Gold);
+        top.AddChild(_hand);
+        _fightRow = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        _fightRow.AddThemeConstantOverride("separation", 6);
+        _fightRow.AddChild(new G.Control { CustomMinimumSize = new G.Vector2(6, 0), MouseFilter = G.Control.MouseFilterEnum.Ignore });
+        _fightRow.AddChild(SummonPanel.Text("本场", 15, SummonPanel.TextDim));
+        _pips = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
+        _pips.AddThemeConstantOverride("separation", 4);
+        _fightRow.AddChild(_pips);
+        top.AddChild(_fightRow);
+        box.AddChild(top);
+
+        var bossRow = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.End };
+        bossRow.AddThemeConstantOverride("separation", 6);
+        bossRow.AddChild(SummonPanel.Text("Boss", 13, SummonPanel.GoldDim));
+        _bossLine = SummonPanel.Text("", 15, SummonPanel.TextDim);
+        bossRow.AddChild(_bossLine);
+        _bossRow = bossRow;
+        box.AddChild(bossRow);
+
+        foreach (var n in box.FindChildren("*", "Label", true, false)) if (n is G.Control c) c.MouseFilter = G.Control.MouseFilterEnum.Ignore;
         _panel.AddChild(box);
         SummonPanel.ApplyGameFont(_panel);
         bar.AddChild(_panel);
         Log.Info("塔主信息条：挂到原版顶栏下方");
+    }
+
+    /// <summary>本场盖下的陷阱：每张一个小牌背方块，触发的变红；看不到（迷雾香炉）就是一个问号。</summary>
+    private static void Pips(int placed, int fired)
+    {
+        foreach (var child in _pips!.GetChildren()) child.QueueFree();
+        if (placed < 0) { var q = SummonPanel.Text("?", 18, SummonPanel.TextDim); q.MouseFilter = G.Control.MouseFilterEnum.Ignore; _pips.AddChild(q); return; }
+        if (placed == 0) { var none = SummonPanel.Text("没盖", 15, SummonPanel.TextDim); none.MouseFilter = G.Control.MouseFilterEnum.Ignore; _pips.AddChild(none); return; }
+        for (int i = 0; i < placed; i++)
+        {
+            bool hit = i < fired;
+            var pip = new G.Panel { CustomMinimumSize = new G.Vector2(13, 18), MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            pip.AddThemeStyleboxOverride("panel", SummonPanel.Box(hit ? new G.Color(0.78f, 0.28f, 0.30f) : new G.Color(0.10f, 0.12f, 0.18f),
+                hit ? new G.Color(1f, 0.55f, 0.5f) : SummonPanel.Gold, 1, 3, 0));
+            _pips.AddChild(pip);
+        }
     }
 
     private static G.Node? Find(G.Node root, string typeName)

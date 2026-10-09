@@ -291,7 +291,7 @@ internal static class MasterPresence
         var texture = Art.Get("master_figure") ?? Art.Get("master_portrait");
         if (texture == null) return;
         var size = room.Size;
-        float height = Art.Get("master_figure") != null ? size.Y * 0.62f : size.Y * 0.30f;
+        float height = Art.Get("master_figure") != null ? size.Y * 0.56f : size.Y * 0.30f;
         float width = height * texture.GetWidth() / Math.Max(1, texture.GetHeight());
         var figure = new G.TextureRect
         {
@@ -301,8 +301,11 @@ internal static class MasterPresence
             Size = new G.Vector2(width, height),
             Position = new G.Vector2(size.X - width - size.X * 0.02f, size.Y * 0.70f - height),
             MouseFilter = G.Control.MouseFilterEnum.Ignore,
-            Modulate = new G.Color(0.85f, 0.85f, 0.95f, 0.92f),
+            Modulate = new G.Color(0.80f, 0.80f, 0.92f, 0.85f),
             PivotOffset = new G.Vector2(width / 2, height),
+            // 画在怪物后面（用户反馈塔主挡住怪物）：原版战斗房间里场景背景 ZIndex -10、战斗特效 -9、怪物默认 0。
+            // 取 -9 且排在最前面：在背景之上、特效和怪物（以及怪物的血条、意图）之下
+            ZIndex = -9,
         };
         room.AddChild(figure);
         room.MoveChild(figure, 0); // 画在怪物下面
@@ -322,7 +325,7 @@ internal static class MasterPresence
             var tween = _figure.CreateTween();
             tween.TweenProperty(_figure, "modulate", new G.Color(1.4f, 1.2f, 1.6f, 1f), 0.12);
             tween.Parallel().TweenProperty(_figure, "scale", new G.Vector2(1.06f, 1.06f), 0.12);
-            tween.TweenProperty(_figure, "modulate", new G.Color(0.85f, 0.85f, 0.95f, 0.92f), 0.35);
+            tween.TweenProperty(_figure, "modulate", new G.Color(0.80f, 0.80f, 0.92f, 0.85f), 0.35);
             tween.Parallel().TweenProperty(_figure, "scale", G.Vector2.One, 0.35);
         }
         catch { /* 纯显示 */ }

@@ -98,6 +98,24 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
     };
 
     /// <summary>界面上的短效果（小卡、提示用）。</summary>
+    /// <summary>触发后发生了什么（提示用的大白话，带主语）。</summary>
+    public string Plain(int tier)
+    {
+        int a = Amount(tier);
+        string who = Trigger == TrapTrigger.RoundStart ? "每名玩家" : "触发的玩家";
+        return Effect switch
+        {
+            TrapEffect.BlockAllEnemies => $"所有敌人 +{a} 格挡",
+            TrapEffect.StrengthAllEnemies => $"所有敌人 +{a} 力量",
+            TrapEffect.HealAllEnemiesPercent => $"所有敌人回复 {a}% 生命",
+            TrapEffect.WeakPlayer => $"{who}获得 {a} 层虚弱",
+            TrapEffect.VulnerablePlayer => $"{who}获得 {a} 层易伤",
+            TrapEffect.FrailPlayer => $"{who}获得 {a} 层脆弱",
+            TrapEffect.DazedPlayer => $"{who}的抽牌堆多了 {a} 张晕眩",
+            _ => "什么也没发生",
+        };
+    }
+
     public string ShortWhat(int tier)
     {
         int a = Amount(tier);

@@ -44,13 +44,13 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         var title = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.Center };
         title.AddThemeConstantOverride("separation", 12);
         if (Art.Icon("icon_trap", 40) is { } icon) title.AddChild(icon);
-        title.AddChild(P.Text("挑选陷阱", 36, P.Gold));
+        title.AddChild(P.Text("挑陷阱", 36, P.Gold));
         title.AddChild(P.Text($"第 {d.ActNo} 幕", 20, P.TextDim));
         page.AddChild(title);
         _stats = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.Center };
         _stats.AddThemeConstantOverride("separation", 12);
         page.AddChild(_stats);
-        var hint = P.Text("点卡牌选中或取消。左上角的数字是预算花费；鼠标停在卡上可以看完整规则。", 15, P.TextDim);
+        var hint = P.Text("点一下选中，再点取消。卡左上角的数字是它要花的点数。", 15, P.TextDim);
         hint.HorizontalAlignment = G.HorizontalAlignment.Center;
         page.AddChild(hint);
 
@@ -134,9 +134,11 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         if (_layer == null) return;
         var d = choice.Draft;
         foreach (var child in _stats.GetChildren()) child.QueueFree();
-        _stats.AddChild(Stat("预算", $"{d.Spent} / {d.Budget}", d.Spent > d.Budget));
-        _stats.AddChild(Stat("本幕挑", $"{d.Picked.Count} / {d.MaxPicks}", false));
-        _stats.AddChild(Stat("手牌", $"{d.Hand.Count + d.Picked.Count} / {d.HandLimit}", false));
+        // 0.0.47：只说「还能做什么」，不摆三组分数
+        int money = d.Budget - d.Spent, picks = d.MaxPicks - d.Picked.Count, room = d.HandLimit - d.Hand.Count - d.Picked.Count;
+        _stats.AddChild(Stat("还能花", $"{money} 点", money < 0));
+        _stats.AddChild(Stat("还能挑", $"{Math.Max(0, Math.Min(picks, room))} 张", false));
+        if (room <= 1) _stats.AddChild(Stat("手里", room <= 0 ? "满了" : "快满了", room < 0));
         P.ApplyGameFont(_stats);
 
         for (int i = 0; i < _slots.Count; i++) Style(_slots[i], i);
@@ -148,7 +150,7 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
     private void BuildHand()
     {
         var d = choice.Draft;
-        if (d.Hand.Count == 0) { _hand.AddChild(P.Text("手里还没有陷阱", 15, P.TextDim)); return; }
+        if (d.Hand.Count == 0) return; // 手里没有就不占地方
         _hand.AddChild(P.Text("手里已有", 15, P.TextDim));
         foreach (var c in d.Hand)
         {

@@ -120,7 +120,7 @@ internal sealed class SummonSession
     /// <summary>规则之外、面板要提示的问题（目前只有「这个 Boss 不能另加怪」）。</summary>
     public IReadOnlyList<string> ExtraProblems =>
         Room.Room == RoomKind.Boss && _monsters.Count > 0 && !BossAllowsExtras
-            ? ["这个 Boss 有专用场景，不能另加怪物"]
+            ? ["这个 Boss 有专用场景，不能再加别的怪"]
             : [];
 
     public bool CanConfirm => !Done && Quote.Ok && ExtraProblems.Count == 0;
@@ -208,23 +208,23 @@ internal sealed class SummonSession
     {
         SummonViolation.UnknownMonster => "有不能召唤的怪物",
         SummonViolation.UnknownEncounter => "不是本幕的遭遇",
-        SummonViolation.MonsterNotSummonable => "Boss、召唤物不能单独召唤",
-        SummonViolation.EncounterRequired => "要先选一个 Boss",
+        SummonViolation.MonsterNotSummonable => "这只不能单独派上场",
+        SummonViolation.EncounterRequired => "先选一个 Boss",
         SummonViolation.EncounterNotAllowed => "这个房间不能选遭遇",
         SummonViolation.WrongEncounterRoom => "遭遇类型和房间不符",
         SummonViolation.BossNotCandidate => "不是本幕的候选 Boss",
-        SummonViolation.EmptyRoom => "至少召唤一只怪物",
+        SummonViolation.EmptyRoom => "至少派一只怪",
         SummonViolation.TooManyTraps => "每场最多盖 2 张陷阱",
-        SummonViolation.OpeningProtectionMonster => "开局保护：只能用本幕的普通怪",
-        SummonViolation.OpeningProtectionCost => "开局保护：花费超过本场上限",
-        SummonViolation.OpeningProtectionTraps => "开局保护：不能盖陷阱",
-        SummonViolation.TooManyMonsters => "场上怪物太多",
-        SummonViolation.TooManySameMonster => "同名怪物太多",
-        SummonViolation.TooManyElites => "每个房间最多一只精英",
-        SummonViolation.OverSpendCap => "超过单场花费上限",
-        SummonViolation.OverEliteExtraCap => "精英房另加小怪超过上限",
-        SummonViolation.OverBossExtraCap => "Boss 房另加的怪超过上限",
-        SummonViolation.NotEnoughPoints => "召唤点不够",
+        SummonViolation.OpeningProtectionMonster => "前几场只能放本幕的普通怪",
+        SummonViolation.OpeningProtectionCost => "前几场花不了这么多",
+        SummonViolation.OpeningProtectionTraps => "前几场还不能盖陷阱",
+        SummonViolation.TooManyMonsters => "场上放不下这么多怪",
+        SummonViolation.TooManySameMonster => "同一种怪放太多了",
+        SummonViolation.TooManyElites => "一个房间只能放一只精英",
+        SummonViolation.OverSpendCap => "这场的怪超出上限了，去掉几只",
+        SummonViolation.OverEliteExtraCap => "精英房加的小怪太多了",
+        SummonViolation.OverBossExtraCap => "Boss 房加的怪太多了",
+        SummonViolation.NotEnoughPoints => "召唤点不够了",
         _ => v.ToString(),
     };
 }

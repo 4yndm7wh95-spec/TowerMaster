@@ -152,10 +152,9 @@ internal sealed class SummonPanel : ISummonUi
         bar.AddChild(Chip(roomName, roomColor, TextMain));
         if (_session.IsOpeningProtected)
         {
-            var chip = Chip("开局保护", new G.Color(0.12f, 0.24f, 0.18f), Good);
-            chip.TooltipText = "前几场只能用本幕普通怪，花费上限较低，不能盖陷阱";
-            chip.MouseFilter = G.Control.MouseFilterEnum.Pass;
-            bar.AddChild(chip);
+            var note = Text("前几场先手下留情：只能放本幕的普通怪，不能盖陷阱", 16, TextDim);
+            note.SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter;
+            bar.AddChild(note);
         }
         bar.AddChild(Spacer());
         if (!_session.Unlimited)
@@ -163,7 +162,7 @@ internal sealed class SummonPanel : ISummonUi
             _timer = Text("", 26, TextMain);
             bar.AddChild(_timer);
         }
-        bar.AddChild(Resource("icon_summon_point", $"{room.Savings}", "召唤点"));
+        bar.AddChild(Resource("icon_summon_point", $"{room.Savings}", "召唤点：召唤怪物、盖陷阱都要花。每打完一场会补一些。"));
         return bar;
     }
 
@@ -206,7 +205,6 @@ internal sealed class SummonPanel : ISummonUi
     // ---------------------------------------------------------------- 筛选：幕、费用、精英
 
     private int _actFilter = -1;   // 0 = 全部；-1 = 还没定（默认本幕）
-    private int _costFilter;       // 0 = 全部，1/2/3 = 正好这么多，4 = 4 点以上
     private bool _eliteOnly;
     private readonly List<(G.Button Button, Func<bool> On)> _filterButtons = new();
 
@@ -225,10 +223,7 @@ internal sealed class SummonPanel : ISummonUi
                 row.AddChild(FilterButton($"第{"一二三"[Math.Clamp(a, 1, 3) - 1]}幕", () => _actFilter == a, () => _actFilter = a));
             row.AddChild(new G.Control { CustomMinimumSize = new G.Vector2(14, 0) });
         }
-        row.AddChild(Text("费用", 15, TextDim));
-        row.AddChild(FilterButton("全部", () => _costFilter == 0, () => _costFilter = 0));
-        foreach (var c in new[] { 1, 2, 3, 4 })
-            row.AddChild(FilterButton(c == 4 ? "4+" : $"{c}", () => _costFilter == c, () => _costFilter = c));
+        // 0.0.47 去掉按价格筛选（用户反馈太挤），价格直接看卡片角上
         if (_session.MonsterOptions.Any(o => o.IsElite))
         {
             row.AddChild(new G.Control { CustomMinimumSize = new G.Vector2(14, 0) });
@@ -250,9 +245,7 @@ internal sealed class SummonPanel : ISummonUi
         foreach (var option in _session.MonsterOptions)
         {
             if (!_cards.TryGetValue(option.Id, out var entry)) continue;
-            bool show = (_actFilter <= 0 || option.HomeAct == _actFilter)
-                        && (_costFilter == 0 || (_costFilter == 4 ? option.Price >= 4 : option.Price == _costFilter))
-                        && (!_eliteOnly || option.IsElite);
+            bool show = (_actFilter <= 0 || option.HomeAct == _actFilter) && (!_eliteOnly || option.IsElite);
             entry.Card.Visible = show;
         }
         foreach (var (button, on) in _filterButtons)
@@ -319,7 +312,7 @@ internal sealed class SummonPanel : ISummonUi
             portrait.OffsetBottom = portraitSize.Y;
             stage.AddChild(portrait);
         }
-        var price = Badge(isEncounter ? "免费" : $"{option.Price}", new G.Color(0.20f, 0.17f, 0.09f, 0.95f), Gold);
+        var price = isEncounter ? Badge("免费", new G.Color(0.20f, 0.17f, 0.09f, 0.95f), Gold) : PriceBadge(option.Price);
         price.SetAnchorsPreset(G.Control.LayoutPreset.TopRight);
         price.GrowHorizontal = G.Control.GrowDirection.Begin;
         stage.AddChild(price);
@@ -335,7 +328,7 @@ internal sealed class SummonPanel : ISummonUi
         tags.GrowVertical = G.Control.GrowDirection.Begin;
         if (isEncounter)
         {
-            if (!_session.EncounterAllowsExtras(option.Id)) tags.AddChild(Badge("不能另加", new G.Color(0.30f, 0.12f, 0.12f, 0.95f), new G.Color(1f, 0.65f, 0.6f)));
+            if (!_session.EncounterAllowsExtras(option.Id)) tags.AddChild(Badge("不能加怪", new G.Color(0.30f, 0.12f, 0.12f, 0.95f), new G.Color(1f, 0.65f, 0.6f)));
         }
         else
         {
@@ -362,15 +355,32 @@ internal sealed class SummonPanel : ISummonUi
     private string Tooltip(SummonOption option, bool isEncounter)
     {
         if (isEncounter)
-            return $"{option.Name}\n免费出场" + (_session.EncounterAllowsExtras(option.Id) ? "，可以另加怪物" : "\n有专用场景，不能另加怪物");
-        var lines = new List<string> { option.Name, $"召唤价 {option.Price} 点" };
-        if (option.IsElite) lines.Add("精英（每场最多一只）");
+            return $"{option.Name}\n免费出场" + (_session.EncounterAllowsExtras(option.Id) ? "，还可以再加别的怪" : "\n有专用场景，不能再加别的怪");
+        var lines = new List<string> { option.Name, $"召唤要 {option.Price} 召唤点" };
+        if (option.IsElite) lines.Add("精英：一场最多放一只");
         if (option.HomeAct != _session.ActNo)
-            lines.Add(option.HpFactor < 1 ? $"第 {option.HomeAct} 幕的怪：生命 {option.HpFactor * 100:0}%" : $"第 {option.HomeAct} 幕的怪");
+            lines.Add(option.HpFactor < 1 ? $"别的幕的怪，来这里生命只有 {option.HpFactor * 100:0}%" : $"第 {option.HomeAct} 幕的怪");
         return string.Join("\n", lines);
     }
 
     private static string Roman(int act) => act switch { 1 => "I", 2 => "II", 3 => "III", _ => act.ToString() };
+
+    /// <summary>价格角标：召唤点宝石小图标 + 数字。</summary>
+    internal static G.PanelContainer PriceBadge(int price)
+    {
+        var badge = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        var sb = Box(new G.Color(0.10f, 0.08f, 0.14f, 0.92f), GoldDim, 1, 9, 0);
+        sb.ContentMarginLeft = 3; sb.ContentMarginRight = 8; sb.ContentMarginTop = sb.ContentMarginBottom = 0;
+        badge.AddThemeStyleboxOverride("panel", sb);
+        var row = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 2);
+        if (Art.Icon("icon_summon_point", 20) is { } gem) row.AddChild(gem);
+        var label = Text($"{price}", 16, Gold);
+        label.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        row.AddChild(label);
+        badge.AddChild(row);
+        return badge;
+    }
 
     /// <summary>形象上的小角标。</summary>
     internal static G.PanelContainer Badge(string text, G.Color bg, G.Color fg)
@@ -396,54 +406,53 @@ internal sealed class SummonPanel : ISummonUi
         col.AddThemeConstantOverride("separation", 10);
         side.AddChild(col);
 
-        col.AddChild(Heading(_session.Room.Room == RoomKind.Boss ? "另加的怪" : "本场阵容"));
+        col.AddChild(Heading(_session.Room.Room == RoomKind.Boss ? "Boss 之外再加" : "这场派谁上"));
         var lineupScroll = new G.ScrollContainer { HorizontalScrollMode = G.ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = G.Control.SizeFlags.ExpandFill };
         var lineupBox = new G.VBoxContainer { SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill };
         lineupBox.AddThemeConstantOverride("separation", 6);
         _lineup = new G.VBoxContainer();
         _lineup.AddThemeConstantOverride("separation", 4);
         lineupBox.AddChild(_lineup);
-        _emptyHint = Text(_session.Room.Room == RoomKind.Boss ? "可以不加" : "点左边的怪加入", 16, TextDim);
+        _emptyHint = Text(_session.Room.Room == RoomKind.Boss ? "Boss 之外可以不加怪" : "点左边的怪，派它们上场", 16, TextDim);
         lineupBox.AddChild(_emptyHint);
         lineupScroll.AddChild(lineupBox);
         col.AddChild(lineupScroll);
 
         BuildTraps(col);
 
+        // 下面是「账单」：上面阵容列表就是明细（每只怪、怪多加价、陷阱各一行），这里只放两样：
+        // 这场怪物花了多少（离上限多远，一条进度条）和召唤完还剩多少。0.0.47 去掉「总花费 / 群体税 / 怪物上限 3.9 / 确认后剩余」这些说法
         col.AddChild(Divider());
-        // 总花费最醒目；下面一行小字拆开；怪物花费有上限，用进度条
-        var totalRow = new G.HBoxContainer();
-        totalRow.AddChild(Text("总花费", 18, TextDim));
-        totalRow.AddChild(Spacer());
-        _total = Text("0", 30, TextMain);
-        totalRow.AddChild(_total);
-        col.AddChild(totalRow);
-        _breakdown = Text("", 14, TextDim);
-        col.AddChild(_breakdown);
-        var capRow = new G.HBoxContainer();
-        capRow.AddChild(Text("怪物上限", 14, TextDim));
+        var capRow = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Pass };
+        capRow.AddChild(Text("这场的怪", 16, TextDim));
         capRow.AddChild(Spacer());
-        _cost = Text("0 / 0", 14, TextDim);
+        _cost = Text("0 / 0", 18, TextMain);
         capRow.AddChild(_cost);
         col.AddChild(capRow);
-        _capBar = Bar(1, 0, Good, 6);
+        _capBar = Bar(1, 0, Good, 8);
         col.AddChild(_capBar);
         var leftRow = new G.HBoxContainer();
-        leftRow.AddChild(Text("确认后剩余", 18, TextDim));
+        leftRow.AddThemeConstantOverride("separation", 6);
+        if (Art.Icon("icon_summon_point", 30) is { } gem) leftRow.AddChild(gem);
+        var leftLabel = Text("召唤后还剩", 18, TextDim);
+        leftLabel.SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter;
+        leftRow.AddChild(leftLabel);
         leftRow.AddChild(Spacer());
-        _left = Text("0", 30, Gold);
+        _left = Text("0", 32, Gold);
         leftRow.AddChild(_left);
         col.AddChild(leftRow);
+        _total = Text("", 1, TextDim); // 不再显示（保留字段，Render 里不用）
+        _breakdown = Text("", 1, TextDim);
 
         _problems = new G.VBoxContainer();
         _problems.AddThemeConstantOverride("separation", 2);
         col.AddChild(_problems);
 
-        _confirm = MakeButton("确认召唤", Teal, TealHover, Gold, TextMain, new G.Vector2(0, 58), 24);
+        _confirm = MakeButton("召唤", Teal, TealHover, Gold, TextMain, new G.Vector2(0, 58), 26);
         _confirm.Pressed += () => _session.Confirm();
         col.AddChild(_confirm);
-        var vanilla = MakeButton("按原版出场", Sunk, CardHover, CardBorder, TextDim, new G.Vector2(0, 40), 17);
-        vanilla.TooltipText = "不自己选，按这个房间原版的怪出场，花标准开销";
+        var vanilla = MakeButton("不选了，让原版的怪来", Sunk, CardHover, CardBorder, TextDim, new G.Vector2(0, 40), 16);
+        vanilla.TooltipText = "按这个房间原本的怪出场，召唤点照常扣这个房间的平均价";
         vanilla.Pressed += () => _session.UseVanilla();
         col.AddChild(vanilla);
         return side;
@@ -457,11 +466,11 @@ internal sealed class SummonPanel : ISummonUi
         var head = new G.HBoxContainer();
         head.AddChild(Heading("盖陷阱"));
         head.AddChild(Spacer());
-        head.AddChild(Text("每张 1 点 · 最多 2", 15, TextDim));
+        head.AddChild(Text("每张 1 点，最多 2 张", 15, TextDim));
         col.AddChild(head);
         if (_session.IsOpeningProtected)
         {
-            col.AddChild(Text("开局保护中，不能盖", 16, TextDim));
+            col.AddChild(Text("前几场还不能盖", 16, TextDim));
             return;
         }
         var flow = new G.HFlowContainer();
@@ -475,7 +484,7 @@ internal sealed class SummonPanel : ISummonUi
             {
                 button.Disabled = true;
                 button.Modulate = new G.Color(1, 1, 1, 0.4f);
-                button.TooltipText += "\n上一场盖过，这一场冷却";
+                button.TooltipText += "\n上一场刚用过，这场歇一歇";
             }
             int index = i;
             button.Pressed += () => _session.ToggleTrap(index);
@@ -555,23 +564,24 @@ internal sealed class SummonPanel : ISummonUi
             int index = i;
             var id = _session.Monsters[i];
             var price = _session.MonsterOptions.FirstOrDefault(o => o.Id == id)?.Price ?? 0;
-            _lineup.AddChild(LineupRow(_session.NameOf(id), $"{price}", () => _session.RemoveAt(index)));
+            _lineup.AddChild(LineupRow(_session.NameOf(id), price, () => _session.RemoveAt(index)));
         }
+        if (quote.CrowdTax > 0)
+            _lineup.AddChild(LineupRow("怪多加价", quote.CrowdTax, null, "一场放的怪越多，每多一只要多付一点"));
+        if (quote.TrapCost > 0)
+            _lineup.AddChild(LineupRow($"陷阱 ×{_session.SelectedTraps.Count}", quote.TrapCost, null, "盖陷阱每张 1 召唤点"));
         _emptyHint.Visible = _session.Monsters.Count == 0;
-        if (_session.Room.Room == RoomKind.Boss && !_session.BossAllowsExtras) _emptyHint.Text = "这个 Boss 不能另加";
-        else if (_session.Room.Room == RoomKind.Boss) _emptyHint.Text = "可以不加";
+        if (_session.Room.Room == RoomKind.Boss && !_session.BossAllowsExtras) _emptyHint.Text = "这个 Boss 不能再加别的怪";
+        else if (_session.Room.Room == RoomKind.Boss) _emptyHint.Text = "Boss 之外可以不加怪";
         ApplyGameFont(_lineup);
 
+        int cap = (int)Math.Floor(quote.SpendCap + 1e-9);
         bool overCap = quote.MonsterSpend > quote.SpendCap + 1e-9;
         int left = _session.Room.Savings - quote.Total;
-        _total.Text = $"{quote.Total}";
-        _breakdown.Text = $"怪物 {quote.MonsterPrice} · 群体税 {quote.CrowdTax}" + (quote.TrapCost > 0 ? $" · 陷阱 {quote.TrapCost}" : "");
-        _cost.Text = $"{quote.MonsterSpend} / {quote.SpendCap:0.#}";
+        _cost.Text = $"{quote.MonsterSpend} / {cap}";
         _cost.AddThemeColorOverride("font_color", overCap ? Bad : TextMain);
-        _cost.TooltipText = $"怪物 {quote.MonsterPrice} + 群体税 {quote.CrowdTax}" + (quote.TrapCost > 0 ? $" + 陷阱 {quote.TrapCost}" : "") +
-                            $"\n怪物花费上限 {quote.SpendCap:0.#}";
-        _cost.MouseFilter = G.Control.MouseFilterEnum.Pass;
-        _capBar.MaxValue = Math.Max(1, quote.SpendCap);
+        _cost.GetParent<G.Control>().TooltipText = $"这一场派怪最多花 {cap} 召唤点（含怪多加价，不含陷阱）。\n房间越难、玩家越多，上限越高。";
+        _capBar.MaxValue = Math.Max(1, cap);
         _capBar.Value = Math.Min(quote.MonsterSpend, _capBar.MaxValue);
         _capBar.AddThemeStyleboxOverride("fill", Box(overCap ? Bad : Good, overCap ? Bad : Good, 0, 4, 0));
         _left.Text = $"{left}";
@@ -582,7 +592,7 @@ internal sealed class SummonPanel : ISummonUi
             .Concat(quote.Violations.Where(v => v != SummonViolation.EmptyRoom).Select(SummonSession.Describe)).ToList();
         foreach (var problem in problems)
         {
-            var line = Text("✗ " + problem, 16, Bad);
+            var line = Text(problem, 16, Bad);
             line.AutowrapMode = G.TextServer.AutowrapMode.WordSmart;
             ApplyGameFont(line);
             _problems.AddChild(line);
@@ -590,26 +600,33 @@ internal sealed class SummonPanel : ISummonUi
         _confirm.Disabled = !_session.CanConfirm;
     }
 
-    /// <summary>侧栏阵容的一行：名字、价格、移除。</summary>
-    private static G.Control LineupRow(string name, string price, Action remove)
+    /// <summary>侧栏账单的一行：名字、价格（宝石 + 数字）、移除按钮（加价、陷阱这类没有移除按钮，悬停有说明）。</summary>
+    private static G.Control LineupRow(string name, int price, Action? remove, string? tip = null)
     {
-        var row = new G.PanelContainer();
-        row.AddThemeStyleboxOverride("panel", Box(CardBg, CardBorder, 1, 8, 0));
-        var h = new G.HBoxContainer();
-        h.AddThemeConstantOverride("separation", 8);
-        var margin = new G.MarginContainer();
-        foreach (var (side, v) in new[] { ("margin_left", 10), ("margin_right", 4), ("margin_top", 2), ("margin_bottom", 2) })
+        var row = new G.PanelContainer { TooltipText = tip ?? "", MouseFilter = tip != null ? G.Control.MouseFilterEnum.Pass : G.Control.MouseFilterEnum.Ignore };
+        row.AddThemeStyleboxOverride("panel", Box(remove != null ? CardBg : new G.Color(0.08f, 0.09f, 0.12f), CardBorder, 1, 8, 0));
+        var h = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        h.AddThemeConstantOverride("separation", 6);
+        var margin = new G.MarginContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        foreach (var (side, v) in new[] { ("margin_left", 10), ("margin_right", remove != null ? 4 : 10), ("margin_top", 2), ("margin_bottom", 2) })
             margin.AddThemeConstantOverride(side, v);
-        var label = Text(name, 17, TextMain);
+        var label = Text(name, 17, remove != null ? TextMain : TextDim);
         label.SizeFlagsHorizontal = G.Control.SizeFlags.ExpandFill;
         label.VerticalAlignment = G.VerticalAlignment.Center;
+        label.MouseFilter = G.Control.MouseFilterEnum.Ignore;
         h.AddChild(label);
-        var cost = Text(price, 17, Gold);
+        if (Art.Icon("icon_summon_point", 20) is { } gem) h.AddChild(gem);
+        var cost = Text($"{price}", 17, Gold);
         cost.VerticalAlignment = G.VerticalAlignment.Center;
+        cost.MouseFilter = G.Control.MouseFilterEnum.Ignore;
         h.AddChild(cost);
-        var x = MakeButton("✕", CardBg, Danger, CardBorder, TextDim, new G.Vector2(32, 30), 15);
-        x.Pressed += remove;
-        h.AddChild(x);
+        if (remove != null)
+        {
+            var x = MakeButton("✕", CardBg, Danger, CardBorder, TextDim, new G.Vector2(32, 30), 15);
+            x.TooltipText = "去掉";
+            x.Pressed += remove;
+            h.AddChild(x);
+        }
         margin.AddChild(h);
         row.AddChild(margin);
         return row;
@@ -1024,10 +1041,17 @@ internal sealed class SummonPanel : ISummonUi
     // ---------------------------------------------------------------- 结算提示
 
     /// <summary>屏幕上方显示几秒的提示条（战斗收入等）。</summary>
-    /// <summary>正在显示的提示占了哪些行：连着出几张盲盒时提示往下排，不叠在一起（0.0.40 实测重叠）。</summary>
+    /// <summary>正在显示的提示占了哪些行：连着出几条时往下排，不叠在一起（0.0.40 实测重叠）。</summary>
     private static readonly HashSet<int> ToastSlots = [];
 
-    public static void ShowToast(string text, double seconds = 6)
+    /// <summary>旧接口：一行字的提示（错误、调试类）。</summary>
+    public static void ShowToast(string text, double seconds = 6) => ShowNotice(text, "", null, seconds);
+
+    /// <summary>
+    /// 提示（0.0.47 统一样式，用户反馈「太丑、太挤、术语难懂」）：左边一个图标，右边一行标题（结果，用大白话），
+    /// 下面最多一行小字补充。从顶栏下方中间淡入，几秒后淡出；同时出几条就往下排。
+    /// </summary>
+    public static void ShowNotice(string title, string detail, string? icon, double seconds = 4.5)
     {
         int slot = 0;
         while (ToastSlots.Contains(slot)) slot++;
@@ -1035,16 +1059,38 @@ internal sealed class SummonPanel : ISummonUi
         var layer = new G.CanvasLayer { Layer = 101 };
         var holder = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
         holder.SetAnchorsPreset(G.Control.LayoutPreset.TopWide);
-        holder.Position = new G.Vector2(0, 90 + slot % 6 * 72);
-        var panel = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-        panel.AddThemeStyleboxOverride("panel", Box(PanelBg, Gold, 2, 12, 16, shadow: 12));
-        var label = Text(text, 24, Gold);
-        label.MouseFilter = G.Control.MouseFilterEnum.Ignore;
-        panel.AddChild(label);
+        holder.Position = new G.Vector2(0, 104 + slot % 5 * 84);
+        var panel = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Modulate = new G.Color(1, 1, 1, 0) };
+        var sb = Box(new G.Color(0.06f, 0.07f, 0.10f, 0.92f), GoldDim, 1, 14, 0, shadow: 10);
+        sb.ContentMarginLeft = 14; sb.ContentMarginRight = 22; sb.ContentMarginTop = 10; sb.ContentMarginBottom = 10;
+        panel.AddThemeStyleboxOverride("panel", sb);
+        var row = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 14);
+        if (icon != null && Art.Icon(icon, 46) is { } pic) row.AddChild(pic);
+        var col = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
+        col.AddThemeConstantOverride("separation", 0);
+        var head = Text(title, 23, TextMain);
+        head.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        col.AddChild(head);
+        if (detail.Length > 0)
+        {
+            var sub = Text(detail, 16, TextDim);
+            sub.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+            col.AddChild(sub);
+        }
+        row.AddChild(col);
+        panel.AddChild(row);
         holder.AddChild(panel);
         layer.AddChild(holder);
         ApplyGameFont(layer);
         AddDeferred(layer);
-        Tree.CreateTimer(seconds).Timeout += () => { ToastSlots.Remove(slot); layer.QueueFree(); };
+        panel.Ready += () =>
+        {
+            var tween = panel.CreateTween();
+            tween.TweenProperty(panel, "modulate:a", 1f, 0.18);
+            tween.TweenInterval(Math.Max(0.5, seconds - 0.6));
+            tween.TweenProperty(panel, "modulate:a", 0f, 0.4);
+        };
+        Tree.CreateTimer(seconds).Timeout += () => { ToastSlots.Remove(slot); if (G.GodotObject.IsInstanceValid(layer)) layer.QueueFree(); };
     }
 }
