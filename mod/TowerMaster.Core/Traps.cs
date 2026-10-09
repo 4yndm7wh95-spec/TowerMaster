@@ -50,16 +50,16 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
             TrapTrigger.AttacksInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张攻击牌时，",
             TrapTrigger.SkillsInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张技能牌时，",
             TrapTrigger.CardsInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张牌时，",
-            TrapTrigger.EnemyDied => "当一名敌人死亡且场上还有其他敌人时，",
+            TrapTrigger.EnemyDied => "当一只怪物死亡且场上还有其他怪物时，",
             _ => "",
         };
         int a = Amount(tier);
         string target = Trigger == TrapTrigger.RoundStart ? "每名玩家" : "该玩家";
         string what = Effect switch
         {
-            TrapEffect.BlockAllEnemies => $"所有敌人获得 {a} 点{k("格挡")}。",
-            TrapEffect.StrengthAllEnemies => $"所有敌人获得 {a} 点{k("力量")}。",
-            TrapEffect.HealAllEnemiesPercent => $"所有敌人回复 {a}% 最大生命值。",
+            TrapEffect.BlockAllEnemies => $"所有怪物获得 {a} 点{k("格挡")}。",
+            TrapEffect.StrengthAllEnemies => $"所有怪物获得 {a} 点{k("力量")}。",
+            TrapEffect.HealAllEnemiesPercent => $"所有怪物回复 {a}% 最大生命值。",
             TrapEffect.WeakPlayer => $"给予{target} {a} 层{k("虚弱")}。",
             TrapEffect.VulnerablePlayer => $"给予{target} {a} 层{k("易伤")}。",
             TrapEffect.FrailPlayer => $"给予{target} {a} 层{k("脆弱")}。",
@@ -93,7 +93,7 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
         TrapTrigger.AttacksInTurn => $"第 {Threshold} 张攻击",
         TrapTrigger.SkillsInTurn => $"第 {Threshold} 张技能",
         TrapTrigger.CardsInTurn => $"第 {Threshold} 张牌",
-        TrapTrigger.EnemyDied => "敌人死亡",
+        TrapTrigger.EnemyDied => "怪物死亡",
         _ => "不触发",
     };
 
@@ -105,9 +105,9 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
         string who = Trigger == TrapTrigger.RoundStart ? "每名玩家" : "触发的玩家";
         return Effect switch
         {
-            TrapEffect.BlockAllEnemies => $"所有敌人 +{a} 格挡",
-            TrapEffect.StrengthAllEnemies => $"所有敌人 +{a} 力量",
-            TrapEffect.HealAllEnemiesPercent => $"所有敌人回复 {a}% 生命",
+            TrapEffect.BlockAllEnemies => $"所有怪物 +{a} 格挡",
+            TrapEffect.StrengthAllEnemies => $"所有怪物 +{a} 力量",
+            TrapEffect.HealAllEnemiesPercent => $"所有怪物回复 {a}% 生命",
             TrapEffect.WeakPlayer => $"{who}获得 {a} 层虚弱",
             TrapEffect.VulnerablePlayer => $"{who}获得 {a} 层易伤",
             TrapEffect.FrailPlayer => $"{who}获得 {a} 层脆弱",
@@ -121,9 +121,9 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
         int a = Amount(tier);
         return Effect switch
         {
-            TrapEffect.BlockAllEnemies => $"敌人 {a} 格挡",
-            TrapEffect.StrengthAllEnemies => $"敌人 {a} 力量",
-            TrapEffect.HealAllEnemiesPercent => $"敌人回复 {a}%",
+            TrapEffect.BlockAllEnemies => $"怪物 {a} 格挡",
+            TrapEffect.StrengthAllEnemies => $"怪物 {a} 力量",
+            TrapEffect.HealAllEnemiesPercent => $"怪物回复 {a}%",
             TrapEffect.WeakPlayer => $"{a} 层虚弱",
             TrapEffect.VulnerablePlayer => $"{a} 层易伤",
             TrapEffect.FrailPlayer => $"{a} 层脆弱",

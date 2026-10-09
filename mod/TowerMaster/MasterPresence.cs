@@ -303,12 +303,27 @@ internal static class MasterPresence
             MouseFilter = G.Control.MouseFilterEnum.Ignore,
             Modulate = new G.Color(0.80f, 0.80f, 0.92f, 0.85f),
             PivotOffset = new G.Vector2(width / 2, height),
-            // 画在怪物后面（用户反馈塔主挡住怪物）：原版战斗房间里场景背景 ZIndex -10、战斗特效 -9、怪物默认 0。
-            // 取 -9 且排在最前面：在背景之上、特效和怪物（以及怪物的血条、意图）之下
-            ZIndex = -9,
         };
-        room.AddChild(figure);
-        room.MoveChild(figure, 0); // 画在怪物下面
+        // 画在怪物后面（用户反馈塔主挡住怪物）。0.0.47 实测：怪物所在的 EnemyContainer 在 CombatSceneContainer（ZIndex -10）里面，
+        // 有效层级是 -10，单给塔主设 -9 反而在怪物前面。所以把塔主放进 EnemyContainer 的父节点、排在 EnemyContainer 前面：
+        // 和怪物同一层，按顺序先画，背景（同容器里更前面的节点）仍在它后面。
+        var enemies = (GameReflection.Get(room, "EnemyContainer") ?? GameReflection.Get(room, "_enemyContainer")) as G.Node;
+        var local = figure.Position;
+        if (enemies?.GetParent() is G.CanvasItem parent)
+        {
+            var global = room.GetGlobalTransform() * local;
+            parent.AddChild(figure);
+            parent.MoveChild(figure, enemies.GetIndex());
+            figure.GlobalPosition = global;
+            Log.Info($"塔主形象：放进 {parent.Name}，排在 {enemies.Name} 前面（怪物后面）");
+        }
+        else
+        {
+            figure.ZIndex = -9;
+            room.AddChild(figure);
+            room.MoveChild(figure, 0);
+            Log.Warn("塔主形象：找不到怪物容器 EnemyContainer，塔主可能盖住怪物");
+        }
         _figure = figure;
         _idle = figure.CreateTween().SetLoops();
         _idle.TweenProperty(figure, "position:y", figure.Position.Y - 8, 1.6).SetTrans(G.Tween.TransitionType.Sine);

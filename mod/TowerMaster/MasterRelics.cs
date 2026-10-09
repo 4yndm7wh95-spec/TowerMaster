@@ -27,7 +27,7 @@ public static class MasterRelics
         new("piggy_bank", "TowerMasterRelicPiggyBank", "小金库", "拿到时，立即获得 8 召唤点（不超过上限）。", "塔主的私房钱。"),
         new("magic_hat", "TowerMasterRelicMagicHat", "魔术师礼帽", "每场战斗的第一个塔主回合，多抽 1 张牌。", "里面不止有兔子。"),
         new("energy_drink", "TowerMasterRelicEnergyDrink", "能量饮料", "每场战斗的第一个塔主回合，多 1 点能量。", "塔主也要加班。"),
-        new("bento", "TowerMasterRelicBento", "怪物便当", "每场战斗的第一个塔主回合，所有敌人获得 3 点格挡。", "吃饱了才有力气挨打。"),
+        new("bento", "TowerMasterRelicBento", "怪物便当", "每场战斗的第一个塔主回合，所有怪物获得 3 点格挡。", "吃饱了才有力气挨打。"),
         new("blacklist", "TowerMasterRelicBlacklist", "黑名单", "每场战斗的第一个塔主回合，给予当前生命最高的玩家 1 层易伤。", "上面的名字每天都在变。"),
         new("fog_censer", "TowerMasterRelicFogCenser", "迷雾香炉", "玩家看不到塔主手里有几张陷阱、本场盖了几张。", "烟雾里什么都可能有。也可能什么都没有。"),
         new("stingy_purse", "TowerMasterRelicStingyPurse", "吝啬鬼钱包", "玩家躲过陷阱拿到的金币减半。", "进去容易，出来难。"),

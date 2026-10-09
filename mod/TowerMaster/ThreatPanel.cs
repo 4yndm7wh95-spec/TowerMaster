@@ -25,17 +25,17 @@ internal sealed class ThreatPanel : IThreatUi
     private static readonly ActionDef[] Actions =
     [
         new("block", "加固", "act_block", Target.Monster, p => p.BlockCost,
-            (p, act, k) => $"选择一名敌人，使其获得 {TowerMasterConfig.ByAct(p.BlockAmount, act)} 点{k("格挡")}。",
-            _ => "格挡在敌人的下个回合开始时消失。"),
+            (p, act, k) => $"选择一只怪物，使其获得 {TowerMasterConfig.ByAct(p.BlockAmount, act)} 点{k("格挡")}。",
+            _ => "格挡在怪物的下个回合开始时消失。"),
         new("heal", "治疗", "act_heal", Target.Monster, p => p.HealCost,
-            (p, _, k) => $"选择一名敌人，使其回复 {p.HealPercent}% 最大生命值。",
-            p => $"每名敌人每场战斗最多被治疗 {p.HealPerMonsterPerBattle} 次。"),
+            (p, _, k) => $"选择一只怪物，使其回复 {p.HealPercent}% 最大生命值。",
+            p => $"每只怪物每场战斗最多被治疗 {p.HealPerMonsterPerBattle} 次。"),
         new("strength", "激励", "act_strength", Target.Monster, p => p.StrengthCost,
-            (p, act, k) => $"选择一名敌人，使其获得 {TowerMasterConfig.ByAct(p.StrengthAmount, act)} 点{k("力量")}。",
-            p => $"每名敌人从塔主获得的力量（含陷阱）不超过本幕上限：{string.Join(" / ", p.StrengthCap)}。"),
+            (p, act, k) => $"选择一只怪物，使其获得 {TowerMasterConfig.ByAct(p.StrengthAmount, act)} 点{k("力量")}。",
+            p => $"每只怪物从塔主获得的力量（含陷阱）不超过本幕上限：{string.Join(" / ", p.StrengthCap)}。"),
         new("strength_all", "战吼", "act_strength_all", Target.None, p => p.StrengthAllCost,
-            (p, _, k) => $"所有敌人获得 {p.StrengthAllAmount} 点{k("力量")}。",
-            p => $"每场战斗限 {p.StrengthAllPerBattle} 次。已到力量上限的敌人不受影响。"),
+            (p, _, k) => $"所有怪物获得 {p.StrengthAllAmount} 点{k("力量")}。",
+            p => $"每场战斗限 {p.StrengthAllPerBattle} 次。已到力量上限的怪物不受影响。"),
         new("weak", "虚弱", "act_weak", Target.Player, p => p.DebuffCost,
             (p, _, k) => $"给予一名玩家 {p.DebuffStacks} 层{k("虚弱")}。",
             p => $"虚弱：造成的攻击伤害减少 25%。同一名玩家每回合最多被塔主施加 {p.DebuffPerPlayerPerTurn} 次减益。"),
@@ -205,7 +205,7 @@ internal sealed class ThreatPanel : IThreatUi
             foreach (var child in _hand.GetChildren()) child.QueueFree();
             var pcs = MasterHand.MasterPlayer() is { } m ? GameReflection.Get(m, "PlayerCombatState") : null;
             _points.AddChild(P.Text($"能量 {(pcs == null ? "?" : GameReflection.Get(pcs, "Energy"))}", 26, P.Gold));
-            _points.TooltipText = "塔主牌用能量打出；把手牌拖到怪物或玩家身上。";
+            Ui.Tip(_points, "塔主牌\n用能量打出：把手牌拖到怪物或玩家身上。");
             RebuildInfo();
             P.ApplyGameFont(_layer);
             return;
@@ -214,7 +214,7 @@ internal sealed class ThreatPanel : IThreatUi
         _points.AddChild(P.Text($"{points}", 30, P.Gold));
         int later = (session?.Remaining ?? 0) - points;
         if (later > 0) _points.AddChild(P.Text($"+{later}", 16, P.TextDim));
-        _points.TooltipText = $"现在能用 {points} 威胁点" + (later > 0 ? $"；还有 {later} 点在之后的回合解锁（每回合 +{ModEntry.Active.ThreatReleasePerTurn}）" : "") + "\n没用完的点数留到之后的回合。";
+        Ui.Tip(_points, $"威胁点\n现在能用 {points} 点。" + (later > 0 ? $"\n※还有 {later} 点在之后的回合解锁（每回合 +{ModEntry.Active.ThreatReleasePerTurn}）。" : "") + "\n※没用完的留到之后的回合。");
 
         foreach (var child in _hand.GetChildren()) child.QueueFree();
         var (monsters, _) = ThreatPhase.Snapshot();
@@ -269,8 +269,8 @@ internal sealed class ThreatPanel : IThreatUi
             FocusMode = G.Control.FocusModeEnum.None,
             CustomMinimumSize = new G.Vector2(96, 132),
             Disabled = points < cost,
-            TooltipText = $"{a.Name}（{cost} 威胁点）\n{a.Text(prices, act, w => w)}\n{a.Rules(prices)}",
         };
+        Ui.Tip(card, $"{a.Name}（{cost} 威胁点）\n{a.Text(prices, act, w => w)}\n※{a.Rules(prices).Replace("\n", "\n※")}");
         var bg = selected ? new G.Color(0.24f, 0.19f, 0.10f) : P.CardBg;
         card.AddThemeStyleboxOverride("normal", P.Box(bg, selected ? P.Gold : P.CardBorder, selected ? 3 : 1, 10, 0));
         card.AddThemeStyleboxOverride("hover", P.Box(P.CardHover, P.Gold, 2, 10, 0));

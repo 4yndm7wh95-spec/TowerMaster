@@ -97,10 +97,10 @@ public static class MasterCards
                 };
                 string desc = op switch
                 {
-                    "block" => $"选择一名敌人，使其获得 {TowerMasterConfig.ByAct(p.BlockAmount, act)} 点格挡。",
-                    "heal" => $"选择一名敌人，使其回复 {p.HealPercent}% 最大生命值。\n每名敌人每场战斗最多 {p.HealPerMonsterPerBattle} 次。",
-                    "strength" => $"选择一名敌人，使其获得 {TowerMasterConfig.ByAct(p.StrengthAmount, act)} 点力量。",
-                    "strength_all" => $"所有敌人获得 {p.StrengthAllAmount} 点力量。\n每场战斗限 {p.StrengthAllPerBattle} 次。",
+                    "block" => $"选择一只怪物，使其获得 {TowerMasterConfig.ByAct(p.BlockAmount, act)} 点格挡。",
+                    "heal" => $"选择一只怪物，使其回复 {p.HealPercent}% 最大生命值。\n每只怪物每场战斗最多 {p.HealPerMonsterPerBattle} 次。",
+                    "strength" => $"选择一只怪物，使其获得 {TowerMasterConfig.ByAct(p.StrengthAmount, act)} 点力量。",
+                    "strength_all" => $"所有怪物获得 {p.StrengthAllAmount} 点力量。\n每场战斗限 {p.StrengthAllPerBattle} 次。",
                     "weak" => $"给予一名玩家 {p.DebuffStacks} 层虚弱。",
                     "vulnerable" => $"给予一名玩家 {p.DebuffStacks} 层易伤。",
                     "frail" => $"给予一名玩家 {p.DebuffStacks} 层脆弱。",
@@ -114,19 +114,19 @@ public static class MasterCards
             {
                 string desc = op switch
                 {
-                    "fortify_all" => $"所有敌人获得 {FortifyAmount(act)} 点格挡。",
-                    "heal_all" => $"所有敌人回复 {HealAllPercent}% 最大生命值。\n计入每名敌人每场的治疗次数。",
+                    "fortify_all" => $"所有怪物获得 {FortifyAmount(act)} 点格挡。",
+                    "heal_all" => $"所有怪物回复 {HealAllPercent}% 最大生命值。\n计入每只怪物每场的治疗次数。",
                     "sap" => "给予一名玩家 1 层虚弱和 1 层脆弱。",
                     "daze_all" => "将 1 张晕眩放入每名玩家的抽牌堆。\n计入每场的晕眩次数。",
                     "expose_all" => "给予每名玩家 1 层易伤。",
                     "scheme" => $"抽 {SchemeDraw(act)} 张牌。",
-                    "feast" => $"每名玩家回复 {FeastHeal(act)} 点生命。\n所有敌人获得 1 点力量。",
+                    "feast" => $"每名玩家回复 {FeastHeal(act)} 点生命。\n所有怪物获得 1 点力量。",
                     "slime_gift" => $"将 {SlimeCount(act)} 张黏液放入一名玩家的弃牌堆。",
-                    "thorns" => $"选择一名敌人，使其获得 {ThornsAmount(act)} 层荆棘。",
-                    "artifact" => $"选择一名敌人，使其获得 {ArtifactAmount(act)} 层人工制品。",
-                    "call_help" => $"召唤一只本幕的小怪加入战斗。\n每场战斗限 1 次，场上最多 {CallHelpMaxEnemies} 名敌人。",
-                    "infight" => $"选择一名敌人，使其受到 {InfightDamage(act)} 点伤害。\n其余敌人各获得 1 点力量。",
-                    "gamble" => "随机发生一件事：所有敌人获得 5 点格挡，或每名玩家获得 1 层虚弱，或每名玩家抽 1 张牌，或塔主获得 2 点能量。",
+                    "thorns" => $"选择一只怪物，使其获得 {ThornsAmount(act)} 层荆棘。",
+                    "artifact" => $"选择一只怪物，使其获得 {ArtifactAmount(act)} 层人工制品。",
+                    "call_help" => $"召唤一只本幕的小怪加入战斗。\n每场战斗限 1 次，场上最多 {CallHelpMaxEnemies} 只怪物。",
+                    "infight" => $"选择一只怪物，使其受到 {InfightDamage(act)} 点伤害。\n其余怪物各获得 1 点力量。",
+                    "gamble" => "随机发生一件事：所有怪物获得 5 点格挡，或每名玩家获得 1 层虚弱，或每名玩家抽 1 张牌，或塔主获得 2 点能量。",
                     "heckle" => "给予一名玩家 1 层易伤。\n该玩家抽 1 张牌。",
                     _ => "获得 1 点能量。", // 「消耗。」由原版按关键词自动加（0.0.34 实测写了会重复）
                 };
@@ -457,7 +457,7 @@ public static class MasterCards
                                     .First(x => x.Name == "GainEnergy" && x.GetParameters().Length == 2).Invoke(null, [2m, mp])!;
                             break;
                     }
-                    try { SummonPhase.Notify("惊喜盲盒", new[] { "所有敌人 +5 格挡", "每名玩家获得 1 层虚弱", "每名玩家抽 1 张牌（塔主亏了）", "塔主多了 2 点能量" }[roll], "icon_trap"); }
+                    try { SummonPhase.Notify("惊喜盲盒", new[] { "所有怪物 +5 格挡", "每名玩家获得 1 层虚弱", "每名玩家抽 1 张牌（塔主亏了）", "塔主多了 2 点能量" }[roll], "icon_trap"); }
                     catch { /* 测试里没有界面 */ }
                     break;
                 }

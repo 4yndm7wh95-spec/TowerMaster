@@ -32,11 +32,21 @@ internal static class RunReportPanel
             if (Test2MasterOffField.MasterId == null) return;
             if (GameReflection.Get(Test1bMixedEncounter.Run, "State") is not { } state) { Log.Warn("塔主战报：结算时没有对局状态，不弹"); return; }
             var input = MasterStats.Collect(state);
-            // 等原版结算动画先出来一点再盖上去
-            SummonPanel.Tree.CreateTimer(1.2).Timeout += () => Show(RunReport.Build(input));
+            // 等原版结算动画先出来一点再盖上去；这期间回了菜单/开了新局就不弹（0.0.47 实测旧战报挂到新局）
+            int generation = ++_generation;
+            SummonPanel.Tree.CreateTimer(1.2).Timeout += () => { if (generation == _generation) Show(RunReport.Build(input)); };
             Log.Info($"塔主战报：{(input.MasterWon ? "塔主赢" : "爬塔者赢")}，{input.Fights} 场，召唤 {input.Summoned.Count}，陷阱 {input.Traps.Count}，出牌 {input.Cards.Count}");
         }
         catch (Exception e) { Log.Error("塔主战报：生成失败（原版结算不受影响）", e); }
+    }
+
+    private static int _generation;
+
+    /// <summary>换局/回菜单：关掉战报，作废还没弹出的那次。</summary>
+    internal static void ResetRun()
+    {
+        _generation++;
+        Close();
     }
 
     internal static void Close()
@@ -69,7 +79,7 @@ internal static class RunReportPanel
         var title = SummonPanel.Text(view.Title, 44, won ? SummonPanel.Gold : SummonPanel.TextMain);
         title.HorizontalAlignment = G.HorizontalAlignment.Center;
         box.AddChild(title);
-        var sub = SummonPanel.Text(view.Subtitle, 18, SummonPanel.TextDim);
+        var sub = SummonPanel.Text(view.Subtitle, 17, Ui.NoteColor);
         sub.HorizontalAlignment = G.HorizontalAlignment.Center;
         box.AddChild(sub);
 
@@ -79,7 +89,7 @@ internal static class RunReportPanel
         var honorBox = new G.VBoxContainer();
         var honorName = SummonPanel.Text($"称号：{view.Honor}", 30, SummonPanel.Gold);
         honorName.HorizontalAlignment = G.HorizontalAlignment.Center;
-        var honorWhy = SummonPanel.Text(view.HonorReason, 17, SummonPanel.TextMain);
+        var honorWhy = SummonPanel.Text(view.HonorReason, 16, Ui.NoteColor);
         honorWhy.HorizontalAlignment = G.HorizontalAlignment.Center;
         honorBox.AddChild(honorName);
         honorBox.AddChild(honorWhy);
@@ -91,8 +101,10 @@ internal static class RunReportPanel
         grid.AddThemeConstantOverride("v_separation", 8);
         foreach (var (label, value) in view.Lines)
         {
-            grid.AddChild(SummonPanel.Text(label, 19, SummonPanel.TextDim));
-            var v = SummonPanel.Text(value, 19, SummonPanel.TextMain);
+            var l = Ui.Label(label, 16);
+            l.SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter;
+            grid.AddChild(l);
+            var v = Ui.Body(value, 19);
             v.AutowrapMode = G.TextServer.AutowrapMode.WordSmart;
             v.CustomMinimumSize = new G.Vector2(420, 0);
             grid.AddChild(v);

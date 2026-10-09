@@ -129,7 +129,12 @@ public static class RuntimeNetAction
             catch (Exception e) { Log.Warn($"测试1b：拒收召唤清单（{e.Message}），下一场按原版遭遇"); }
         }
         // 同步排查（0.0.26 实测在本动作后校验不一致）：两端各记一行同样格式的状态摘要，对比日志就知道哪个数先不一样
-        try { Log.Info($"动作摘要 #{Convert.ToInt64(GameReflection.Get(action, "Id") ?? -1)} {Short(payload)}｜{StateDigest.Describe()}"); }
+        try
+        {
+            // 回了主菜单才执行完的动作（例如塔主选牌被关掉）只有本机有，不记，免得两端摘要条数对不上（0.0.46/0.0.47 实测）
+            var digest = StateDigest.Describe();
+            if (digest != StateDigest.NoRun) Log.Info($"动作摘要 #{Convert.ToInt64(GameReflection.Get(action, "Id") ?? -1)} {Short(payload)}｜{digest}");
+        }
         catch (Exception e) { Log.Warn($"动作摘要失败：{e.Message}"); }
     }
 

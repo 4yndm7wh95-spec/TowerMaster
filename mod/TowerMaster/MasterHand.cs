@@ -95,7 +95,7 @@ internal static class MasterHand
             {
                 foreach (var e in LivingEnemies().ToList()) await ThreatPhase.GainBlock(e, 3);
                 Log.Info($"{tag}：怪物便当，所有敌人 +3 格挡");
-                SummonPhase.Notify("怪物便当", "所有敌人 +3 格挡", "relic_bento");
+                SummonPhase.Notify("怪物便当", "所有怪物 +3 格挡", "relic_bento");
             }
             if (MasterRelics.Has("blacklist") && LivingClimbers().ToList() is { Count: > 0 } climbers)
             {

@@ -76,7 +76,10 @@ internal static class MasterInfoHud
         var relics = MasterRelics.Owned().Select(id => MasterRelics.Find(id)?.Title).OfType<string>().ToList();
         var tip = new List<string> { $"塔主手里有 {hand} 张陷阱牌（是什么保密）。" };
         if (inFight)
-            tip.Add(fog ? "迷雾香炉在冒烟，看不清这场盖了几张。" : $"这场盖下了 {_placed} 张，已经触发 {Triggered.Count} 张（红色的）。可能有空陷阱在吓唬人。");
+        {
+            tip.Add(fog ? "迷雾香炉在冒烟，看不清这场盖了几张。" : $"这场盖下了 {_placed} 张，已经触发 {Triggered.Count} 张（红色的）。");
+            if (!fog) tip.Add("※盖下的里面可能有空陷阱，只是吓唬人。");
+        }
         if (Triggered.Count > 0) tip.Add($"触发过：{string.Join("、", Triggered)}");
         if (bosses.Count > 0) tip.Add($"这一幕的 Boss 会是 {string.Join(" 或 ", bosses)}，塔主到 Boss 房时挑一个。");
         if (relics.Count > 0) tip.Add($"塔主的遗物：{string.Join("、", relics)}");
@@ -91,6 +94,7 @@ internal static class MasterInfoHud
     private static G.HBoxContainer? _fightRow, _pips;
     private static G.Control? _bossRow;
     private static string _pipKey = "";
+    private static string _lastTip = "";
     private static int _frames;
     private static string _bossKey = "";
     private static IReadOnlyList<string> _bosses = [];
@@ -127,8 +131,8 @@ internal static class MasterInfoHud
             _bossLine!.Text = view.Bosses;
             _bossRow!.Visible = view.Bosses.Length > 0;
             var tip = view.Tip;
-            _panel!.TooltipText = tip;
-            _panel.Visible = _bar.IsVisibleInTree();
+            if (tip != _lastTip) { _lastTip = tip; Ui.Tip(_panel!, "塔主的情报\n" + tip); }
+            _panel!.Visible = _bar.IsVisibleInTree();
             _panel.ResetSize();
             // NTopBar 节点是整屏大小（0.0.43 实测按它的高度摆到了屏幕外），按顶栏带子里按钮的实际下沿摆
             _panel.Position = new G.Vector2(_bar.Size.X - _panel.Size.X - 18, BandBottom(_bar) + 6);
@@ -165,6 +169,7 @@ internal static class MasterInfoHud
     {
         if (_panel != null && G.GodotObject.IsInstanceValid(_panel)) _panel.QueueFree();
         _pipKey = "";
+        _lastTip = "";
         _panel = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Pass, ZIndex = 1 };
         var sb = SummonPanel.Box(new G.Color(0.05f, 0.06f, 0.09f, 0.78f), new G.Color(0.55f, 0.45f, 0.26f, 0.6f), 1, 12, 0);
         sb.ContentMarginLeft = 10; sb.ContentMarginRight = 14; sb.ContentMarginTop = 4; sb.ContentMarginBottom = 6;
@@ -175,12 +180,14 @@ internal static class MasterInfoHud
         var top = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.End };
         top.AddThemeConstantOverride("separation", 6);
         if (Art.Icon("icon_trap", 30) is { } icon) top.AddChild(icon);
-        _hand = SummonPanel.Text("?", 24, SummonPanel.Gold);
+        _hand = Ui.Value("?", 24, SummonPanel.Gold);
         top.AddChild(_hand);
         _fightRow = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
         _fightRow.AddThemeConstantOverride("separation", 6);
         _fightRow.AddChild(new G.Control { CustomMinimumSize = new G.Vector2(6, 0), MouseFilter = G.Control.MouseFilterEnum.Ignore });
-        _fightRow.AddChild(SummonPanel.Text("本场", 15, SummonPanel.TextDim));
+        var fightLabel = Ui.Label("本场", 13);
+        fightLabel.SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter;
+        _fightRow.AddChild(fightLabel);
         _pips = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
         _pips.AddThemeConstantOverride("separation", 4);
         _fightRow.AddChild(_pips);
@@ -189,8 +196,10 @@ internal static class MasterInfoHud
 
         var bossRow = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.End };
         bossRow.AddThemeConstantOverride("separation", 6);
-        bossRow.AddChild(SummonPanel.Text("Boss", 13, SummonPanel.GoldDim));
-        _bossLine = SummonPanel.Text("", 15, SummonPanel.TextDim);
+        var bossLabel = Ui.Label("Boss", 13);
+        bossLabel.SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter;
+        bossRow.AddChild(bossLabel);
+        _bossLine = Ui.Body("", 15);
         bossRow.AddChild(_bossLine);
         _bossRow = bossRow;
         box.AddChild(bossRow);
@@ -206,8 +215,8 @@ internal static class MasterInfoHud
     private static void Pips(int placed, int fired)
     {
         foreach (var child in _pips!.GetChildren()) child.QueueFree();
-        if (placed < 0) { var q = SummonPanel.Text("?", 18, SummonPanel.TextDim); q.MouseFilter = G.Control.MouseFilterEnum.Ignore; _pips.AddChild(q); return; }
-        if (placed == 0) { var none = SummonPanel.Text("没盖", 15, SummonPanel.TextDim); none.MouseFilter = G.Control.MouseFilterEnum.Ignore; _pips.AddChild(none); return; }
+        if (placed < 0) { _pips.AddChild(Ui.Value("?", 18)); return; }
+        if (placed == 0) { _pips.AddChild(Ui.Value("没盖", 16)); return; } // 状态值：比左边的标签「本场」大、亮
         for (int i = 0; i < placed; i++)
         {
             bool hit = i < fired;

@@ -50,8 +50,8 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         _stats = new G.HBoxContainer { Alignment = G.BoxContainer.AlignmentMode.Center };
         _stats.AddThemeConstantOverride("separation", 12);
         page.AddChild(_stats);
-        var hint = P.Text("点一下选中，再点取消。卡左上角的数字是它要花的点数。", 15, P.TextDim);
-        hint.HorizontalAlignment = G.HorizontalAlignment.Center;
+        var hint = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        hint.AddChild(Ui.Note("点一下选中，再点取消。卡左上角的数字是它要花的点数。", 15));
         page.AddChild(hint);
 
         // 中间：候选网格（放不下就滚动）
@@ -151,7 +151,7 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
     {
         var d = choice.Draft;
         if (d.Hand.Count == 0) return; // 手里没有就不占地方
-        _hand.AddChild(P.Text("手里已有", 15, P.TextDim));
+        _hand.AddChild(Ui.Label("手里已有", 14));
         foreach (var c in d.Hand)
         {
             var mini = P.TrapMiniCard(c, 56);
@@ -170,8 +170,10 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
             m.AddThemeConstantOverride(side, v);
         var row = new G.HBoxContainer();
         row.AddThemeConstantOverride("separation", 8);
-        row.AddChild(P.Text(label, 16, P.TextDim));
-        row.AddChild(P.Text(value, 22, bad ? P.Bad : P.Gold));
+        var l = Ui.Label(label, 15);
+        l.SizeFlagsVertical = G.Control.SizeFlags.ShrinkCenter;
+        row.AddChild(l);
+        row.AddChild(Ui.Value(value, 22, bad ? P.Bad : P.Gold));
         m.AddChild(row);
         box.AddChild(m);
         return box;
@@ -186,8 +188,8 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         {
             FocusMode = G.Control.FocusModeEnum.None,
             CustomMinimumSize = size + new G.Vector2(12, 12),
-            TooltipText = $"{card.Name}（预算花费 {card.Def.DraftCost}）\n{card.Describe()}\n{card.Def.Rules(ModEntry.Active.DodgeRewardGold)}",
         };
+        Ui.Tip(button, P.TrapTip(card, $"（花 {card.Def.DraftCost} 点）"));
         button.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
         var face = new CardFace(card.Name, card.Describe(VanillaCard.Kw), "陷阱", $"{card.Def.DraftCost}", $"trap_{card.Id}");
         var view = VanillaCard.Create(face, scale);

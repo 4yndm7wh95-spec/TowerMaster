@@ -54,6 +54,7 @@ internal static class RunLifecycle
             SummonPhase.ResetRun();
             MasterDeck.ResetRun();
             MasterInfoHud.ResetRun();
+            RunReportPanel.ResetRun();
             Test3MasterAutoPilot.ResetRun();
         }
         catch (Exception e) { Log.Error("局开始/结束：清理失败", e); }
