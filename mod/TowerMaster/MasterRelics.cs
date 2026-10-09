@@ -37,6 +37,9 @@ public static class MasterRelics
     private static readonly Dictionary<string, Type> ById = new();
     private static readonly ConditionalWeakTableSet Merged = new();
 
+    /// <summary>设置里开着塔主遗物（ModEntry 在注册塔主牌前设）。</summary>
+    internal static bool Allowed { get; set; } = true;
+
     /// <summary>没生成成功的原因（宝箱退回送塔主牌）。</summary>
     internal static string? FailReason { get; set; }
     internal static bool Enabled => ById.Count > 0 && FailReason == null;

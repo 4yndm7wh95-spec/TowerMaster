@@ -62,6 +62,7 @@ public static class ModEntry
         if (!settings.MasterCards) MasterCards.FailReason = "towermaster.test.json 里 master_cards 是 false";
         if (settings.MasterCards)
         {
+            MasterRelics.Allowed = settings.MasterRelics;
             try { MasterCards.Register(harmony, config); }
             catch (Exception e)
             {

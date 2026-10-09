@@ -30,6 +30,8 @@ internal sealed class TestSettings
     /// 塔主在战斗里和玩家列表里都已经隐藏，复活与否玩家看不到，所以默认让他按原版复活（只是看不见）。
     /// </summary>
     [JsonPropertyName("master_stay_dead")] public bool MasterStayDead { get; set; }
+    /// <summary>塔主遗物（运行时生成 RelicModel 子类）。万一导致游戏起不来，设 false 关掉，宝箱退回送塔主牌。</summary>
+    [JsonPropertyName("master_relics")] public bool MasterRelics { get; set; } = true;
 
     /// <summary>
     /// 塔主的真实卡牌（第一阶段）：启动时注册塔主牌，新局把塔主牌组换成塔主牌，原版牌组界面能看到。

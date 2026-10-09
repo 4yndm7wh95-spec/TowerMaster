@@ -201,7 +201,8 @@ public static class MasterCards
             ByKey[def.Key] = type;
         }
         foreach (var m in AllMethods(cardModel).Where(m => m.IsAbstract)) Log.Warn($"塔主牌：CardModel 的抽象成员 {m.Name} 用默认值实现");
-        try { types.AddRange(MasterRelics.Emit(module, harmony)); }
+        if (!MasterRelics.Allowed) MasterRelics.FailReason = "towermaster.test.json 里 master_relics 是 false";
+        else try { types.AddRange(MasterRelics.Emit(module, harmony)); }
         catch (Exception e) { MasterRelics.FailReason = e.InnerException?.Message ?? e.Message; Log.Error("塔主遗物：生成遗物类型失败（宝箱退回送塔主牌）", e); }
         _types = types.ToArray();
         ModAssociation.Associate(types[0].Assembly);
