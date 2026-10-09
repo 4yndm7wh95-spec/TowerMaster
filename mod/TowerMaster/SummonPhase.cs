@@ -410,7 +410,7 @@ internal static class SummonPhase
             MasterRewards.AfterWin(pending.Room, Seed(state), MasterLedger.BattlesFought, wallet.ActNo);
             MasterLedger.Save();
             BalanceLog.Finish(true, wallet.ActNo, MasterLedger.BattlesFought, StartHp, ClimberPlayers(), KnockedDown, damage, income, wallet.Points);
-            var text = $"战斗收入 +{income.Credited}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +
+            var text = $"战斗收入 +{income.Credited + cat}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +
                        (income.Knockdown > 0 ? $"，击倒 {income.Knockdown}" : "") + (income.Wasted > 0 ? $"，超上限作废 {income.Wasted}" : "") +
                        (cat > 0 ? $"，招财猫 +{cat}" : "") +
                        $"），召唤点 {wallet.Points}/{wallet.Cap}";

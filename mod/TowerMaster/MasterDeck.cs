@@ -84,7 +84,8 @@ internal static class MasterDeck
             var relics = (GameReflection.Get(master, "Relics") as IEnumerable)?.Cast<object>().Where(r => !MasterRelics.IsOurs(r)).ToList() ?? []; // 塔主遗物留着
             if (relics.Count == 0) return;
             var remove = master.GetType().GetMethods(GameReflection.All).First(m => m.Name == "RemoveRelicInternal" && m.GetParameters().Length == 2);
-            foreach (var relic in relics) remove.Invoke(master, [relic, true]);
+            // 不静默：原版遗物栏靠 RelicRemoved 事件删图标（0.0.45 实测静默删除后栏里残留 LostCoffer）
+            foreach (var relic in relics) remove.Invoke(master, [relic, false]);
             Log.Info($"塔主牌组：{reason}，去掉塔主的原版遗物 {string.Join("、", relics.Select(r => r.GetType().Name))}");
         }
         catch (Exception e) { Log.Warn($"塔主牌组：去掉塔主原版遗物失败（战后可能飘回血数字）：{e.InnerException?.Message ?? e.Message}"); }

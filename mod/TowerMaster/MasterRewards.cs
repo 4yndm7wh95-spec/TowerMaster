@@ -224,6 +224,10 @@ internal static class MasterRewards
             await task;
             chosen = task.GetType().GetProperty("Result")?.GetValue(task);
         }
+        catch (Exception e) when (e is OperationCanceledException || e.InnerException is OperationCanceledException)
+        {
+            Log.Info($"{tag}：塔主选牌界面被关掉（回菜单/换房间），这次跳过");
+        }
         catch (Exception e) { Log.Error($"{tag}：塔主选牌失败（这次跳过）", e); }
         finally
         {

@@ -1,3 +1,15 @@
+## 0.0.45 实测 → 0.0.46：遗物详情解锁、卡图分层背景、小修（2026-10-09）
+
+0.0.45 实测（`docs/ui-045-result.md`）：8 件遗物注册、宝箱 3 选 1、跳过、效果、读档全部通过；大厅、结算画面身份通过；卡图不再透蓝。
+问题：点开塔主遗物显示「锁定，需在时间线解锁」（NInspectRelicScreen 只认 UnlockState 遗物池）；遗物没有独立图标；用户嫌卡图背景「很水、潦草」；
+收入标题没含招财猫；静默删除原版遗物后遗物栏残留图标；回菜单取消选牌记成 ERROR。联机地图塔主本来就没有位置标记（单人 NMapMarker 联机不启用），不用再改。
+0.0.46：
+- NInspectRelicScreen.UpdateRelicDisplay 前缀：把塔主遗物塞进 _allUnlockedRelics。
+- StripRelics 改为非静默删除（发 RelicRemoved，遗物栏同步删图标）。收入标题含招财猫。选牌取消（OperationCanceledException）记 INFO。
+- Art.Compose 分层合成卡图：背景（有 art/card_bg_{action,trap,relic}.png 用图，否则程序生成：渐变+噪声质感+纹样（法阵/铁栅/丝绒）+台面+顶光）
+  → 物件后柔光 → 台面光斑 → 接触阴影 → 物件投影 → 物件 → 顶部光边。预览 docs/screenshots/claude-card-bg-procedural-preview.png。
+- docs/art-assets.md 加了三张卡图背景和 8 件遗物图标的生图 prompt。
+
 ## 0.0.44 实测 → 0.0.45：身份收尾、塔主遗物、卡图不透明底（2026-10-09）
 
 0.0.44 实测（`docs/ui-044-result.md`）：塔主遗物移除、战后无 +6、商店/篝火/顶栏通过；信息条位置通过；宝箱冷读档正常流程不复现（上轮是测试跳过了 B 本地开箱）。

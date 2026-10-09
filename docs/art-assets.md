@@ -73,3 +73,15 @@
 | `relic_blacklist.png` | 黑名单 | A rolled black parchment with a red wax seal, a few names crossed out in red ink, a gold quill stuck through it. |
 | `relic_fog_censer.png` | 迷雾香炉 | An ornate gold censer on a chain, thick grey-violet fog pouring out and hiding its lower half. |
 | `relic_stingy_purse.png` | 吝啬鬼钱包 | A tightly cinched leather coin purse with a gold drawstring tied into an absurd knot, a single coin peeking out. |
+
+## 塔主牌卡图背景（0.0.46 起，可选，512×384，**不透明**，横幅）
+
+用户反馈：「卡牌就是一些简单的物件 icon，背景再这么水就很丑很潦草」。卡图按层合成（`Art.Compose`）：背景 → 物件后的柔光 → 台面接触阴影 → 物件投影 → 物件 → 顶部光边。
+背景有绘制图就用图（铺满居中裁），没有就用程序生成的（预览：`docs/screenshots/claude-card-bg-procedural-preview.png`）。
+要求：**画面中下部（下 20% 为台面）留空给物件**，中间不要有任何主体；台面要有前后透视和被光照亮的一片；整体偏暗，不抢物件。
+
+| 文件名 | 用在 | 主体 prompt（接风格前缀，但改成 opaque background, wide 4:3 scene, no central subject） |
+|---|---|---|
+| `card_bg_action.png` | 塔主行动牌 | The inside of a dim arcane tower study seen at eye level: a worn dark-stone tabletop in the lower fifth catching a pool of violet candle-light, a faint glowing rune circle hovering on the wall behind, bookshelves and hanging chains fading into deep purple shadow at the edges; empty space in the center for an object. |
+| `card_bg_trap.png` | 陷阱牌 | A damp dungeon corridor: wet flagstone floor in the lower fifth with a cold teal light pool, an iron portcullis grid on the back wall, rusted chains and a drain grate, mist near the floor; edges in near-black teal shadow; empty space in the center for an object. |
+| `card_bg_relic.png` | 遗物牌（塔主宝箱候选） | A treasure alcove: a deep crimson-brown velvet cushion surface in the lower fifth under a warm golden spotlight, draped velvet folds and a carved gilded niche behind, a few gold coins and dust sparkles in the dark corners; empty space in the center for an object. |

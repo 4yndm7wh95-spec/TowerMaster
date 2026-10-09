@@ -107,9 +107,25 @@ public static class MasterRelics
         Prefix("Icon", nameof(IconPrefix));
         Prefix("IconOutline", nameof(IconPrefix));
         Prefix("BigIcon", nameof(IconPrefix));
+        // 原版遗物详情（NInspectRelicScreen）只认 UnlockState 里的遗物（来自遗物池），塔主遗物故意不进池，会显示「锁定，需要在时间线解锁」（0.0.45 用户截图）。
+        // 刷新显示前把塔主遗物塞进它的「已解锁」集合。
+        var inspect = GameReflection.FindMethod("UpdateRelicDisplay", "NInspectRelicScreen");
+        if (inspect != null) harmony.Patch(inspect, prefix: new HarmonyMethod(typeof(MasterRelics).GetMethod(nameof(BeforeInspect), GameReflection.All)!));
+        else Log.Warn("塔主遗物：找不到 NInspectRelicScreen.UpdateRelicDisplay，点开塔主遗物会显示锁定");
         var getTable = RuntimeNetAction.Required("LocManager").GetMethods(GameReflection.All)
             .FirstOrDefault(m => m.Name == "GetTable" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(string));
         if (getTable != null) harmony.Patch(getTable, postfix: new HarmonyMethod(typeof(MasterRelics).GetMethod(nameof(AfterGetTable), GameReflection.All)!));
+    }
+
+    private static void BeforeInspect(object __instance)
+    {
+        try
+        {
+            if (GameReflection.Get(__instance, "_allUnlockedRelics") is not { } set) return;
+            var add = set.GetType().GetMethod("Add")!;
+            foreach (var type in ById.Values) add.Invoke(set, [MasterCards.Canonical(type)]);
+        }
+        catch (Exception e) { Log.Warn($"塔主遗物：遗物详情解锁失败：{e.Message}"); }
     }
 
     private static object? _pool;

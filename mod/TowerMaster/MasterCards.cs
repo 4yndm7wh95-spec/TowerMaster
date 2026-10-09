@@ -551,13 +551,8 @@ public static class MasterCards
             // 原卡图框贴图（缺图图）的尺寸 = 卡图该有的尺寸；我们的透明图标贴到不透明底上再放进去
             var size = portrait.Texture is { } old && old.GetWidth() > 16 ? new G.Vector2I(old.GetWidth(), old.GetHeight()) : _portraitSize;
             if (size.X > 16) _portraitSize = size;
-            var tint = def.Op switch
-            {
-                "trap" => new G.Color(0.10f, 0.24f, 0.28f),
-                "relic" => new G.Color(0.30f, 0.23f, 0.10f),
-                _ => new G.Color(0.20f, 0.13f, 0.28f),
-            };
-            if ((Art.Card(def.Art, size, tint) ?? (def.Op == "relic" ? Art.Card("master_portrait", size, tint) : null)) is { } texture) portrait.Texture = texture;
+            var kind = def.Op switch { "trap" => Art.CardKind.Trap, "relic" => Art.CardKind.Relic, _ => Art.CardKind.Action };
+            if ((Art.Card(def.Art, size, kind) ?? (def.Op == "relic" ? Art.Card("master_portrait", size, kind) : null)) is { } texture) portrait.Texture = texture;
         }
         catch (Exception e) { Log.Warn($"塔主牌：换卡图失败：{e.Message}"); }
     }
