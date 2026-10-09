@@ -32,7 +32,7 @@ public class MasterCardsTests
     public void CardsAreRealCardModelsRegisteredBeforeModelDbInit()
     {
         Register();
-        Assert.Equal((8 + MasterCards.RewardPool.Length) * 3 + TrapCatalog.All.Count * 3 + MasterRelics.Defs.Length, MasterCards.Types.Count); // 遗物牌各 1 张；假游戏没有 RelicModel，遗物类型本身不生成
+        Assert.Equal((8 + MasterCards.RewardPool.Length) * 3 + TrapCatalog.All.Count * 3 + MasterRelics.Defs.Length + MasterAmbush.Options.Length, MasterCards.Types.Count); // 遗物牌各 1 张；假游戏没有 RelicModel，遗物类型本身不生成
         Assert.Equal("遗物·招财猫", Card("relic:lucky_cat@1").Title);
         Assert.False(MasterRelics.Enabled);
         Assert.All(MasterCards.Types, t => Assert.Contains(t, ReflectionHelper.ModTypes));
@@ -55,7 +55,7 @@ public class MasterCardsTests
 
         var cards = LocManager.Instance.GetTable("cards");
         var entry = MasterCards.Entry(MasterCards.TypeOf("trap:brittle@2")!);
-        Assert.Contains("给予该玩家 2 层脆弱", cards.Entries[$"{entry}.description"]);
+        Assert.Contains("该玩家获得 2 层脆弱", cards.Entries[$"{entry}.description"]);
         Assert.Equal("加固", cards.Entries[$"{MasterCards.Entry(MasterCards.TypeOf("act:block@1")!)}.title"]);
     }
 

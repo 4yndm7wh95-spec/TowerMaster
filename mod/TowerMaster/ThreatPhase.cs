@@ -45,7 +45,7 @@ internal static class ThreatPhase
     /// </summary>
     /// 陷阱触发（trap）和陷阱数提示（trap_info）同理用 CombatPlayPhaseOnly；躲过奖励（trap_dodge）在战斗结束后发金币，用 NonCombat。
     internal static string ActionKind(string payload) =>
-        payload.Contains("\"Op\":\"begin\"") || payload.Contains("\"Op\":\"trap\"") || payload.Contains("\"Op\":\"trap_info\"") ? "CombatPlayPhaseOnly"
+        payload.Contains("\"Op\":\"begin\"") || payload.Contains("\"Op\":\"trap\"") || payload.Contains("\"Op\":\"trap_info\"") || payload.Contains("\"Op\":\"ambush\"") ? "CombatPlayPhaseOnly"
         : payload.Contains("\"Op\":\"trap_dodge\"") || payload.Contains("\"Op\":\"deck\"") || payload.Contains("\"Op\":\"reward\"") ? "NonCombat"
         : "Any";
 
@@ -205,6 +205,7 @@ internal static class ThreatPhase
             TurnOpen = true;
             SecondsLeft = _config.MasterTurnSeconds;
             Send(new ThreatCommand(1, 0, 0, Round, "begin"));
+            if (Round == 1) MasterAmbush.OfferIfAmbushRoom();
             Log.Info($"塔主回合：第 {Round} 回合开始，可用威胁点 {Session.Points}（本场还剩 {Session.Remaining}）");
             _ui = UiFactory();
             _ui.Show();
@@ -388,6 +389,11 @@ internal static class ThreatPhase
                     // Amount = 本场盖下几张（公开张数、不公开内容，空陷阱才有诈唬的意义），Monster = 塔主手里还剩几张
                     Log.Info($"{tag}：塔主盖下 {command.Amount} 张陷阱，手里还有 {Math.Max(0, command.Monster)} 张");
                     MasterInfoHud.OnTrapInfo(command.Amount, command.Monster);
+                    if (command.Amount > 0)
+                    {
+                        int buries = MasterRelics.Has("fog_censer") && !Test3MasterAutoPilot.LocalIsMaster ? 1 : command.Amount; // 迷雾香炉：玩家只看到一次（看不出张数）
+                        MasterPresence.Act("bury", () => MasterVfx.Bury(buries));
+                    }
                     if (!Test3MasterAutoPilot.LocalIsMaster)
                     {
                         int gold = ModEntry.Active.DodgeRewardGold / (MasterRelics.Has("stingy_purse") ? 2 : 1);
@@ -403,6 +409,9 @@ internal static class ThreatPhase
                     MasterDeck.Execute(command.MonsterId, tag);
                     break;
                 case "reward":
+                    await MasterRewards.Execute(command, action, tag);
+                    break;
+                case "ambush": // 问号房伏击：塔主三选一（原版选牌界面），各端执行选中的效果
                     await MasterRewards.Execute(command, action, tag);
                     break;
                 case "relic": // 测试接口直接给塔主遗物（各端同一条指令里各自 Obtain）

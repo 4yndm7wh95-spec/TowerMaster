@@ -223,6 +223,7 @@ internal static class TestBridge
                 "/master/grant" => a => Main(() => MasterGrant(a)),
                 "/master/report" => a => Main(() => MasterReport(a)),
                 "/master/relic" => a => Main(() => MasterRelic(a)),
+                "/master/ambush" => _ => Main(MasterAmbushTest),
                 "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
@@ -458,6 +459,10 @@ internal static class TestBridge
         if (Test3MasterAutoPilot.LocalIsMaster && a["force"]?.GetValue<bool>() != true)
             throw Fail("not_allowed", "塔主不能自己选路（自动跟随爬塔玩家）；要测拦截请传 force=true");
         var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
+        // 0.0.48 测试助手在问号房刚变成战斗时投了票，塔主回合卡住：战斗中、房间还没处理完都拒绝
+        if (ThreatPhase.CombatState() is { } fighting && GameReflection.Get(fighting, "RoundNumber") is { } rn && Convert.ToInt32(rn) > 0
+            && GameReflection.Get(state, "CurrentRoom")?.GetType().Name == "CombatRoom" && a["force"]?.GetValue<bool>() != true)
+            throw Fail("invalid_phase", "还在战斗中，打完再投票（问号房也可能是战斗）");
         int col = a["col"]?.GetValue<int>() ?? throw Fail("bad_request", "要 col"), row = a["row"]?.GetValue<int>() ?? throw Fail("bad_request", "要 row");
         var run = RunOrNull()!;
         var player = LocalPlayer(state);
@@ -769,6 +774,16 @@ internal static class TestBridge
         MasterLedger.TakeReward(-900000 - MasterLedger.ExtraCards.Count, op);
         MasterDeck.Publish($"测试接口加牌 {op}");
         return new { granted = op, extra_cards = MasterLedger.ExtraCards, note = "下一场战斗起在抽牌堆里" };
+    }
+
+    /// <summary>测试用：不管是不是问号房，在当前战斗里发一次伏击三选一（只能在塔主回合里）。</summary>
+    private static object MasterAmbushTest()
+    {
+        if (!Test3MasterAutoPilot.LocalIsMaster) throw Fail("invalid_phase", "只能在塔主（房主）上调用");
+        if (ThreatPhase.CombatState() == null) throw Fail("invalid_phase", "不在战斗中");
+        var offer = string.Join(",", MasterAmbush.Options.Select(o => $"ambush:{o.Id}"));
+        ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "ambush", Monster: MasterRewards.KindAmbush, MonsterId: offer, Amount: -900000 - ThreatPhase.Round));
+        return new { offered = offer, note = "用 tm_cards / tm_cards_pick 选" };
     }
 
     /// <summary>测试用：给塔主一件塔主遗物（id 见 MasterRelics.Defs；不给 id 就列出已有和全部）。</summary>

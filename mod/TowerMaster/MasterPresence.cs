@@ -149,6 +149,7 @@ internal static class MasterPresence
             if (room == null || !G.GodotObject.IsInstanceValid(room) || !room.IsInsideTree()) { _decoratedRoom = null; return; }
             HideMasterCreature(room, master);
             if (!ReferenceEquals(_decoratedRoom, room)) Decorate(room);
+            if (_frame % 10 == 0) UpdateTray();
         }
         catch (Exception e)
         {
@@ -293,17 +294,19 @@ internal static class MasterPresence
         var size = room.Size;
         float height = Art.Get("master_figure") != null ? size.Y * 0.56f : size.Y * 0.30f;
         float width = height * texture.GetWidth() / Math.Max(1, texture.GetHeight());
-        var figure = new G.TextureRect
+        // 有切件骨骼（art/rig_master.json）就用会动的塔主，没有就用静态立绘
+        _rig = Art.Get("master_figure") != null ? MasterRig.TryCreate(height) : null;
+        G.Control figure = _rig?.View ?? new G.TextureRect
         {
             Texture = texture,
             ExpandMode = G.TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = G.TextureRect.StretchModeEnum.KeepAspectCentered,
-            Size = new G.Vector2(width, height),
-            Position = new G.Vector2(size.X - width - size.X * 0.02f, size.Y * 0.70f - height),
-            MouseFilter = G.Control.MouseFilterEnum.Ignore,
-            Modulate = new G.Color(0.80f, 0.80f, 0.92f, 0.85f),
-            PivotOffset = new G.Vector2(width / 2, height),
         };
+        figure.Size = new G.Vector2(width, height);
+        figure.Position = new G.Vector2(size.X - width - size.X * 0.02f, size.Y * 0.70f - height);
+        figure.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+        figure.Modulate = new G.Color(0.80f, 0.80f, 0.92f, 0.85f);
+        figure.PivotOffset = new G.Vector2(width / 2, height);
         // 画在怪物后面（用户反馈塔主挡住怪物）。0.0.47 实测：怪物所在的 EnemyContainer 在 CombatSceneContainer（ZIndex -10）里面，
         // 有效层级是 -10，单给塔主设 -9 反而在怪物前面。所以把塔主放进 EnemyContainer 的父节点、排在 EnemyContainer 前面：
         // 和怪物同一层，按顺序先画，背景（同容器里更前面的节点）仍在它后面。
@@ -325,13 +328,116 @@ internal static class MasterPresence
             Log.Warn("塔主形象：找不到怪物容器 EnemyContainer，塔主可能盖住怪物");
         }
         _figure = figure;
-        _idle = figure.CreateTween().SetLoops();
-        _idle.TweenProperty(figure, "position:y", figure.Position.Y - 8, 1.6).SetTrans(G.Tween.TransitionType.Sine);
-        _idle.TweenProperty(figure, "position:y", figure.Position.Y, 1.6).SetTrans(G.Tween.TransitionType.Sine);
-        Log.Info("塔主形象：已放到战斗房间右侧");
+        try { BuildTray(room, figure); }
+        catch (Exception e) { Log.Warn($"塔主形象：陷阱托盘没建成：{e.Message}"); }
+        if (_rig == null) // 骨骼自己会呼吸摆动；静态立绘才用整体上下浮动
+        {
+            _idle = figure.CreateTween().SetLoops();
+            _idle.TweenProperty(figure, "position:y", figure.Position.Y - 8, 1.6).SetTrans(G.Tween.TransitionType.Sine);
+            _idle.TweenProperty(figure, "position:y", figure.Position.Y, 1.6).SetTrans(G.Tween.TransitionType.Sine);
+        }
+        Log.Info($"塔主形象：已放到战斗房间右侧（{(_rig != null ? "骨骼动画" : "静态立绘")}）");
+    }
+
+    // ---------------------------------------------------------------- 陷阱托盘（塔主脚边）
+
+    private static G.Control? _tray;
+    private static G.Label? _trayCount;
+    private static G.HBoxContainer? _trayPlaced;
+    private static string _trayKey = "";
+
+    /// <summary>
+    /// 用图形代替文字（用户：「塔主手里有几张牌，完全可以在塔主旁边用卡牌再标个数字」）：
+    /// 塔主脚边一叠牌背 + 数字 = 手里的陷阱张数；右边每张盖下的陷阱一张小牌背，触发了变红、歪一点。
+    /// 放在战斗房间里塔主脚下（怪物、血条、手牌、结束回合按钮之外），说明在悬停。
+    /// </summary>
+    private static void BuildTray(G.Control room, G.Control figure)
+    {
+        var tray = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Pass, ZIndex = 5 };
+        tray.AddThemeConstantOverride("separation", 10);
+        var stack = new G.Control { CustomMinimumSize = new G.Vector2(54, 64), MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        for (int i = 2; i >= 0; i--) // 三张错开叠起来像一叠牌
+        {
+            var back = CardBack(40, 56, false, false);
+            back.Position = new G.Vector2(i * 4, 6 - i * 3);
+            stack.AddChild(back);
+        }
+        var badge = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Position = new G.Vector2(30, 36) };
+        badge.AddThemeStyleboxOverride("panel", SummonPanel.Box(new G.Color(0.10f, 0.08f, 0.04f, 0.95f), SummonPanel.Gold, 1, 11, 0));
+        _trayCount = Ui.Value("0", 18, SummonPanel.Gold);
+        _trayCount.HorizontalAlignment = G.HorizontalAlignment.Center;
+        _trayCount.CustomMinimumSize = new G.Vector2(24, 0);
+        badge.AddChild(_trayCount);
+        stack.AddChild(badge);
+        tray.AddChild(stack);
+        _trayPlaced = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
+        _trayPlaced.AddThemeConstantOverride("separation", 6);
+        tray.AddChild(_trayPlaced);
+        room.AddChild(tray);
+        var rect = figure.GetGlobalRect();
+        tray.GlobalPosition = new G.Vector2(rect.Position.X + rect.Size.X * 0.30f, rect.End.Y - 30);
+        _tray = tray;
+        _trayKey = "";
+        MasterInfoHud.TrayShown = true;
+    }
+
+    /// <summary>一张小牌背：深蓝底金边，中间一个陷阱牌背图标；fired = 已触发（红、歪）；dim = 看不到/空位。</summary>
+    private static G.Control CardBack(float w, float h, bool fired, bool dim)
+    {
+        var card = new G.PanelContainer { CustomMinimumSize = new G.Vector2(w, h), Size = new G.Vector2(w, h), MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        card.AddThemeStyleboxOverride("panel", SummonPanel.Box(fired ? new G.Color(0.45f, 0.10f, 0.12f) : new G.Color(0.07f, 0.09f, 0.16f),
+            fired ? new G.Color(1f, 0.5f, 0.45f) : SummonPanel.Gold, 2, 5, 0, shadow: 4));
+        if (Art.Icon("icon_trap", Math.Min(w, h) * 0.75f) is { } icon)
+        {
+            var center = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            center.AddChild(icon);
+            card.AddChild(center);
+        }
+        if (fired) { card.PivotOffset = new G.Vector2(w / 2, h / 2); card.RotationDegrees = -10; }
+        if (dim) card.Modulate = new G.Color(1, 1, 1, 0.45f);
+        return card;
+    }
+
+    private static void UpdateTray()
+    {
+        if (_tray == null || !G.GodotObject.IsInstanceValid(_tray) || !_tray.IsInsideTree()) { MasterInfoHud.TrayShown = false; return; }
+        var (hand, placed, fired, inFight) = MasterInfoHud.TrayState();
+        var key = $"{hand}/{placed}/{fired.Count}/{inFight}";
+        if (key == _trayKey) return;
+        _trayKey = key;
+        _trayCount!.Text = hand >= 0 ? $"{hand}" : "?";
+        foreach (var child in _trayPlaced!.GetChildren()) child.QueueFree();
+        if (placed < 0) _trayPlaced.AddChild(Ui.Value("?", 20));
+        else for (int i = 0; i < placed; i++) _trayPlaced.AddChild(CardBack(28, 40, i < fired.Count, false));
+        var tip = new List<string> { "塔主的陷阱", $"左边一叠：塔主手里还有 {(hand >= 0 ? hand.ToString() : "?")} 张陷阱牌。" };
+        tip.Add(placed < 0 ? "迷雾香炉在冒烟，看不清这场盖了几张。" : placed == 0 ? "这场没盖陷阱。" : $"右边：这场盖下了 {placed} 张，红色的已经触发。");
+        if (fired.Count > 0) tip.Add($"※触发过：{string.Join("、", fired)}");
+        if (placed > 0) tip.Add("※里面可能有空陷阱，只是吓唬人。");
+        Ui.Tip(_tray, string.Join("\n", tip));
     }
 
     /// <summary>塔主施法：形象亮一下、放大一点再回来。</summary>
+    private static MasterRig? _rig;
+
+    /// <summary>
+    /// 塔主做一个动作：cast（举灯施法，给怪物加料）、point（伸手指点，给玩家添堵）、bury（埋陷阱）。
+    /// 有骨骼就播完整动画，onHit 在出手那一刻调用；没有就亮一下，onHit 立刻调用。
+    /// </summary>
+    public static void Act(string anim, Action? onHit = null)
+    {
+        try
+        {
+            if (_rig != null && _figure != null && G.GodotObject.IsInstanceValid(_figure)) { _rig.Play(anim, onHit); return; }
+            Cast();
+        }
+        catch { /* 纯显示 */ }
+        onHit?.Invoke();
+    }
+
+    /// <summary>出牌对应的动作：给玩家的减益、塞牌是指点，其余（给怪物加料、召唤、盲盒）是举灯。</summary>
+    internal static string PoseOf(string op) => op is "weak" or "vulnerable" or "frail" or "dazed" or "sap" or "daze_all" or "expose_all" or "slime_gift" or "heckle"
+        ? "point" : "cast";
+
     public static void Cast()
     {
         try

@@ -51,7 +51,11 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         _stats.AddThemeConstantOverride("separation", 12);
         page.AddChild(_stats);
         var hint = new G.CenterContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-        hint.AddChild(Ui.Note("点一下选中，再点取消。卡左上角的数字是它要花的点数。", 15));
+        var hints = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
+        hints.AddThemeConstantOverride("separation", 2);
+        hints.AddChild(Ui.Note("点一下选中，再点取消，右键看详情。卡左上角的数字是它要花的点数。", 15));
+        hints.AddChild(Ui.Note($"陷阱每场最多触发一次；打完还没触发的会翻开，每人得 {ModEntry.Active.DodgeRewardGold} 金币（空陷阱不给）。", 15));
+        hint.AddChild(hints);
         page.AddChild(hint);
 
         // 中间：候选网格（放不下就滚动）
@@ -189,10 +193,16 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
             FocusMode = G.Control.FocusModeEnum.None,
             CustomMinimumSize = size + new G.Vector2(12, 12),
         };
-        Ui.Tip(button, P.TrapTip(card, $"（花 {card.Def.DraftCost} 点）"));
         button.AddThemeStyleboxOverride("focus", new G.StyleBoxEmpty());
-        var face = new CardFace(card.Name, card.Describe(VanillaCard.Kw), "陷阱", $"{card.Def.DraftCost}", $"trap_{card.Id}");
-        var view = VanillaCard.Create(face, scale);
+        // 真正的陷阱牌模型 + 原版卡面；右键打开原版详情（0.0.49，不再用自绘悬停说明）
+        var model = TrapModel(card);
+        var view = model != null ? VanillaCard.CreateFor(model, scale, $"{card.Def.DraftCost}") : null;
+        if (view == null)
+        {
+            var face = new CardFace(card.Name, card.Describe(VanillaCard.Kw), "陷阱", $"{card.Def.DraftCost}", $"trap_{card.Id}");
+            view = VanillaCard.Create(face, scale);
+        }
+        if (model != null) VanillaCard.RightClickInspect(button, () => choice.Draft.Offer.Select(TrapModel).OfType<object>().ToList(), index);
         if (view != null) VanillaCard.HoverZoom(button, view, 1.18f, 8);
         view ??= TrapPackCardView(card, scale);
         view.Position = new G.Vector2(6, 6);
@@ -206,6 +216,10 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         button.Pressed += () => choice.Toggle(index);
         return new Slot(button, badge, badgeLabel);
     }
+
+    /// <summary>陷阱牌的规范模型（塔主牌没开成时为 null）。</summary>
+    internal static object? TrapModel(TrapCard card) =>
+        MasterCards.Enabled && MasterCards.TypeOf($"trap:{card.Id}@{Math.Clamp(card.Tier, 1, 3)}") is { } type ? MasterCards.Canonical(type) : null;
 
     /// <summary>选中：金框、暖底、「已选」；手里已有：暗、「已有」；挑不了（超预算、张数满）：暗。</summary>
     private void Style(Slot slot, int index)

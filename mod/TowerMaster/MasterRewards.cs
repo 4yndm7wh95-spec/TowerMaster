@@ -22,7 +22,7 @@ namespace TowerMaster;
 internal static class MasterRewards
 {
     internal const int OfferSize = 3;
-    internal const int KindFree = 0, KindBuy = 1, KindRemove = 2, KindRelic = 3;
+    internal const int KindFree = 0, KindBuy = 1, KindRemove = 2, KindRelic = 3, KindAmbush = 4;
     private static bool _patched;
 
     internal static void Apply(Harmony harmony)
@@ -240,6 +240,12 @@ internal static class MasterRewards
         var def = MasterCards.DefOf(chosen);
         string verb = c.Monster switch { KindBuy => "选中要买", KindRemove => "选中要删", _ => "选了" };
         Log.Info($"{tag}：塔主{(def != null ? $"{verb} {def.Title}" : "跳过")}");
+        if (def?.Op == "ambush") // 伏击：各端执行同一个效果
+        {
+            try { await MasterAmbush.Apply(def.Key["ambush:".Length..].Split('@')[0], action, tag); }
+            catch (Exception e) { Log.Error($"{tag}：伏击效果失败", e); }
+        }
+        else if (c.Monster == KindAmbush) MasterAmbush.Skipped(tag);
         if (def?.Op == "relic") // 遗物：各端在同一条指令里各自给塔主（原版 RelicCmd.Obtain 不广播）
         {
             var relicId = RelicId(def);
@@ -256,6 +262,12 @@ internal static class MasterRewards
     {
         MasterLedger.EnsureLoaded();
         if (def == null) { MasterLedger.MarkReward(c.Amount); return; }
+        if (def.Op == "ambush")
+        {
+            MasterLedger.MarkReward(c.Amount);
+            if (def.Key.StartsWith("ambush:toll", StringComparison.Ordinal)) MasterLedger.GainPoints(MasterAmbush.TollPoints, "伏击·买路钱");
+            return;
+        }
         if (def.Op == "relic")
         {
             MasterLedger.MarkReward(c.Amount);

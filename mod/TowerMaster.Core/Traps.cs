@@ -47,10 +47,10 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
         string when = Trigger switch
         {
             TrapTrigger.RoundStart => $"第 {Threshold} 回合开始时，",
-            TrapTrigger.AttacksInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张攻击牌时，",
-            TrapTrigger.SkillsInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张技能牌时，",
-            TrapTrigger.CardsInTurn => $"当一名玩家在一个回合内打出第 {Threshold} 张牌时，",
-            TrapTrigger.EnemyDied => "当一只怪物死亡且场上还有其他怪物时，",
+            TrapTrigger.AttacksInTurn => $"一名玩家一回合打出第 {Threshold} 张攻击牌时，",
+            TrapTrigger.SkillsInTurn => $"一名玩家一回合打出第 {Threshold} 张技能牌时，",
+            TrapTrigger.CardsInTurn => $"一名玩家一回合打出第 {Threshold} 张牌时，",
+            TrapTrigger.EnemyDied => "一只怪物倒下（还有别的怪物在场）时，",
             _ => "",
         };
         int a = Amount(tier);
@@ -59,12 +59,12 @@ public sealed record TrapDef(string Id, string NameZh, TrapTrigger Trigger, int 
         {
             TrapEffect.BlockAllEnemies => $"所有怪物获得 {a} 点{k("格挡")}。",
             TrapEffect.StrengthAllEnemies => $"所有怪物获得 {a} 点{k("力量")}。",
-            TrapEffect.HealAllEnemiesPercent => $"所有怪物回复 {a}% 最大生命值。",
-            TrapEffect.WeakPlayer => $"给予{target} {a} 层{k("虚弱")}。",
-            TrapEffect.VulnerablePlayer => $"给予{target} {a} 层{k("易伤")}。",
-            TrapEffect.FrailPlayer => $"给予{target} {a} 层{k("脆弱")}。",
-            TrapEffect.DazedPlayer => $"将 {a} 张{k("晕眩")}放入{target}的抽牌堆。",
-            _ => "没有任何效果。",
+            TrapEffect.HealAllEnemiesPercent => $"所有怪物回复 {a}% 生命。",
+            TrapEffect.WeakPlayer => $"{target}获得 {a} 层{k("虚弱")}。",
+            TrapEffect.VulnerablePlayer => $"{target}获得 {a} 层{k("易伤")}。",
+            TrapEffect.FrailPlayer => $"{target}获得 {a} 层{k("脆弱")}。",
+            TrapEffect.DazedPlayer => $"往{target}的抽牌堆塞 {a} 张{k("晕眩")}。",
+            _ => "什么也不会发生。",
         };
         return when + what;
     }

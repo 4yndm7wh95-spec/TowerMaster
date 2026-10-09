@@ -65,6 +65,72 @@ internal static class VanillaCard
         }
     }
 
+    /// <summary>
+    /// 用真正的塔主牌模型（MasterCards 生成的 CardModel）做原版卡面：标题、说明、卡图、类型都由原版按模型画，
+    /// 不再套模板卡改字（0.0.48 用户：「这些卡牌就应该照抄原版」）。cost 不为空时把左上角费用改成这个数（例如挑陷阱的花费）。
+    /// </summary>
+    public static G.Control? CreateFor(object model, float scale, string? cost = null)
+    {
+        if (_failed) return null;
+        try
+        {
+            _scene ??= G.ResourceLoader.Load<G.PackedScene>(ScenePath);
+            if (_scene == null) throw new InvalidOperationException($"读不到 {ScenePath}");
+            var size = BaseSize * scale;
+            var holder = new G.Control { CustomMinimumSize = size, MouseFilter = G.Control.MouseFilterEnum.Ignore };
+            var card = _scene.Instantiate<G.Control>();
+            card.MouseFilter = G.Control.MouseFilterEnum.Ignore;
+            card.Scale = new G.Vector2(scale, scale);
+            card.Position = size / 2;
+            holder.AddChild(card);
+            card.Ready += () =>
+            {
+                try { card.GetType().GetProperty("Model")?.SetValue(card, model); }
+                catch (Exception e) { Log.Warn($"原版卡牌框架：绑定塔主牌模型失败：{e.InnerException?.Message ?? e.Message}"); }
+                if (cost != null) SummonPanel.Tree.CreateTimer(0.05).Timeout += () =>
+                {
+                    if (!G.GodotObject.IsInstanceValid(card)) return;
+                    if (card.GetNodeOrNull<G.CanvasItem>("CardContainer/EnergyIcon") is { } icon) icon.Visible = true;
+                    SetText(card, "CardContainer/EnergyIcon/EnergyLabel", cost);
+                };
+            };
+            return holder;
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"原版卡牌框架：塔主牌卡面失败：{e.InnerException?.Message ?? e.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>右键查看：打开原版卡牌详情（NGame.GetInspectCardScreen().Open），可以左右翻看同一组牌。</summary>
+    public static void Inspect(IEnumerable<object> models, int index)
+    {
+        try
+        {
+            var cardModel = GameReflection.TypesNamed("CardModel").First(t => t.IsAbstract);
+            var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(cardModel))!;
+            foreach (var m in models) list.Add(m);
+            var game = RuntimeNetAction.Required("NGame").GetProperty("Instance", GameReflection.All)?.GetValue(null) ?? throw new InvalidOperationException("没有 NGame");
+            var screen = RuntimeNetAction.Call(game, "GetInspectCardScreen");
+            screen.GetType().GetMethods(GameReflection.All).First(m => m.Name == "Open" && m.GetParameters().Length == 3).Invoke(screen, [list, index, false]);
+        }
+        catch (Exception e) { Log.Warn($"原版卡牌详情打开失败：{e.InnerException?.Message ?? e.Message}"); }
+    }
+
+    /// <summary>给控件加右键查看。</summary>
+    public static void RightClickInspect(G.Control control, Func<IReadOnlyList<object>> models, int index)
+    {
+        control.GuiInput += ev =>
+        {
+            if (ev is G.InputEventMouseButton { ButtonIndex: G.MouseButton.Right, Pressed: true })
+            {
+                Inspect(models(), index);
+                control.AcceptEvent();
+            }
+        };
+    }
+
     /// <summary>卡面关键词高亮（原版卡牌说明里关键词是金色）。</summary>
     public static string Kw(string word) => $"[color=#efc851]{word}[/color]";
 

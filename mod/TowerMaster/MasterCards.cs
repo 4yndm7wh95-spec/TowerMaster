@@ -97,14 +97,14 @@ public static class MasterCards
                 };
                 string desc = op switch
                 {
-                    "block" => $"选择一只怪物，使其获得 {TowerMasterConfig.ByAct(p.BlockAmount, act)} 点格挡。",
-                    "heal" => $"选择一只怪物，使其回复 {p.HealPercent}% 最大生命值。\n每只怪物每场战斗最多 {p.HealPerMonsterPerBattle} 次。",
-                    "strength" => $"选择一只怪物，使其获得 {TowerMasterConfig.ByAct(p.StrengthAmount, act)} 点力量。",
-                    "strength_all" => $"所有怪物获得 {p.StrengthAllAmount} 点力量。\n每场战斗限 {p.StrengthAllPerBattle} 次。",
-                    "weak" => $"给予一名玩家 {p.DebuffStacks} 层虚弱。",
-                    "vulnerable" => $"给予一名玩家 {p.DebuffStacks} 层易伤。",
-                    "frail" => $"给予一名玩家 {p.DebuffStacks} 层脆弱。",
-                    _ => "将 1 张晕眩放入一名玩家的抽牌堆。",
+                    "block" => $"一只怪物获得 {TowerMasterConfig.ByAct(p.BlockAmount, act)} 点格挡。",
+                    "heal" => $"一只怪物回复 {p.HealPercent}% 生命。\n每只每场限 {p.HealPerMonsterPerBattle} 次。",
+                    "strength" => $"一只怪物获得 {TowerMasterConfig.ByAct(p.StrengthAmount, act)} 点力量。",
+                    "strength_all" => $"所有怪物获得 {p.StrengthAllAmount} 点力量。\n每场限 {p.StrengthAllPerBattle} 次。",
+                    "weak" => $"一名玩家获得 {p.DebuffStacks} 层虚弱。",
+                    "vulnerable" => $"一名玩家获得 {p.DebuffStacks} 层易伤。",
+                    "frail" => $"一名玩家获得 {p.DebuffStacks} 层脆弱。",
+                    _ => "往一名玩家的抽牌堆塞 1 张晕眩。",
                 };
                 defs.Add(new($"act:{op}@{act}", $"TowerMaster{Pascal(op)}{act}", act > 1 ? $"{name}+{act - 1}" : name, desc,
                     cost, CardType: 2, target, Unplayable: false, art, op, act));
@@ -115,19 +115,19 @@ public static class MasterCards
                 string desc = op switch
                 {
                     "fortify_all" => $"所有怪物获得 {FortifyAmount(act)} 点格挡。",
-                    "heal_all" => $"所有怪物回复 {HealAllPercent}% 最大生命值。\n计入每只怪物每场的治疗次数。",
-                    "sap" => "给予一名玩家 1 层虚弱和 1 层脆弱。",
-                    "daze_all" => "将 1 张晕眩放入每名玩家的抽牌堆。\n计入每场的晕眩次数。",
-                    "expose_all" => "给予每名玩家 1 层易伤。",
+                    "heal_all" => $"所有怪物回复 {HealAllPercent}% 生命。",
+                    "sap" => "一名玩家获得 1 层虚弱和 1 层脆弱。",
+                    "daze_all" => "往每名玩家的抽牌堆塞 1 张晕眩。",
+                    "expose_all" => "每名玩家获得 1 层易伤。",
                     "scheme" => $"抽 {SchemeDraw(act)} 张牌。",
-                    "feast" => $"每名玩家回复 {FeastHeal(act)} 点生命。\n所有怪物获得 1 点力量。",
-                    "slime_gift" => $"将 {SlimeCount(act)} 张黏液放入一名玩家的弃牌堆。",
-                    "thorns" => $"选择一只怪物，使其获得 {ThornsAmount(act)} 层荆棘。",
-                    "artifact" => $"选择一只怪物，使其获得 {ArtifactAmount(act)} 层人工制品。",
-                    "call_help" => $"召唤一只本幕的小怪加入战斗。\n每场战斗限 1 次，场上最多 {CallHelpMaxEnemies} 只怪物。",
-                    "infight" => $"选择一只怪物，使其受到 {InfightDamage(act)} 点伤害。\n其余怪物各获得 1 点力量。",
-                    "gamble" => "随机发生一件事：所有怪物获得 5 点格挡，或每名玩家获得 1 层虚弱，或每名玩家抽 1 张牌，或塔主获得 2 点能量。",
-                    "heckle" => "给予一名玩家 1 层易伤。\n该玩家抽 1 张牌。",
+                    "feast" => $"每名玩家回复 {FeastHeal(act)} 点生命，\n所有怪物获得 1 点力量。",
+                    "slime_gift" => $"往一名玩家的弃牌堆塞 {SlimeCount(act)} 张黏液。",
+                    "thorns" => $"一只怪物获得 {ThornsAmount(act)} 层荆棘。",
+                    "artifact" => $"一只怪物获得 {ArtifactAmount(act)} 层人工制品。",
+                    "call_help" => "叫一只本幕小怪加入战斗。\n每场限 1 次。",
+                    "infight" => $"一只怪物受到 {InfightDamage(act)} 点伤害，\n其余怪物获得 1 点力量。",
+                    "gamble" => "随机一件事：怪物格挡、玩家虚弱、玩家抽牌或塔主回能。",
+                    "heckle" => "一名玩家获得 1 层易伤，\n然后抽 1 张牌。",
                     _ => "获得 1 点能量。", // 「消耗。」由原版按关键词自动加（0.0.34 实测写了会重复）
                 };
                 defs.Add(new($"act:{op}@{act}", $"TowerMaster{Pascal(op)}{act}", act > 1 ? $"{name}+{act - 1}" : name, desc,
@@ -137,13 +137,17 @@ public static class MasterCards
             for (int tier = 1; tier <= 3; tier++)
             {
                 var card = new TrapCard(t.Id, tier);
-                defs.Add(new($"trap:{t.Id}@{tier}", $"TowerMasterTrap{Pascal(t.Id)}{tier}", card.Name, "陷阱。召唤时盖下。\n" + card.Describe(),
+                defs.Add(new($"trap:{t.Id}@{tier}", $"TowerMasterTrap{Pascal(t.Id)}{tier}", card.Name, card.Describe(),
                     -1, CardType: 2, TargetType: 0, Unplayable: true, $"trap_{t.Id}", "trap", tier));
             }
         // 遗物牌：只在塔主宝箱的原版选牌界面里当候选（选中后各端给塔主真遗物，见 MasterRelics），不进牌组
         foreach (var r in MasterRelics.Defs)
             defs.Add(new($"relic:{r.Id}@1", $"TowerMasterRelicOffer{Pascal(r.Id)}", $"遗物·{r.Title}", r.Description,
                 -1, CardType: 2, TargetType: 0, Unplayable: true, $"relic_{r.Id}", "relic", 1));
+        // 伏击牌：问号房打起来时塔主三选一（见 MasterAmbush），不进牌组
+        foreach (var a in MasterAmbush.Options)
+            defs.Add(new($"ambush:{a.Id}@1", $"TowerMasterAmbush{Pascal(a.Id)}", a.Title, a.Description,
+                -1, CardType: 2, TargetType: 0, Unplayable: true, a.Art, "ambush", 1));
         return defs;
     }
 
@@ -471,6 +475,7 @@ public static class MasterCards
                         .First(x => x.Name == "GainEnergy" && x.GetParameters().Length == 2).Invoke(null, [1m, m])!;
                     break;
             }
+            MasterPresence.Act(MasterPresence.PoseOf(def.Op), () => MasterVfx.AfterCard(def.Op, target));
             Log.Info($"塔主牌：打出 {def.Title}{(target != null ? $" → {GameReflection.Get(target, "Monster")?.GetType().Name ?? Test2MasterOffField.NetIdOf(target)?.ToString()}" : "")}");
         }
         catch (Exception e) { Log.Error($"塔主牌：{def.Title} 效果失败", e); }
@@ -482,7 +487,7 @@ public static class MasterCards
             .Invoke(null, [context, (decimal)count, player, false])!;
 
     /// <summary>「摇人」：本幕小怪列表里第一个游戏里有的，做成可变实例。</summary>
-    private static object? CallHelpMonster(int tier)
+    internal static object? CallHelpMonster(int tier)
     {
         foreach (var id in CallHelpMonsters[Math.Clamp(tier, 1, 3) - 1])
         {
@@ -553,6 +558,9 @@ public static class MasterCards
             if (size.X > 16) _portraitSize = size;
             var kind = def.Op switch { "trap" => Art.CardKind.Trap, "relic" => Art.CardKind.Relic, _ => Art.CardKind.Action };
             if ((Art.Card(def.Art, size, kind) ?? (def.Op == "relic" ? Art.Card("master_portrait", size, kind) : null)) is { } texture) portrait.Texture = texture;
+            // 类型牌：原版按 CardType 写「技能」，塔主牌写自己的类别
+            if (node.GetNodeOrNull<G.Label>("CardContainer/TypePlaque/TypeLabel") is { } typeLabel)
+                typeLabel.Text = def.Op switch { "trap" => "陷阱", "relic" => "遗物", _ => "塔主" };
         }
         catch (Exception e) { Log.Warn($"塔主牌：换卡图失败：{e.Message}"); }
     }

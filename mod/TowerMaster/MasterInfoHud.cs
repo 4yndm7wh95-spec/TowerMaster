@@ -17,6 +17,17 @@ internal static class MasterInfoHud
     private static int _placed;
     private static readonly List<string> Triggered = new();
 
+    /// <summary>塔主身边的陷阱托盘用：手里张数（看不到为 -1）、本场盖下张数（看不到为 -1）、已触发的名字。</summary>
+    internal static (int Hand, int Placed, IReadOnlyList<string> Fired, bool InFight) TrayState()
+    {
+        bool fog = !Test3MasterAutoPilot.LocalIsMaster && MasterRelics.Has("fog_censer");
+        bool inFight = EnsureFight();
+        return (fog ? -1 : TrapsInHand, fog ? -1 : _placed, Triggered, inFight);
+    }
+
+    /// <summary>战斗里塔主身边有托盘时，信息条不再重复显示「本场」。</summary>
+    internal static bool TrayShown { get; set; }
+
     internal static void ResetRun()
     {
         TrapsInHand = -1;
@@ -125,7 +136,7 @@ internal static class MasterInfoHud
 
             var view = Describe(_bosses);
             _hand!.Text = view.Hand;
-            _fightRow!.Visible = view.InFight;
+            _fightRow!.Visible = view.InFight && !TrayShown;
             var pipKey = $"{view.Placed}/{view.Fired}";
             if (pipKey != _pipKey) { _pipKey = pipKey; Pips(view.Placed, view.Fired); }
             _bossLine!.Text = view.Bosses;

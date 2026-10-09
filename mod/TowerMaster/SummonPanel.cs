@@ -490,8 +490,7 @@ internal sealed class SummonPanel : ISummonUi
     }
 
     /// <summary>陷阱的悬停说明：名字、效果，规则细节当注释。</summary>
-    internal static string TrapTip(TrapCard card, string? extra = null) =>
-        $"{card.Name}{extra}\n{card.Describe()}\n" + string.Join("\n", card.Def.Rules(ModEntry.Active.DodgeRewardGold).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => "※" + l));
+    internal static string TrapTip(TrapCard card, string? extra = null) => $"{card.Name}{extra}\n{card.Describe()}\n※右键看详情";
 
     /// <summary>陷阱小卡：上面图，下面名字；说明在悬停提示。选中时红框（Render 里设）。</summary>
     internal static G.Button TrapMiniCard(TrapCard card, float width = 72)
@@ -502,6 +501,7 @@ internal sealed class SummonPanel : ISummonUi
             CustomMinimumSize = new G.Vector2(width, width * 1.3f),
         };
         Ui.Tip(button, TrapTip(card));
+        if (TrapDraftPanel.TrapModel(card) is { } model) VanillaCard.RightClickInspect(button, () => [model], 0);
         StyleCard(button, false);
         var col = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
         col.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);

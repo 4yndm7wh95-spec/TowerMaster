@@ -94,6 +94,7 @@ internal static class MasterHand
             if (MasterRelics.Has("bento"))
             {
                 foreach (var e in LivingEnemies().ToList()) await ThreatPhase.GainBlock(e, 3);
+                MasterVfx.WardAllEnemies();
                 Log.Info($"{tag}：怪物便当，所有敌人 +3 格挡");
                 SummonPhase.Notify("怪物便当", "所有怪物 +3 格挡", "relic_bento");
             }
@@ -102,6 +103,7 @@ internal static class MasterHand
                 // 生命最高的；一样高取玩家顺序靠前的（各端一致）
                 var target = climbers.Aggregate((a, b) => Convert.ToInt32(GameReflection.Get(b, "CurrentHp")) > Convert.ToInt32(GameReflection.Get(a, "CurrentHp")) ? b : a);
                 await ThreatPhase.ApplyPowerWith("VulnerablePower", context, target, 1);
+                MasterVfx.MarkOn(target);
                 Log.Info($"{tag}：黑名单，玩家 {Test2MasterOffField.NetIdOf(GameReflection.Get(target, "Player"))} 易伤 1");
                 SummonPhase.Notify("黑名单", "生命最高的玩家获得 1 层易伤", "relic_blacklist");
             }
