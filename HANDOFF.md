@@ -1,3 +1,9 @@
+## 0.0.50：动画拼法写死 + 检查工具（2026-10-09）
+
+用户担心 Codex 拼骨骼会错位。0.0.50：关键帧移到 art/rig_anims.json（游戏和检查工具共用）；testing/rig/check_rig.py 用和游戏同一套变换
+检查部件、叠回原图对比、画转轴、出动画 GIF 和品红底露洞图；转轴由 Claude 按网格量好（docs/screenshots/claude-rig-guide.png）；
+Claude 粗拆试跑：叠回原图 0% 差异，动作正确，露洞位置示例 claude-rig-holes-example.png。art 目录的 json 也随安装拷贝。
+
 ## 0.0.48 实测 → 0.0.49：原版卡牌结构、陷阱托盘、问号房伏击、特效接入、切件骨骼动画（2026-10-09）
 
 0.0.48 实测（`docs/ui-048-result.md`）：塔主图层通过（怪物在塔主前面）；文字层级、自绘悬停、扣点说明、旧战报清理、提示排队通过；StateDivergence 0。

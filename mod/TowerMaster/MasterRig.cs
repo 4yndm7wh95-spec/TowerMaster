@@ -12,6 +12,10 @@ namespace TowerMaster;
 ///
 /// 部件和转轴写在 art/rig_master.json（制作说明见 docs/master-animation-plan.md）。缺文件就返回 null，继续用静态立绘。
 ///
+/// 拼法（保证不会错位）：每张部件图都是整张 512×768、部件在原来的位置。每个部件一个「关节」节点，放在转轴坐标上；
+/// 部件图放在关节里、往回挪 -转轴，于是静止时正好落回原位；关节转动 = 部件绕转轴转。
+/// 子部件的关节位置 = 自己的转轴 − 父部件的转轴（例如灯笼挂在提灯手臂上，手臂抬起灯笼跟着走，同时还能绕握点自己摆）。
+///
 /// 动画：
 /// - idle（循环）：呼吸起伏、头微动、灯笼轻摆、袖子和烟慢慢飘；
 /// - cast（举灯，给怪物加料，1.1 秒）：灯先往下一沉蓄力 → 高高举起、灯笼变亮 → 停一下 → 放回；
@@ -47,6 +51,7 @@ internal sealed class MasterRig
             var path = Path.Combine(Log.ModDir, "art", "rig_master.json");
             if (!File.Exists(path)) return null;
             var def = JsonSerializer.Deserialize<RigDef>(File.ReadAllText(path), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            LoadAnims();
             if (def == null || def.Parts.Length == 0) return null;
             float scale = height / def.Canvas[1];
             var view = new G.Control { MouseFilter = G.Control.MouseFilterEnum.Ignore, Size = new G.Vector2(def.Canvas[0], def.Canvas[1]) * scale };
@@ -89,36 +94,44 @@ internal sealed class MasterRig
         _hitFired = false;
     }
 
-    // 转角：Godot 里正数是顺时针。塔主朝左（面向玩家），提灯的手举在左上方：
-    // 提灯手臂顺时针转 = 把灯举高（给怪物加料）；逆时针转 = 把灯往前（玩家方向）推（给玩家添堵）。
-    // 空着的手垂在右下方：顺时针转 = 往下、往前一甩（埋陷阱）。
-    private static readonly Dictionary<string, (float Length, float Hit, Dictionary<string, Key[]> Parts)> Tracks = new()
+    // 关键帧在 art/rig_anims.json（和检查工具 testing/rig/check_rig.py 共用一份，预览和游戏一模一样）。
+    private static Dictionary<string, (float Length, float Hit, Dictionary<string, Key[]> Parts)> Tracks = new();
+    private static Dictionary<string, Dictionary<string, float[]>> Idle = new();
+
+    private static void LoadAnims()
     {
-        ["cast"] = (1.1f, 0.4f, new()
+        var path = Path.Combine(Log.ModDir, "art", "rig_anims.json");
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        var idle = new Dictionary<string, Dictionary<string, float[]>>();
+        foreach (var part in doc.RootElement.GetProperty("idle").EnumerateObject())
         {
-            ["body"] = [new(0), new(0.25f, Rot: 1.5f, Y: 3), new(0.4f, Rot: -1.5f, Y: -4), new(0.65f, Rot: -1.5f, Y: -4), new(1.1f)],
-            ["head"] = [new(0), new(0.25f, Rot: 2), new(0.4f, Rot: -3), new(0.65f, Rot: -3), new(1.1f)],
-            ["arm_lantern"] = [new(0), new(0.25f, Rot: -6), new(0.4f, Rot: 16), new(0.65f, Rot: 14), new(1.1f)],
-            ["lantern"] = [new(0), new(0.25f, Rot: 5), new(0.4f, Rot: -12, Glow: 1.8f), new(0.65f, Rot: -6, Glow: 1.6f), new(1.1f)],
-            ["arm_free"] = [new(0), new(0.25f, Rot: 4), new(0.4f, Rot: -8), new(0.65f, Rot: -8), new(1.1f)],
-        }),
-        ["point"] = (1.0f, 0.38f, new()
+            if (part.Name.StartsWith('_')) continue;
+            idle[part.Name] = part.Value.EnumerateObject().ToDictionary(c => c.Name, c => c.Value.EnumerateArray().Select(v => v.GetSingle()).ToArray());
+        }
+        var tracks = new Dictionary<string, (float, float, Dictionary<string, Key[]>)>();
+        foreach (var anim in doc.RootElement.GetProperty("actions").EnumerateObject())
         {
-            ["body"] = [new(0), new(0.22f, Rot: 1.5f, X: 3), new(0.38f, Rot: -3, X: -8), new(0.6f, Rot: -3, X: -8), new(1.0f)],
-            ["head"] = [new(0), new(0.22f, Rot: 2), new(0.38f, Rot: -5), new(0.6f, Rot: -5), new(1.0f)],
-            ["arm_lantern"] = [new(0), new(0.22f, Rot: 6), new(0.38f, Rot: -20), new(0.6f, Rot: -18), new(1.0f)],
-            ["lantern"] = [new(0), new(0.22f, Rot: -4), new(0.38f, Rot: 14, Glow: 1.5f), new(0.6f, Rot: 6, Glow: 1.3f), new(1.0f)],
-            ["arm_free"] = [new(0), new(0.38f, Rot: 6), new(1.0f)],
-        }),
-        ["bury"] = (1.2f, 0.5f, new()
-        {
-            ["body"] = [new(0), new(0.3f, Rot: -1.5f, Y: 6), new(0.5f, Rot: -3, X: -4, Y: 10), new(0.75f, Rot: -2, Y: 8), new(1.2f)],
-            ["head"] = [new(0), new(0.3f, Rot: -5), new(0.5f, Rot: -8), new(0.75f, Rot: -6), new(1.2f)],
-            ["arm_free"] = [new(0), new(0.3f, Rot: -10), new(0.5f, Rot: 22), new(0.75f, Rot: 18), new(1.2f)],
-            ["arm_lantern"] = [new(0), new(0.5f, Rot: 4), new(1.2f)],
-            ["lantern"] = [new(0), new(0.5f, Rot: -6, Glow: 1.4f), new(1.2f)],
-        }),
-    };
+            if (anim.Name.StartsWith('_')) continue;
+            var parts = new Dictionary<string, Key[]>();
+            foreach (var part in anim.Value.GetProperty("parts").EnumerateObject())
+                parts[part.Name] = part.Value.EnumerateArray().Select(k =>
+                {
+                    var v = k.EnumerateArray().Select(x => x.GetSingle()).ToArray();
+                    return new Key(v[0], v[1], v[2], v[3], v[4], v[5]);
+                }).ToArray();
+            tracks[anim.Name] = (anim.Value.GetProperty("length").GetSingle(), anim.Value.GetProperty("hit").GetSingle(), parts);
+        }
+        Idle = idle;
+        Tracks = tracks;
+    }
+
+    /// <summary>待机：每个通道 幅度 × sin(频率 × t + 相位)；缩放、亮度在 1 上加减。</summary>
+    private static Key IdleOf(string part, float w)
+    {
+        if (!Idle.TryGetValue(part, out var ch)) return new Key(0);
+        float C(string n) => ch.TryGetValue(n, out var c) && c.Length >= 3 ? c[0] * MathF.Sin(c[1] * w + c[2]) : 0;
+        return new Key(0, Rot: C("rot"), X: C("x"), Y: C("y"), S: 1 + C("s"), Glow: 1 + C("glow"));
+    }
 
     private void Tick()
     {
@@ -134,18 +147,7 @@ internal sealed class MasterRig
         }
         foreach (var (name, joint) in _joints)
         {
-            // idle：每个部件不同相位的慢正弦，叠在动作上
-            float w = (float)_clock;
-            var idle = name switch
-            {
-                "body" => new Key(0, Rot: MathF.Sin(w * 1.9f) * 0.6f, Y: MathF.Sin(w * 1.9f) * 3f),
-                "head" => new Key(0, Rot: MathF.Sin(w * 1.9f + 0.6f) * 1.2f),
-                "arm_lantern" => new Key(0, Rot: MathF.Sin(w * 1.9f + 0.3f) * 1.5f),
-                "lantern" => new Key(0, Rot: MathF.Sin(w * 1.4f) * 4f, Glow: 1f + MathF.Sin(w * 2.6f) * 0.08f),
-                "arm_free" => new Key(0, Rot: MathF.Sin(w * 1.9f + 1.1f) * 2f),
-                "smoke" => new Key(0, X: MathF.Sin(w * 0.9f) * 4f, S: 1f + MathF.Sin(w * 1.3f) * 0.02f),
-                _ => new Key(0),
-            };
+            var idle = IdleOf(name, (float)_clock); // 待机叠在动作上
             var act = track != null && track.TryGetValue(name, out var keys) ? Sample(keys, t) : new Key(0);
             joint.RotationDegrees = idle.Rot + act.Rot;
             joint.Position = _rest[name] + new G.Vector2(idle.X + act.X, idle.Y + act.Y);
