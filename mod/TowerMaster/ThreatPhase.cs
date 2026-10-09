@@ -389,7 +389,8 @@ internal static class ThreatPhase
                     Log.Info($"{tag}：塔主盖下 {command.Amount} 张陷阱，手里还有 {Math.Max(0, command.Monster)} 张");
                     MasterInfoHud.OnTrapInfo(command.Amount, command.Monster);
                     if (!Test3MasterAutoPilot.LocalIsMaster)
-                        SummonPhase.Toast(command.Amount > 0 ? $"塔主盖下了 {command.Amount} 张陷阱" : "塔主这场没有盖陷阱");
+                        SummonPhase.Toast(MasterRelics.Has("fog_censer") ? "塔主的迷雾香炉在冒烟……看不清盖了几张陷阱" // 塔主遗物「迷雾香炉」
+                            : command.Amount > 0 ? $"塔主盖下了 {command.Amount} 张陷阱" : "塔主这场没有盖陷阱");
                     break;
                 case "trap_dodge":
                     await DodgeReward(command, tag);
@@ -399,6 +400,9 @@ internal static class ThreatPhase
                     break;
                 case "reward":
                     await MasterRewards.Execute(command, action, tag);
+                    break;
+                case "relic": // 测试接口直接给塔主遗物（各端同一条指令里各自 Obtain）
+                    if (MasterHand.MasterPlayer() is { } relicOwner) await MasterRelics.Obtain(relicOwner, command.MonsterId ?? "", tag);
                     break;
                 default:
                     await ApplyEffect(command, action, tag);

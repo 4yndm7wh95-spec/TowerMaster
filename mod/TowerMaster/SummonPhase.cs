@@ -404,6 +404,7 @@ internal static class SummonPhase
             var income = wallet.SettleBattle(new BattleResult(pending.Room, pending.StandardCost, pending.MonsterSpend, damage, KnockedDown.ToList()),
                 Climbers(state), out var rewarded);
             MasterLedger.CountBattle();
+            int cat = MasterRelics.Has("lucky_cat") ? MasterLedger.GainPoints(1, "招财猫") : 0;
             if (ThreatPhase.Enabled) TrapPhase.KnockdownReward(rewarded.Count, wallet.ActNo, Seed(state), MasterLedger.BattlesFought, _config.TrapHandLimit);
             MasterDeck.Publish("战斗结束（陷阱用掉/收回、击倒奖励）");
             MasterRewards.AfterWin(pending.Room, Seed(state), MasterLedger.BattlesFought, wallet.ActNo);
@@ -411,6 +412,7 @@ internal static class SummonPhase
             BalanceLog.Finish(true, wallet.ActNo, MasterLedger.BattlesFought, StartHp, ClimberPlayers(), KnockedDown, damage, income, wallet.Points);
             var text = $"战斗收入 +{income.Credited}（基础 {income.Base}，节约 {income.Savings}，战果 {income.Damage}" +
                        (income.Knockdown > 0 ? $"，击倒 {income.Knockdown}" : "") + (income.Wasted > 0 ? $"，超上限作废 {income.Wasted}" : "") +
+                       (cat > 0 ? $"，招财猫 +{cat}" : "") +
                        $"），召唤点 {wallet.Points}/{wallet.Cap}";
             Log.Info($"召唤阶段：{text}；玩家掉血 {damage}，击倒 [{string.Join(",", KnockedDown)}]，有奖励 [{string.Join(",", rewarded)}]");
             Toast(text);

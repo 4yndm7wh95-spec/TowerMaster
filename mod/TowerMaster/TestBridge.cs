@@ -222,6 +222,7 @@ internal static class TestBridge
                 "/master/hand" => _ => Main(MasterHandView),
                 "/master/grant" => a => Main(() => MasterGrant(a)),
                 "/master/report" => a => Main(() => MasterReport(a)),
+                "/master/relic" => a => Main(() => MasterRelic(a)),
                 "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
@@ -768,6 +769,18 @@ internal static class TestBridge
         MasterLedger.TakeReward(-900000 - MasterLedger.ExtraCards.Count, op);
         MasterDeck.Publish($"测试接口加牌 {op}");
         return new { granted = op, extra_cards = MasterLedger.ExtraCards, note = "下一场战斗起在抽牌堆里" };
+    }
+
+    /// <summary>测试用：给塔主一件塔主遗物（id 见 MasterRelics.Defs；不给 id 就列出已有和全部）。</summary>
+    private static object MasterRelic(JsonObject a)
+    {
+        var all = MasterRelics.Defs.Select(d => new { d.Id, d.Title, d.Description });
+        if (a["id"]?.GetValue<string>() is not { } id) return new { enabled = MasterRelics.Enabled, fail_reason = MasterRelics.FailReason, owned = MasterRelics.Owned(), all };
+        if (MasterRelics.Find(id) == null) throw Fail("unknown_option", $"没有塔主遗物 {id}");
+        if (!Test3MasterAutoPilot.LocalIsMaster) throw Fail("invalid_phase", "只能在塔主（房主）上调用");
+        ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "relic", MonsterId: id));
+        if (id == "piggy_bank") MasterLedger.GainPoints(8, "小金库（测试接口）");
+        return new { granted = id, note = "各端执行 relic 指令后到手" };
     }
 
     /// <summary>塔主战报：按当前对局凑数据（won 不给就按爬塔玩家是否全灭）；show=true 时弹出面板（截图用），close=true 关掉。</summary>

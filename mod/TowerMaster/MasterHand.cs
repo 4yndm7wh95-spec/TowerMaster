@@ -77,12 +77,36 @@ internal static class MasterHand
         int energy = Energy(round);
         await (Task)Static("PlayerCmd", "SetEnergy", m => m.GetParameters().Length == 2).Invoke(null, [(decimal)energy, master])!;
         int before = Count(pcs, "Hand");
-        int draw = ModEntry.Active.MasterHandDraw;
+        int draw = ModEntry.Active.MasterHandDraw + (round == 1 && MasterRelics.Has("magic_hat") ? 1 : 0);
         await (Task)Static("CardPileCmd", "Draw", m => m.GetParameters().Length == 4 && m.GetParameters()[1].ParameterType == typeof(decimal))
             .Invoke(null, [context, (decimal)draw, master, false])!;
         if (Count(pcs, "Hand") == before) ManualDraw(pcs, draw); // 原版抽牌可能也跳过死者
+        if (round == 1) await FirstTurnRelics(context, tag);
         Log.Info($"{tag}：塔主能量 {GameReflection.Get(pcs, "Energy")}，手牌 {Count(pcs, "Hand")} 张（抽牌堆 {Count(pcs, "DrawPile")}，弃牌堆 {Count(pcs, "DiscardPile")}）");
         if (Test3MasterAutoPilot.LocalIsMaster) ShowHand(tag);
+    }
+
+    /// <summary>塔主遗物在每场第一个塔主回合的效果（各端在 begin 指令里同样执行）。</summary>
+    private static async Task FirstTurnRelics(object context, string tag)
+    {
+        try
+        {
+            if (MasterRelics.Has("bento"))
+            {
+                foreach (var e in LivingEnemies().ToList()) await ThreatPhase.GainBlock(e, 3);
+                Log.Info($"{tag}：怪物便当，所有敌人 +3 格挡");
+                SummonPhase.Toast("塔主遗物「怪物便当」：所有敌人 +3 格挡");
+            }
+            if (MasterRelics.Has("blacklist") && LivingClimbers().ToList() is { Count: > 0 } climbers)
+            {
+                // 生命最高的；一样高取玩家顺序靠前的（各端一致）
+                var target = climbers.Aggregate((a, b) => Convert.ToInt32(GameReflection.Get(b, "CurrentHp")) > Convert.ToInt32(GameReflection.Get(a, "CurrentHp")) ? b : a);
+                await ThreatPhase.ApplyPowerWith("VulnerablePower", context, target, 1);
+                Log.Info($"{tag}：黑名单，玩家 {Test2MasterOffField.NetIdOf(GameReflection.Get(target, "Player"))} 易伤 1");
+                SummonPhase.Toast("塔主遗物「黑名单」：生命最高的玩家 1 层易伤");
+            }
+        }
+        catch (Exception e) { Log.Error($"{tag}：塔主遗物开场效果失败", e); }
     }
 
     /// <summary>显示塔主手牌界面；测试里换成空操作（没有 Godot 引擎）。</summary>
@@ -179,7 +203,7 @@ internal static class MasterHand
         var state = GameReflection.Get(Test1bMixedEncounter.Run, "State");
         int act = state == null ? 1 : ThreatPhase.ActNoOf(state);
         var room = state == null ? RoomKind.Monster : ThreatPhase.RoomOf(state);
-        return TowerMasterConfig.ByAct(c.MasterEnergy, act) + (round == 1 ? c.MasterEnergyFirstTurnBonus : 0)
+        return TowerMasterConfig.ByAct(c.MasterEnergy, act) + (round == 1 ? c.MasterEnergyFirstTurnBonus + (MasterRelics.Has("energy_drink") ? 1 : 0) : 0)
                + (room != RoomKind.Monster ? c.MasterEnergyRoomBonus : 0);
     }
 

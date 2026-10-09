@@ -1,3 +1,18 @@
+## 0.0.44 实测 → 0.0.45：身份收尾、塔主遗物、卡图不透明底（2026-10-09）
+
+0.0.44 实测（`docs/ui-044-result.md`）：塔主遗物移除、战后无 +6、商店/篝火/顶栏通过；信息条位置通过；宝箱冷读档正常流程不复现（上轮是测试跳过了 B 本地开箱）。
+不通过：大厅说明面板位置出界；大厅玩家栏（RefreshVisuals 覆盖了 SetCharacter 后的修改）；结算画面（原版搬的是 NCreatureVisuals）；地图投票标记。
+用户新反馈：塔主牌卡图底色是很亮的蓝、不能打出时透明——原因是我们的图透明底，透出卡后面的「能打出」蓝色高亮。
+0.0.45：
+- 大厅说明面板固定在左上；玩家栏改挂 NRemoteLobbyPlayer.RefreshVisuals；多人读档大厅（NMultiplayerLoadGameScreen）房主同样换成塔主说明。
+- 结算画面：从战斗房间记下塔主 NCreature.Visuals，每帧藏。地图：NMapPoint.ShouldDisplayPlayerVote 对塔主返回 false，塔主本机 NMapMarker 换塔主头像。
+- 卡图：Art.Card 把透明图标合成到不透明深色底上（行动牌紫、陷阱青、遗物金），尺寸取原卡图框贴图。
+- 塔主遗物 8 件（MasterRelics）：RelicModel 子类运行时生成（与塔主牌同程序集）；Pool/Icon/IconOutline/BigIcon 前缀；loc 表 relics；RelicCmd.Obtain 各端执行。
+  宝箱改为 3 选 1 遗物（候选是「遗物牌」走原版选牌界面，KindRelic=3），遗物没开成或拿完退回送牌。StripRelics 不去掉塔主遗物。
+  效果：招财猫（结算 +1 点）、小金库（+8 点）、魔术师礼帽（首回合 +1 抽）、能量饮料（首回合 +1 能量）、怪物便当（首回合敌人 +3 格挡）、
+  黑名单（首回合生命最高玩家易伤 1）、迷雾香炉（玩家看不到陷阱张数）、吝啬鬼钱包（躲陷阱金币减半）。信息条悬停列出塔主遗物。
+  测试接口 /master/relic（MCP tm_master_relic）。图标 prompt 见 docs/art-assets.md（没有图用塔主头像）。
+
 ## 0.0.43 实测 → 0.0.44：塔主身份（大厅、商店、篝火、顶栏、结算）、去掉塔主角色遗物、信息条位置（2026-10-08）
 
 0.0.43 实测（`docs/ui-043-result.md`）：开战采样未见塔主；战后满血；战报自动弹出通过；面板重开通过；信息条数据正确。

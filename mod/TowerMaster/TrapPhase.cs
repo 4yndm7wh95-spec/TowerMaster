@@ -206,8 +206,10 @@ internal static class TrapPhase
         if (!won) return;
         BalanceLog.TrapsDodged(unfired);
         int dodged = unfired.Count(c => c.Def.Effect != TrapEffect.None); // 空陷阱翻开不给金币
+        int gold = config.DodgeRewardGold * dodged;
+        if (MasterRelics.Has("stingy_purse")) gold /= 2; // 塔主遗物「吝啬鬼钱包」
         ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "trap_dodge",
-            MonsterId: string.Join("、", unfired.Select(c => c.Name)), Amount: config.DodgeRewardGold * dodged));
+            MonsterId: string.Join("、", unfired.Select(c => c.Name)), Amount: gold));
     }
 
     /// <summary>击倒奖励：每名被击倒（且有奖励）的玩家，从本幕牌池抽 1 张手里没有的（手满就不给）。</summary>

@@ -22,7 +22,10 @@ internal static class MasterLobby
         Patch(harmony, "InitializeMultiplayerAsClient", "NCharacterSelectScreen", postfix: nameof(AfterClientInit));
         Patch(harmony, "SelectCharacter", "NCharacterSelectScreen", prefix: nameof(BeforeSelectCharacter));
         Patch(harmony, "RefreshButtonSelectionForPlayer", "NCharacterSelectScreen", prefix: nameof(BeforeRefreshButtonSelection));
-        Patch(harmony, "SetCharacter", "NRemoteLobbyPlayer", postfix: nameof(AfterRemotePlayerCharacter));
+        // 玩家栏：原版 OnPlayerChanged 先 SetCharacter 再 RefreshVisuals，改在 RefreshVisuals 之后（0.0.44 实测挂 SetCharacter 被覆盖）
+        Patch(harmony, "RefreshVisuals", "NRemoteLobbyPlayer", postfix: nameof(AfterRemotePlayerCharacter));
+        Patch(harmony, "InitializeAsHost", "NMultiplayerLoadGameScreen", postfix: nameof(AfterLoadHostInit));
+        Patch(harmony, "InitializeAsClient", "NMultiplayerLoadGameScreen", postfix: nameof(AfterClientInit));
     }
 
     private static void Patch(Harmony harmony, string method, string type, string? prefix = null, string? postfix = null)
@@ -87,6 +90,31 @@ internal static class MasterLobby
         SummonPanel.Tree.ProcessFrame += Tick;
     }
 
+    /// <summary>多人读档大厅（房主）：藏角色介绍和背景，放塔主说明（读档不用选角色）。</summary>
+    private static void AfterLoadHostInit(object __instance, object[] __args)
+    {
+        _hostId = HostIdOf(__args.FirstOrDefault());
+        _hostScreen = null;
+        if (__instance is not G.Control screen) return;
+        Log.Info($"塔主大厅：读档建房，本机是塔主 {_hostId}");
+        int frames = 0;
+        void Tick()
+        {
+            if (!G.GodotObject.IsInstanceValid(screen) || ++frames > 600) { SummonPanel.Tree.ProcessFrame -= Tick; return; }
+            if (!screen.IsInsideTree() || frames < 3) return;
+            SummonPanel.Tree.ProcessFrame -= Tick;
+            try
+            {
+                foreach (var name in new[] { "_infoPanel", "_bgContainer" })
+                    if (GameReflection.Get(screen, name) is G.CanvasItem item) item.Visible = false;
+                screen.AddChild(Notice(loading: true));
+                Log.Info("塔主大厅：读档大厅角色界面换成塔主说明");
+            }
+            catch (Exception e) { Log.Error("塔主大厅：读档大厅改造失败", e); }
+        }
+        SummonPanel.Tree.ProcessFrame += Tick;
+    }
+
     /// <summary>房主：选第一个可用角色、藏角色相关界面、放塔主说明。按钮还没建好返回 false（下一帧再试）。</summary>
     private static bool SetUpHost(G.Node screen)
     {
@@ -109,11 +137,12 @@ internal static class MasterLobby
         return true;
     }
 
-    private static G.Control Notice()
+    private static G.Control Notice(bool loading = false)
     {
+        // 左上固定位置（0.0.44 用 CenterLeft 锚点加偏移，实际落到屏幕下半、压住进阶说明、下半截出界）
         var holder = new G.MarginContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
-        holder.SetAnchorsPreset(G.Control.LayoutPreset.CenterLeft);
-        holder.Position = new G.Vector2(120, 260);
+        holder.SetAnchorsPreset(G.Control.LayoutPreset.TopLeft);
+        holder.Position = new G.Vector2(110, 150);
         var panel = new G.PanelContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, CustomMinimumSize = new G.Vector2(720, 0) };
         panel.AddThemeStyleboxOverride("panel", SummonPanel.Box(SummonPanel.PanelBg, SummonPanel.Gold, 2, 16, 28, shadow: 20));
         var box = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
@@ -121,8 +150,8 @@ internal static class MasterLobby
         var head = new G.HBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore };
         head.AddThemeConstantOverride("separation", 18);
         if (Art.Get("master_portrait") is { } tex)
-            head.AddChild(new G.TextureRect { Texture = tex, ExpandMode = G.TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = G.TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new G.Vector2(96, 96), MouseFilter = G.Control.MouseFilterEnum.Ignore });
-        head.AddChild(SummonPanel.Text("你是塔主", 46, SummonPanel.Gold));
+            head.AddChild(new G.TextureRect { Texture = tex, ExpandMode = G.TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = G.TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new G.Vector2(80, 80), MouseFilter = G.Control.MouseFilterEnum.Ignore });
+        head.AddChild(SummonPanel.Text("你是塔主", 40, SummonPanel.Gold));
         box.AddChild(head);
         foreach (var line in new[]
                  {
@@ -130,10 +159,10 @@ internal static class MasterLobby
                      "· 每场战斗前：花召唤点挑怪物、盖陷阱。",
                      "· 战斗中的塔主回合：用塔主牌给怪物加料、给玩家添堵。",
                      "· 宝箱、商店、篝火、事件：塔主也有自己的收获。",
-                     "爬塔玩家都选好角色并准备后，按出发开始。",
+                     loading ? "读档继续：大家都准备后按出发。" : "爬塔玩家都选好角色并准备后，按出发开始。",
                  })
         {
-            var label = SummonPanel.Text(line, 22, SummonPanel.TextMain);
+            var label = SummonPanel.Text(line, 20, SummonPanel.TextMain);
             label.MouseFilter = G.Control.MouseFilterEnum.Ignore;
             box.AddChild(label);
         }

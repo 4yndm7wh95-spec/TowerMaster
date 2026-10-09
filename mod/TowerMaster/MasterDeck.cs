@@ -81,7 +81,7 @@ internal static class MasterDeck
     {
         try
         {
-            var relics = (GameReflection.Get(master, "Relics") as IEnumerable)?.Cast<object>().ToList() ?? [];
+            var relics = (GameReflection.Get(master, "Relics") as IEnumerable)?.Cast<object>().Where(r => !MasterRelics.IsOurs(r)).ToList() ?? []; // 塔主遗物留着
             if (relics.Count == 0) return;
             var remove = master.GetType().GetMethods(GameReflection.All).First(m => m.Name == "RemoveRelicInternal" && m.GetParameters().Length == 2);
             foreach (var relic in relics) remove.Invoke(master, [relic, true]);

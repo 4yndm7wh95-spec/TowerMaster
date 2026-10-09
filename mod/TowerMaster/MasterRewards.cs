@@ -10,7 +10,7 @@ namespace TowerMaster;
 ///
 /// | 时机 | 塔主做什么 |
 /// | 精英、Boss 战胜利后（等原版奖励界面出来） | 免费 3 选 1 拿一张新行动牌 |
-/// | 宝箱房（塔主宝箱） | 免费 3 选 1 拿一张新行动牌 |
+/// | 宝箱房（塔主宝箱） | 免费 3 选 1 拿一件塔主遗物（候选是「遗物牌」；遗物拿完了或没生成成功就退回拿行动牌） |
 /// | 商店（陷阱商店） | 花召唤点买 1 张：2 张行动牌 + 1 张陷阱牌 |
 /// | 休息处 | 从牌组里删 1 张行动牌（精简牌组） |
 ///
@@ -22,7 +22,7 @@ namespace TowerMaster;
 internal static class MasterRewards
 {
     internal const int OfferSize = 3;
-    internal const int KindFree = 0, KindBuy = 1, KindRemove = 2;
+    internal const int KindFree = 0, KindBuy = 1, KindRemove = 2, KindRelic = 3;
     private static bool _patched;
 
     internal static void Apply(Harmony harmony)
@@ -64,6 +64,15 @@ internal static class MasterRewards
         if (!Ready() || Room() is not var (seed, floor, act)) return;
         int id = -(floor * 10 + 1);
         if (MasterLedger.RewardTaken(id)) return;
+        var relics = MasterRelics.Enabled ? MasterRelics.Defs.Select(d => d.Id).Except(MasterRelics.Owned()).ToList() : [];
+        if (relics.Count > 0)
+        {
+            var choices = Offer(seed, id, OfferSize, relics).Select(r => $"relic:{r}").ToList();
+            Notice("塔主宝箱：选一件塔主遗物（可以跳过）");
+            AfterUiSettles(() => Send(choices, 1, id, KindRelic, 0));
+            return;
+        }
+        if (!MasterRelics.Enabled) Log.Warn($"塔主宝箱：塔主遗物没开成（{MasterRelics.FailReason ?? "没有遗物类型"}），改送塔主牌");
         var offer = Offer(seed, id).Select(op => $"act:{op}").ToList();
         Notice("塔主宝箱：选一张塔主牌（可以跳过）");
         AfterUiSettles(() => Send(offer, act, id, KindFree, 0));
@@ -226,14 +235,28 @@ internal static class MasterRewards
         var def = MasterCards.DefOf(chosen);
         string verb = c.Monster switch { KindBuy => "选中要买", KindRemove => "选中要删", _ => "选了" };
         Log.Info($"{tag}：塔主{(def != null ? $"{verb} {def.Title}" : "跳过")}");
+        if (def?.Op == "relic") // 遗物：各端在同一条指令里各自给塔主（原版 RelicCmd.Obtain 不广播）
+        {
+            var relicId = RelicId(def);
+            try { await MasterRelics.Obtain(master, relicId, tag); }
+            catch (Exception e) { Log.Error($"{tag}：给塔主遗物 {relicId} 失败", e); }
+        }
         if (Test3MasterAutoPilot.LocalIsMaster) Record(c, def);
     }
+
+    private static string RelicId(MasterCardDef def) => def.Key["relic:".Length..].Split('@')[0];
 
     /// <summary>房主记账本、发新牌组。</summary>
     private static void Record(ThreatCommand c, MasterCardDef? def)
     {
         MasterLedger.EnsureLoaded();
         if (def == null) { MasterLedger.MarkReward(c.Amount); return; }
+        if (def.Op == "relic")
+        {
+            MasterLedger.MarkReward(c.Amount);
+            if (RelicId(def) == "piggy_bank") MasterLedger.GainPoints(8, "小金库");
+            return;
+        }
         if (c.Monster == KindRemove) MasterLedger.RemoveAction(c.Amount, def.Op);
         else
         {

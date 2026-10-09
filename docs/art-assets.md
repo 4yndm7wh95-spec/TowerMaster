@@ -58,3 +58,18 @@
 1. 文件名、尺寸、透明背景都对（用脚本检查 PNG 有 alpha 通道、四角像素透明）。
 2. 安装后打开：召唤面板（右上角召唤点图标、标题图标、陷阱按钮图标）、选陷阱包面板（标题图标、三个包图、每行陷阱小图标）、塔主回合面板（头像、威胁点图标）、爬塔玩家的「塔主行动中」提示条。各截一张图。
 3. 小图标在 26–30 像素显示时还认得出；风格彼此统一（同一套线条粗细、配色、光照）。不统一的重画。
+
+## 塔主遗物图标（0.0.45 起，128×128，透明底）
+
+没有图时遗物栏、遗物牌都用塔主头像代替。风格同上；遗物是「塔主的私人物件」，金色/深蓝为主，带一点搞笑感。
+
+| 文件名 | 遗物 | 主体 prompt |
+|---|---|---|
+| `relic_lucky_cat.png` | 招财猫 | A small porcelain beckoning cat with one paw raised, deep-blue glaze with gold trim, holding a violet soul-crystal coin, a mischievous grin. |
+| `relic_piggy_bank.png` | 小金库 | A chubby iron piggy bank with gold rivets and a coin slot glowing violet, a tiny padlock on its side. |
+| `relic_magic_hat.png` | 魔术师礼帽 | A tall battered top hat, deep-blue with a gold band, a few playing cards fanning out of it with violet sparkles. |
+| `relic_energy_drink.png` | 能量饮料 | A dented metal can with a lightning-bolt rune in gold, violet fizz spilling from the opened tab. |
+| `relic_bento.png` | 怪物便当 | A wooden lunch box with the lid half open, inside a slime-green rice ball, a bone and an eyeball; a gold chopstick pair on top. |
+| `relic_blacklist.png` | 黑名单 | A rolled black parchment with a red wax seal, a few names crossed out in red ink, a gold quill stuck through it. |
+| `relic_fog_censer.png` | 迷雾香炉 | An ornate gold censer on a chain, thick grey-violet fog pouring out and hiding its lower half. |
+| `relic_stingy_purse.png` | 吝啬鬼钱包 | A tightly cinched leather coin purse with a gold drawstring tied into an absurd knot, a single coin peeking out. |

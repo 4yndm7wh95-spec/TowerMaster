@@ -32,7 +32,9 @@ public class MasterCardsTests
     public void CardsAreRealCardModelsRegisteredBeforeModelDbInit()
     {
         Register();
-        Assert.Equal((8 + MasterCards.RewardPool.Length) * 3 + TrapCatalog.All.Count * 3, MasterCards.Types.Count);
+        Assert.Equal((8 + MasterCards.RewardPool.Length) * 3 + TrapCatalog.All.Count * 3 + MasterRelics.Defs.Length, MasterCards.Types.Count); // 遗物牌各 1 张；假游戏没有 RelicModel，遗物类型本身不生成
+        Assert.Equal("遗物·招财猫", Card("relic:lucky_cat@1").Title);
+        Assert.False(MasterRelics.Enabled);
         Assert.All(MasterCards.Types, t => Assert.Contains(t, ReflectionHelper.ModTypes));
 
         var block = Card("act:block@1");

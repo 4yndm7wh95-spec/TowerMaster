@@ -567,6 +567,8 @@ TOOLS = [
          lambda a: call(host_or(a), "/master/hand")),
     tool("tm_master_grant", "测试用：给塔主牌组加一张塔主牌（op=操作名，如 call_help、gamble、infight），记进账本并同步牌组，下一场战斗起能抽到。",
          {**INST, "op": S}, ["op"], lambda a: call(host_or(a), "/master/grant", {"op": a["op"]})),
+    tool("tm_master_relic", "塔主遗物：不给 id 返回已有和全部遗物；给 id（如 lucky_cat、bento、fog_censer）就给塔主这件遗物（各端同步）。",
+         {**INST, "id": S}, [], lambda a: call(host_or(a), "/master/relic", {"id": a["id"]} if a.get("id") else {})),
     tool("tm_master_report", "塔主战报（一局结束时弹的面板）：返回统计、称号；won=true/false 强制胜负（不给按爬塔玩家是否全灭），show=true 弹出面板截图，close=true 关掉。",
          {**INST, "won": {"type": "boolean"}, "show": {"type": "boolean"}, "close": {"type": "boolean"}}, [],
          lambda a: call(host_or(a), "/master/report", {k: a[k] for k in ("won", "show", "close") if a.get(k) is not None})),

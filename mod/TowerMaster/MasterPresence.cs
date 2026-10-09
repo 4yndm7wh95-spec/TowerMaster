@@ -42,6 +42,18 @@ internal static class MasterPresence
             try { harmony.Patch(portrait, postfix: new HarmonyMethod(typeof(MasterPresence).GetMethod(nameof(AfterTopBarPortrait), GameReflection.All)!)); }
             catch (Exception e) { Log.Warn($"塔主形象：挂顶栏头像失败，塔主顶栏仍显示角色头像：{e.Message}"); }
         }
+        var vote = GameReflection.FindMethod("ShouldDisplayPlayerVote", "NMapPoint");
+        if (vote != null)
+        {
+            try { harmony.Patch(vote, postfix: new HarmonyMethod(typeof(MasterPresence).GetMethod(nameof(AfterShouldDisplayVote), GameReflection.All)!)); }
+            catch (Exception e) { Log.Warn($"塔主形象：挂地图投票标记失败，地图上仍显示塔主的角色标记：{e.Message}"); }
+        }
+        var marker = GameReflection.FindMethod("Initialize", "NMapMarker");
+        if (marker != null)
+        {
+            try { harmony.Patch(marker, postfix: new HarmonyMethod(typeof(MasterPresence).GetMethod(nameof(AfterMapMarker), GameReflection.All)!)); }
+            catch (Exception e) { Log.Warn($"塔主形象：挂地图位置标记失败：{e.Message}"); }
+        }
         var ready = GameReflection.FindMethod("_Ready", "NCreature");
         if (ready != null)
         {
@@ -103,6 +115,24 @@ internal static class MasterPresence
         catch (Exception e) { Log.Warn($"塔主形象：换顶栏头像失败：{e.Message}"); }
     }
 
+    /// <summary>地图格子上不显示塔主的投票头像（塔主自动跟随，不是真的在投票）。</summary>
+    private static void AfterShouldDisplayVote(object[] __args, ref bool __result)
+    {
+        if (__result && Test2MasterOffField.MasterId is { } master && __args.FirstOrDefault() is { } player && Test2MasterOffField.NetIdOf(player) == master)
+            __result = false;
+    }
+
+    /// <summary>塔主本机地图上的位置标记换成塔主头像。</summary>
+    private static void AfterMapMarker(object __instance, object[] __args)
+    {
+        try
+        {
+            if (Test2MasterOffField.MasterId is not { } master || __args.FirstOrDefault() is not { } player || Test2MasterOffField.NetIdOf(player) != master) return;
+            if (__instance is G.TextureRect rect && Art.Get("master_portrait") is { } tex) rect.Texture = tex;
+        }
+        catch { /* 纯显示 */ }
+    }
+
     private static int _frame;
 
     private static void OnFrame()
@@ -143,14 +173,40 @@ internal static class MasterPresence
         if (Instance("NRestSiteRoom") is { } rest && GameReflection.Get(rest, "Characters") is IEnumerable characters)
             foreach (var c in characters.Cast<object>())
                 if (c is G.CanvasItem v && v.Visible && Test2MasterOffField.NetIdOf(GameReflection.Get(c, "Player")) == master) { v.Visible = false; Log.Info("塔主形象：藏起篝火边的塔主角色"); }
-        if (_gameOver != null && G.GodotObject.IsInstanceValid(_gameOver) && _frame % 5 == 0)
-            HideCreaturesUnder(_gameOver, master);
+        if (_gameOver != null && G.GodotObject.IsInstanceValid(_gameOver))
+        {
+            if (_masterVisuals != null && G.GodotObject.IsInstanceValid(_masterVisuals) && _masterVisuals.Visible) _masterVisuals.Visible = false;
+            if (_frame % 5 == 0) HideCreaturesUnder(_gameOver, master);
+        }
     }
 
     private static G.Node? _gameOver;
+    private static G.CanvasItem? _masterVisuals;
 
-    /// <summary>结算画面出现时登记一下（RunReportPanel 调），之后每几帧把搬到结算画面里的塔主角色藏起来。</summary>
-    internal static void WatchGameOver(G.Node screen) => _gameOver = screen;
+    /// <summary>
+    /// 结算画面出现时登记一下（RunReportPanel 调）。原版 NGameOverScreen.MoveCreaturesToDifferentLayerAndDisableUi 把各角色的
+    /// NCreatureVisuals（不是 NCreature）搬到结算画面里（0.0.44 实测塔主的铁甲站在结算画面上），所以先从战斗房间记下塔主的外观节点，之后每帧藏。
+    /// </summary>
+    internal static void WatchGameOver(G.Node screen)
+    {
+        _gameOver = screen;
+        _masterVisuals = null;
+        try
+        {
+            if (Test2MasterOffField.MasterId is not { } master) return;
+            var room = RuntimeNetAction.Required("NCombatRoom").GetProperty("Instance", GameReflection.All)?.GetValue(null);
+            if (room == null || GameReflection.Get(room, "CreatureNodes") is not IEnumerable nodes) return;
+            foreach (var node in nodes.Cast<object>())
+            {
+                var player = GameReflection.Get(node, "Entity") is { } e ? GameReflection.Get(e, "Player") : null;
+                if (player == null || Test2MasterOffField.NetIdOf(player) != master) continue;
+                _masterVisuals = GameReflection.Get(node, "Visuals") as G.CanvasItem;
+                if (_masterVisuals != null) _masterVisuals.Visible = false;
+            }
+            Log.Info($"塔主形象：结算画面{(_masterVisuals != null ? "藏起塔主角色外观" : "没找到塔主角色外观（不在战斗里结束？）")}");
+        }
+        catch (Exception e) { Log.Warn($"塔主形象：结算画面藏塔主失败：{e.Message}"); }
+    }
 
     private static void HideCreaturesUnder(G.Node root, ulong master)
     {

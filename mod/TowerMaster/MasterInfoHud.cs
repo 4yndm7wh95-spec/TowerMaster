@@ -65,13 +65,17 @@ internal static class MasterInfoHud
     /// <summary>信息条的两行文字和悬停说明。</summary>
     internal static (string Line1, string Line2, string Tip) Describe(IReadOnlyList<string> bosses)
     {
-        var hand = TrapsInHand >= 0 ? $"{TrapsInHand}" : "?";
+        bool fog = !Test3MasterAutoPilot.LocalIsMaster && MasterRelics.Has("fog_censer"); // 塔主遗物「迷雾香炉」：玩家看不到张数
+        var hand = TrapsInHand >= 0 && !fog ? $"{TrapsInHand}" : "?";
+        var placed = fog ? "?" : $"{_placed}";
         bool inFight = EnsureFight();
-        var line1 = inFight ? $"塔主陷阱  手里 {hand} · 本场盖下 {_placed} · 已触发 {Triggered.Count}" : $"塔主陷阱  手里 {hand}";
+        var line1 = inFight ? $"塔主陷阱  手里 {hand} · 本场盖下 {placed} · 已触发 {Triggered.Count}" : $"塔主陷阱  手里 {hand}";
+        var relics = MasterRelics.Owned().Select(id => MasterRelics.Find(id)?.Title).OfType<string>().ToList();
         var line2 = bosses.Count > 0 ? $"本幕 Boss：{string.Join(" / ", bosses)}" : "";
         var tip = "塔主手里的陷阱牌张数公开，内容保密。\n每场战斗开始时公开塔主盖下几张（可能有空陷阱诈唬），触发时所有人都会看到。"
                   + (Triggered.Count > 0 ? $"\n本场已触发：{string.Join("、", Triggered)}" : "")
-                  + (bosses.Count > 0 ? "\n本幕的 Boss 会是这几个之一，塔主进 Boss 房时挑一个。" : "");
+                  + (bosses.Count > 0 ? "\n本幕的 Boss 会是这几个之一，塔主进 Boss 房时挑一个。" : "")
+                  + (relics.Count > 0 ? $"\n塔主遗物：{string.Join("、", relics)}" : "");
         return (line1, line2, tip);
     }
 

@@ -51,6 +51,17 @@ internal static class MasterLedger
     }
 
     /// <summary>花召唤点（商店）。不够返回 false。</summary>
+    /// <summary>额外得到召唤点（遗物等），不超过本幕上限。返回实际到账。</summary>
+    public static int GainPoints(int amount, string reason)
+    {
+        EnsureLoaded();
+        if (amount <= 0 || Wallet == null) return 0;
+        int got = Wallet.Gain(amount);
+        Log.Info($"塔主账本：{reason}，召唤点 +{got}（想加 {amount}），现在 {Wallet.Points}");
+        Save();
+        return got;
+    }
+
     public static bool SpendPoints(int amount, string reason)
     {
         EnsureLoaded();

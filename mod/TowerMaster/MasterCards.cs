@@ -140,6 +140,10 @@ public static class MasterCards
                 defs.Add(new($"trap:{t.Id}@{tier}", $"TowerMasterTrap{Pascal(t.Id)}{tier}", card.Name, "陷阱。召唤时盖下。\n" + card.Describe(),
                     -1, CardType: 2, TargetType: 0, Unplayable: true, $"trap_{t.Id}", "trap", tier));
             }
+        // 遗物牌：只在塔主宝箱的原版选牌界面里当候选（选中后各端给塔主真遗物，见 MasterRelics），不进牌组
+        foreach (var r in MasterRelics.Defs)
+            defs.Add(new($"relic:{r.Id}@1", $"TowerMasterRelicOffer{Pascal(r.Id)}", $"遗物·{r.Title}", r.Description,
+                -1, CardType: 2, TargetType: 0, Unplayable: true, $"relic_{r.Id}", "relic", 1));
         return defs;
     }
 
@@ -197,6 +201,8 @@ public static class MasterCards
             ByKey[def.Key] = type;
         }
         foreach (var m in AllMethods(cardModel).Where(m => m.IsAbstract)) Log.Warn($"塔主牌：CardModel 的抽象成员 {m.Name} 用默认值实现");
+        try { types.AddRange(MasterRelics.Emit(module, harmony)); }
+        catch (Exception e) { MasterRelics.FailReason = e.InnerException?.Message ?? e.Message; Log.Error("塔主遗物：生成遗物类型失败（宝箱退回送塔主牌）", e); }
         _types = types.ToArray();
         ModAssociation.Associate(types[0].Assembly);
         var getter = RuntimeNetAction.Required("ReflectionHelper").GetProperty("ModTypes", GameReflection.All)?.GetMethod
@@ -212,7 +218,7 @@ public static class MasterCards
         Log.Info($"塔主牌：已生成 {types.Count} 种卡牌类型（{types[0].Name} …），等 ModelDb.Init 收录");
     }
 
-    private static IEnumerable<MethodInfo> AllMethods(Type type)
+    internal static IEnumerable<MethodInfo> AllMethods(Type type)
     {
         var seen = new HashSet<string>();
         for (var t = type; t != null && t != typeof(object); t = t.BaseType)
@@ -223,7 +229,11 @@ public static class MasterCards
     private static void ModTypesPostfix(ref Type[] __result) => __result = __result.Concat(_types).Distinct().ToArray();
 
     /// <summary>重写一个虚方法：把 this 和参数打包成 object[]，转给 <see cref="MasterCards"/> 的静态方法 handler(object self, object?[] args)。</summary>
-    private static void Override(TypeBuilder tb, MethodInfo original, string handler)
+    private static void Override(TypeBuilder tb, MethodInfo original, string handler) =>
+        Override(tb, original, typeof(MasterCards).GetMethod(handler, BindingFlags.Public | BindingFlags.Static)!);
+
+    /// <summary>同上，处理方法可以在别的类（必须 public static object? X(object self, object?[] args)）。</summary>
+    internal static void Override(TypeBuilder tb, MethodInfo original, MethodInfo handler)
     {
         var access = original.Attributes & MethodAttributes.MemberAccessMask;
         if (access == MethodAttributes.FamORAssem) access = MethodAttributes.Family; // 跨程序集重写 protected internal 只能写 protected
@@ -242,7 +252,7 @@ public static class MasterCards
             if (ps[i].ParameterType.IsValueType) il.Emit(OpCodes.Box, ps[i].ParameterType);
             il.Emit(OpCodes.Stelem_Ref);
         }
-        il.Emit(OpCodes.Call, typeof(MasterCards).GetMethod(handler, BindingFlags.Public | BindingFlags.Static)!);
+        il.Emit(OpCodes.Call, handler);
         if (original.ReturnType == typeof(void)) il.Emit(OpCodes.Pop);
         else if (original.ReturnType.IsValueType)
         {
@@ -529,12 +539,24 @@ public static class MasterCards
         harmony.Patch(update, postfix: new HarmonyMethod(typeof(MasterCards).GetMethod(nameof(AfterUpdatePortrait), GameReflection.All)!));
     }
 
+    private static G.Vector2I _portraitSize = new(500, 380);
+
     private static void AfterUpdatePortrait(object __instance)
     {
         try
         {
-            if (DefOf(GameReflection.Get(__instance, "Model")) is not { } def || Art.Get(def.Art) is not { } texture) return;
-            if (__instance is G.Node node && node.GetNodeOrNull<G.TextureRect>("%Portrait") is { } portrait) portrait.Texture = texture;
+            if (DefOf(GameReflection.Get(__instance, "Model")) is not { } def) return;
+            if (__instance is not G.Node node || node.GetNodeOrNull<G.TextureRect>("%Portrait") is not { } portrait) return;
+            // 原卡图框贴图（缺图图）的尺寸 = 卡图该有的尺寸；我们的透明图标贴到不透明底上再放进去
+            var size = portrait.Texture is { } old && old.GetWidth() > 16 ? new G.Vector2I(old.GetWidth(), old.GetHeight()) : _portraitSize;
+            if (size.X > 16) _portraitSize = size;
+            var tint = def.Op switch
+            {
+                "trap" => new G.Color(0.10f, 0.24f, 0.28f),
+                "relic" => new G.Color(0.30f, 0.23f, 0.10f),
+                _ => new G.Color(0.20f, 0.13f, 0.28f),
+            };
+            if ((Art.Card(def.Art, size, tint) ?? (def.Op == "relic" ? Art.Card("master_portrait", size, tint) : null)) is { } texture) portrait.Texture = texture;
         }
         catch (Exception e) { Log.Warn($"塔主牌：换卡图失败：{e.Message}"); }
     }
