@@ -146,11 +146,11 @@ End=(1902,165)
 **A**
 
 ```text
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100001 Rewards: 
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100002 Rewards: 
+[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100001 Rewards:
+[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100002 Rewards:
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 1 Owner: 100001 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.PotionReward,MegaCrit.Sts2.Core.Rewards.CardReward
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 1 Owner: 100002 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.CardReward
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 2 Owner: 100002 Rewards: 
+[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 2 Owner: 100002 Rewards:
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 2 Owner: 100001 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.PotionReward,MegaCrit.Sts2.Core.Rewards.CardReward
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 3 Owner: 100002 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.CardReward
 ```
@@ -158,11 +158,11 @@ End=(1902,165)
 **B**
 
 ```text
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100001 Rewards: 
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100002 Rewards: 
+[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100001 Rewards:
+[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 0 Owner: 100002 Rewards:
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 1 Owner: 100001 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.PotionReward,MegaCrit.Sts2.Core.Rewards.CardReward
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 1 Owner: 100002 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.CardReward
-[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 2 Owner: 100002 Rewards: 
+[DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 2 Owner: 100002 Rewards:
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 2 Owner: 100001 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.PotionReward,MegaCrit.Sts2.Core.Rewards.CardReward
 [DEBUG] [RewardsSetSynchronizer] Beginning rewards set Id: 3 Owner: 100002 Rewards: MegaCrit.Sts2.Core.Rewards.GoldReward,MegaCrit.Sts2.Core.Rewards.CardReward
 ```
