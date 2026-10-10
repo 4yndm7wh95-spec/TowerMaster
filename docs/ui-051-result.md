@@ -117,3 +117,50 @@ B/combat/end_turn: invalid_phase：塔主回合中，玩家出牌暂停，等塔
 
 没有做平衡结论。真实鼠标项目待用户允许后补测；事件战与自然问号战斗仍需真实样本。原始日志、反编译源码、游戏资源未提交。
 
+## 2026-10-10 真实鼠标补测
+
+用户再次允许真实鼠标后，用 computer-use 的 sky 针对已核对窗口进行点击；A HWND=394906/PID16560，B HWND=21758312/PID24688。没有操作其他窗口。新增 23 条摘要/端一致，累计 **107 条/端逐行相同**，StateDivergence 仍为 0，没有新增 TowerMaster ERROR/WARN（A 保留上文种子 WARN 1 条，B 0）。以下结论替代此前「未完成鼠标项目」的状态。
+
+| 项目 | 补测结果 |
+|---|---|
+| 挑陷阱悬停、点选、取消 | 通过：倒计时卡花费一直为 1，点选 picked=[0]、spent=1；再次点击 picked=[]、预算恢复 5，悬停保持放大 |
+| 鼠标点确认 | 通过：选择三张后点「就要这 3 张」，进入召唤面板 |
+| 挑陷阱右键原版详情/翻页 | **不通过：详情出现在挑陷阱页面后面**，巨大卡面被候选行和页面遮挡/压暗，翻页按钮不可见。Escape 可关闭；未强行用反射调整层级兜底 |
+| 召唤陷阱小卡右键 | **不通过：InspectCardScreen visible=true，但被召唤面板挡住**；画面仍主要显示召唤面板和小卡提示。Escape 可关闭 |
+| 塔主战斗手牌右键 | 未达到要求：加固卡先后真实右键两次，只见原版悬停放大；场景树无 Inspect 节点。没有把「卡牌放大」当作详情通过；是否为原版战斗手牌规则限制尚未只读定位 |
+| 陷阱托盘真实悬停 | 通过：鼠标移动到牌背，显示「左边一叠：塔主手里还有 2 张陷阱牌。」「这场没盖陷阱。」；数字与接口相同 |
+
+![点选](screenshots/ui051-mouse-draft-selected.png)
+![取消](screenshots/ui051-mouse-draft-cancelled.png)
+![被挑陷阱遮挡的详情](screenshots/ui051-mouse-draft-inspector.png)
+![鼠标确认后进召唤](screenshots/ui051-mouse-confirm-enter-summon.png)
+![手牌右键仅放大](screenshots/ui051-mouse-master-hand-right-no-detail.png)
+![托盘悬停](screenshots/ui051-mouse-tray-hover.png)
+![小卡详情被召唤面板遮挡](screenshots/ui051-mouse-summon-trap-right.png)
+
+### 新问题：确认召唤后切场黑屏
+
+种子 `9612529536296654772`，Overgrowth。B 正常先古祝福，A 选「寻龙尺」；投票第一场→挑陷阱右键详情被遮挡→Escape 关闭→挑倒计时/硬化/空陷阱→鼠标点确认→接口召唤 LeafSlimeS。两端黑屏数分钟，仍能查询接口、联机持续 ping，没有 StateDivergence。
+
+两端 /state 均停在 coord=(2,1)，act_floor=2、total_floor=1、room=null、combat=null；场景树仍有旧 NEventRoom 和可见 NTransition，没有 InspectCardScreen，Engine.TimeScale=1。不能认定是「速度未恢复」或残留详情窗口导致。
+
+游戏日志停点（A/B 相同）：
+
+```text
+[DEBUG] [ActionExecutor] Executing action: MoveToMapCoordAction 100001 MapCoord (2, 1)
+[VERYDEBUG] [GameAction] Action MoveToMapCoordAction 100001 MapCoord (2, 1) began executing
+```
+
+之后只见连接统计，没有该动作 finished execution，也没有可摘录的对应异常堆栈。TowerMaster 收到召唤清单并扣费 12→11，原文：
+
+```text
+[23:52:55.915] INFO 召唤阶段：确认 LeafSlimeS，花费 1，剩余 11
+```
+
+![黑屏 A](screenshots/ui051-mouse-black-after-summon-A.png)
+![黑屏 B](screenshots/ui051-mouse-black-after-summon-B.png)
+
+返回菜单，新局种子 `8731332550884666556`，A 改选羽翼之靴，不做挑陷阱右键详情：第一战正常。后沿地图经过商店、三场普通战、问号升级和篝火，第 4 场召唤小卡补测后正常胜利。每场均 LeafSlimeS，B 正常出牌，没有 energy/draw/win/room/fight。黑屏只复现一次，不能断言寻龙尺或右键详情就是原因，需要 Claude 排查 MoveToMapCoordAction 的未完成等待。
+
+收尾：保存报告和截图后关闭两个测试实例，不再让窗口长期挂着。
+
