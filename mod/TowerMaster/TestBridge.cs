@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using TowerMaster.Core;
+using G = Godot;
 
 namespace TowerMaster;
 
@@ -224,6 +225,7 @@ internal static class TestBridge
                 "/master/report" => a => Main(() => MasterReport(a)),
                 "/master/relic" => a => Main(() => MasterRelic(a)),
                 "/master/ambush" => _ => Main(MasterAmbushTest),
+                "/master/event_preview" => a => Main(() => MasterEventPreview(a)),
                 "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
@@ -803,6 +805,37 @@ internal static class TestBridge
         ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "relic", MonsterId: id));
         if (id == "piggy_bank") MasterLedger.GainPoints(8, "小金库（测试接口）");
         return new { granted = id, note = "各端执行 relic 指令后到手" };
+    }
+
+    private static G.CanvasLayer? _eventPreview;
+
+    /// <summary>
+    /// 预览塔主事件配图 + 环境动效（美术验收用，不进游戏流程）：id=black_market 等，width/height 为配图显示尺寸（默认 900×600）；close=true 关掉。
+    /// </summary>
+    private static object MasterEventPreview(JsonObject a)
+    {
+        if (_eventPreview != null && G.GodotObject.IsInstanceValid(_eventPreview)) _eventPreview.QueueFree();
+        _eventPreview = null;
+        if (a["close"]?.GetValue<bool>() == true) return new { closed = true };
+        var id = a["id"]?.GetValue<string>() ?? throw Fail("bad_args", "要给 id，例如 black_market");
+        float w = (float)(a["width"]?.GetValue<double>() ?? 900), h = (float)(a["height"]?.GetValue<double>() ?? 600);
+        var layer = new G.CanvasLayer { Layer = 120 };
+        var shade = new G.ColorRect { Color = new G.Color(0, 0, 0, 0.85f) };
+        shade.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
+        layer.AddChild(shade);
+        var art = Art.Get($"event_{id}");
+        var picture = new G.TextureRect
+        {
+            Texture = art, ExpandMode = G.TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = G.TextureRect.StretchModeEnum.KeepAspectCovered,
+            Size = new G.Vector2(w, h), ClipContents = true,
+        };
+        var screen = SummonPanel.Tree.Root.GetVisibleRect().Size;
+        picture.Position = (screen - picture.Size) / 2;
+        layer.AddChild(picture);
+        SummonPanel.Tree.Root.AddChild(layer);
+        MasterEventAmbience.Attach(picture, id);
+        _eventPreview = layer;
+        return new { id, art = art != null, ambience = MasterEventAmbience.Has(id), width = w, height = h };
     }
 
     /// <summary>塔主战报：按当前对局凑数据（won 不给就按爬塔玩家是否全灭）；show=true 时弹出面板（截图用），close=true 关掉。</summary>
