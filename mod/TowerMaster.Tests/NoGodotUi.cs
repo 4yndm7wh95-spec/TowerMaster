@@ -1,0 +1,19 @@
+using System.Runtime.CompilerServices;
+
+namespace TowerMaster.Tests;
+
+/// <summary>测试进程里没有 Godot 引擎：把所有会碰界面的钩子换成空操作（调到 Godot 原生接口会让测试进程直接崩溃）。</summary>
+internal static class NoGodotUi
+{
+    [ModuleInitializer]
+    internal static void Init()
+    {
+        MasterHand.ShowHand = _ => { };
+        MasterRewards.WhenRewardsShown = send => send();
+        MasterRewards.AfterUiSettles = send => send();
+        MasterRewards.WhenTrue = (ready, act) => { if (ready()) act(); };
+        MasterRewards.NoticeSink = _ => { };
+        SummonPhase.Toast = _ => { }; // 需要记录提示的测试在自己的 Init 里再换
+        SummonPhase.Notify = (_, _, _) => { };
+    }
+}

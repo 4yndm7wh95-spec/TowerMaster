@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    塔主 mod 本体。
+    在本机编译：dotnet build -p:GameDir="D:\SteamLibrary\steamapps\common\Slay the Spire 2"
+    （也可以设环境变量 STS2_DIR）。找到 sts2.dll 时定义 GAME，编译依赖游戏类型的补丁；
+    找不到时（例如云端）只编译探针、日志这些纯反射代码，用 nuget 上的 Harmony 顶替。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>TowerMaster</AssemblyName>
+    <RootNamespace>TowerMaster</RootNamespace>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GameDir Condition="'$(GameDir)' == ''">$(STS2_DIR)</GameDir>
+    <GameData>$(GameDir)\data_sts2_windows_x86_64</GameData>
+    <!-- mod 安装目录：先看「IP直连」mod 装在哪，按实际改 -->
+    <ModsDir Condition="'$(ModsDir)' == ''">$(GameDir)\mods</ModsDir>
+    <HasGame Condition="'$(GameDir)' != '' And Exists('$(GameData)\sts2.dll')">true</HasGame>
+    <HasGameHarmony Condition="'$(HasGame)' == 'true' And Exists('$(GameData)\0Harmony.dll')">true</HasGameHarmony>
+    <HasGameGodot Condition="'$(HasGame)' == 'true' And Exists('$(GameData)\GodotSharp.dll')">true</HasGameGodot>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(HasGame)' == 'true'">
+    <DefineConstants>$(DefineConstants);GAME</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(HasGame)' == 'true'">
+    <Reference Include="sts2" HintPath="$(GameData)\sts2.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HasGameGodot)' == 'true'">
+    <Reference Include="GodotSharp" HintPath="$(GameData)\GodotSharp.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HasGameGodot)' != 'true'">
+    <!-- 没有游戏时（云端）只用来编译召唤面板；运行时用游戏自带的 GodotSharp（Godot 4.5.1） -->
+    <PackageReference Include="GodotSharp" Version="4.5.1" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HasGameHarmony)' == 'true'">
+    <Reference Include="0Harmony" HintPath="$(GameData)\0Harmony.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HasGameHarmony)' != 'true'">
+    <!-- 游戏目录里没有 0Harmony.dll 时用 nuget 版；安装时要把 0Harmony.dll 一起放进 mod 目录 -->
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TowerMaster.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      规则库的源码直接编译进 TowerMaster.dll，不单独出 TowerMaster.Core.dll。
+      游戏加载 mod 时先枚举 TowerMaster.dll 的全部类型、再调用入口；类型里有规则库的枚举（值类型）字段时，
+      枚举阶段就要加载规则库，而这时入口还没机会注册去 mod 目录找依赖，单独的 DLL 会加载失败（0.0.9 实测）。
+    -->
+    <Compile Include="..\TowerMaster.Core\*.cs" Exclude="..\TowerMaster.Core\obj\**;..\TowerMaster.Core\bin\**" LinkBase="Core" />
+    <None Include="..\..\data\price_book.json" Link="price_book.data" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="TowerMaster.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="towermaster.test.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- dotnet build -p:Install=true 时复制到游戏的 mod 目录 -->
+  <Target Name="InstallMod" AfterTargets="Build" Condition="'$(Install)' == 'true' And '$(HasGame)' == 'true'">
+    <ItemGroup>
+      <ModFiles Include="$(OutDir)TowerMaster.dll;$(OutDir)price_book.data;$(OutDir)TowerMaster.json;$(OutDir)towermaster.test.json" />
+      <ModFiles Include="$(OutDir)0Harmony.dll" Condition="'$(HasGameHarmony)' != 'true'" />
+    </ItemGroup>
+    <!-- 0.0.9 及以前单独安装的规则库，现在已编进主 DLL -->
+    <Delete Files="$(ModsDir)\TowerMaster\TowerMaster.Core.dll" />
+    <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(ModsDir)\TowerMaster" />
+    <!-- 美术资源（可选）：art 目录下的 png 原样拷过去，界面运行时从 mod 目录读；缺了就退回文字 -->
+    <ItemGroup>
+      <ArtFiles Include="art\*.png;art\*.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArtFiles)" DestinationFolder="$(ModsDir)\TowerMaster\art" Condition="'@(ArtFiles)' != ''" />
+    <!-- 游戏递归扫描所有 JSON，清理旧价格表以免被误认成 manifest。 -->
+    <Delete Files="$(ModsDir)\TowerMaster\price_book.json" />
+    <Message Importance="high" Text="已安装到 $(ModsDir)\TowerMaster" />
+  </Target>
+
+</Project>

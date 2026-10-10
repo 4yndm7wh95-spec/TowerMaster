@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 测试用的假游戏程序集：程序集名也叫 sts2，按 HANDOFF.md 记的结构模仿 CombatRoom / EncounterModel / ModelDb。 -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>sts2</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 仿造宝箱界面要用 Godot.Control 当返回类型；只加载类型，不调用引擎 -->
+    <PackageReference Include="GodotSharp" Version="4.5.1" />
+  </ItemGroup>
+
+</Project>
