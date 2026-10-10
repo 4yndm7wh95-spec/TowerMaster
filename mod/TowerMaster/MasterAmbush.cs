@@ -104,7 +104,9 @@ internal static class MasterAmbush
         }
         Log.Info($"{tag}：问号房伏击，塔主选了「{option.Title}」");
         SummonPhase.Notify("问号房里有埋伏！", $"塔主选了「{option.Title}」：{option.Description}", "icon_trap");
-        MasterPresence.Cast();
+        // 援军和「摇人」一样：塔主举灯的那一下，新来的小怪脚下开召唤门（0.0.51 实测漏了）
+        if (id == "reinforce") MasterPresence.Act("cast", () => MasterVfx.AfterCard("call_help", null));
+        else MasterPresence.Cast();
     }
 
     internal static void Skipped(string tag)

@@ -136,8 +136,32 @@ internal static class VanillaCard
             var game = RuntimeNetAction.Required("NGame").GetProperty("Instance", GameReflection.All)?.GetValue(null) ?? throw new InvalidOperationException("没有 NGame");
             var screen = RuntimeNetAction.Call(game, "GetInspectCardScreen");
             screen.GetType().GetMethods(GameReflection.All).First(m => m.Name == "Open" && m.GetParameters().Length == 3).Invoke(screen, [list, index, false]);
+            if (screen is G.CanvasItem item) HideOursWhile(item);
         }
         catch (Exception e) { Log.Warn($"原版卡牌详情打开失败：{e.InnerException?.Message ?? e.Message}"); }
+    }
+
+    /// <summary>
+    /// 原版详情画在游戏自己的界面层里，比我们的面板（CanvasLayer 99～128）低，会被挡住（0.0.51 实测）。
+    /// 详情开着的时候把我们挂在根上的这些层藏起来，详情关掉后原样放回来。只碰根下面、不包含详情界面的高层，不动原版自己的界面。
+    /// </summary>
+    private static void HideOursWhile(G.CanvasItem screen)
+    {
+        var tree = SummonPanel.Tree;
+        var hidden = tree.Root.GetChildren().OfType<G.CanvasLayer>()
+            .Where(l => l.Layer >= 99 && l.Visible && !l.IsAncestorOf(screen)).ToList();
+        if (hidden.Count == 0) return;
+        foreach (var l in hidden) l.Visible = false;
+        int closedFrames = 0;
+        void Tick()
+        {
+            bool open = G.GodotObject.IsInstanceValid(screen) && screen.IsInsideTree() && screen.IsVisibleInTree();
+            closedFrames = open ? 0 : closedFrames + 1;
+            if (closedFrames < 2) return; // 翻页时可能闪一帧不可见，连续两帧关着才算关了
+            tree.ProcessFrame -= Tick;
+            foreach (var l in hidden) if (G.GodotObject.IsInstanceValid(l)) l.Visible = true;
+        }
+        tree.ProcessFrame += Tick;
     }
 
     /// <summary>给控件加右键查看。</summary>
