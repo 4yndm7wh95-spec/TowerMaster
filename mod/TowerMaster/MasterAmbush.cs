@@ -84,7 +84,6 @@ internal static class MasterAmbush
                     MasterHand.RecordStrength(e, BraceStrength);
                     await ThreatPhase.GainBlock(e, BraceBlock);
                 }
-                MasterVfx.WardAllEnemies();
                 break;
             }
             case "toll":
@@ -104,9 +103,13 @@ internal static class MasterAmbush
         }
         Log.Info($"{tag}：问号房伏击，塔主选了「{option.Title}」");
         SummonPhase.Notify("问号房里有埋伏！", $"塔主选了「{option.Title}」：{option.Description}", "icon_trap");
-        // 援军和「摇人」一样：塔主举灯的那一下，新来的小怪脚下开召唤门（0.0.51 实测漏了）
-        if (id == "reinforce") MasterPresence.Act("cast", () => MasterVfx.AfterCard("call_help", null));
-        else MasterPresence.Cast();
+        // 塔主做完整动作，出手那一下放特效：援军开召唤门（同「摇人」），伏兵给怪物上护盾
+        switch (id)
+        {
+            case "reinforce": MasterPresence.Act("cast", () => MasterVfx.AfterCard("call_help", null)); break;
+            case "brace": MasterPresence.Act("cast", MasterVfx.WardAllEnemies); break;
+            default: MasterPresence.Act("point"); break; // 买路钱：冲玩家一指
+        }
     }
 
     internal static void Skipped(string tag)

@@ -87,7 +87,9 @@ internal sealed class MasterRig
     /// <summary>播一个动作（cast / point / bury），播完回到 idle。onHit 在动作「出手」那一刻调用（放特效）。</summary>
     internal void Play(string anim, Action? onHit = null)
     {
-        if (!Tracks.ContainsKey(anim)) return;
+        // 上一个动作还没到出手就被打断（比如出牌的同时陷阱翻开）：它的特效先放掉，不能丢
+        if (_onHit != null && !_hitFired) { _hitFired = true; try { _onHit(); } catch { /* 纯显示 */ } }
+        if (!Tracks.ContainsKey(anim)) { onHit?.Invoke(); return; }
         _anim = anim;
         _animStart = _clock;
         _onHit = onHit;

@@ -383,7 +383,7 @@ internal static class ThreatPhase
                     break;
                 case "trap":
                     await ApplyTrap(command, action, tag);
-                    MasterPresence.Cast();
+                    MasterPresence.Act("point"); // 陷阱翻开：塔主推灯一指
                     break;
                 case "trap_info":
                     // Amount = 本场盖下几张（公开张数、不公开内容，空陷阱才有诈唬的意义），Monster = 塔主手里还剩几张
@@ -419,7 +419,7 @@ internal static class ThreatPhase
                     break;
                 default:
                     await ApplyEffect(command, action, tag);
-                    MasterPresence.Cast();
+                    MasterPresence.Act("cast");
                     break;
             }
         }

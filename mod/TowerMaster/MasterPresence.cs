@@ -421,14 +421,14 @@ internal static class MasterPresence
 
     /// <summary>
     /// 塔主做一个动作：cast（举灯施法，给怪物加料）、point（伸手指点，给玩家添堵）、bury（埋陷阱）。
-    /// 有骨骼就播完整动画，onHit 在出手那一刻调用；没有就亮一下，onHit 立刻调用。
+    /// 有骨骼就播完整动画，onHit 在出手那一刻调用；没有骨骼 onHit 立刻调用。
     /// </summary>
     public static void Act(string anim, Action? onHit = null)
     {
         try
         {
             if (_rig != null && _figure != null && G.GodotObject.IsInstanceValid(_figure)) { _rig.Play(anim, onHit); return; }
-            Cast();
+            // 没有骨骼（静态立绘）就不做动作。以前这里整张图闪紫光、放大一下，用户嫌廉价，0.0.54 去掉
         }
         catch { /* 纯显示 */ }
         onHit?.Invoke();
@@ -437,18 +437,4 @@ internal static class MasterPresence
     /// <summary>出牌对应的动作：给玩家的减益、塞牌是指点，其余（给怪物加料、召唤、盲盒）是举灯。</summary>
     internal static string PoseOf(string op) => op is "weak" or "vulnerable" or "frail" or "dazed" or "sap" or "daze_all" or "expose_all" or "slime_gift" or "heckle"
         ? "point" : "cast";
-
-    public static void Cast()
-    {
-        try
-        {
-            if (_figure == null || !G.GodotObject.IsInstanceValid(_figure)) return;
-            var tween = _figure.CreateTween();
-            tween.TweenProperty(_figure, "modulate", new G.Color(1.4f, 1.2f, 1.6f, 1f), 0.12);
-            tween.Parallel().TweenProperty(_figure, "scale", new G.Vector2(1.06f, 1.06f), 0.12);
-            tween.TweenProperty(_figure, "modulate", new G.Color(0.80f, 0.80f, 0.92f, 0.85f), 0.35);
-            tween.Parallel().TweenProperty(_figure, "scale", G.Vector2.One, 0.35);
-        }
-        catch { /* 纯显示 */ }
-    }
 }
