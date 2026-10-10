@@ -474,7 +474,7 @@ internal sealed class SummonPanel : ISummonUi
         for (int i = 0; i < _session.TrapHand.Count; i++)
         {
             var card = _session.TrapHand[i];
-            var button = TrapMiniCard(card);
+            var button = TrapMiniCard(card, group: _session.TrapHand);
             if (_session.TrapCooling(i)) // 上一场盖过同种：这一场冷却
             {
                 button.Disabled = true;
@@ -493,7 +493,8 @@ internal sealed class SummonPanel : ISummonUi
     internal static string TrapTip(TrapCard card, string? extra = null) => $"{card.Name}{extra}\n{card.Describe()}\n※右键看详情";
 
     /// <summary>陷阱小卡：上面图，下面名字；说明在悬停提示。选中时红框（Render 里设）。</summary>
-    internal static G.Button TrapMiniCard(TrapCard card, float width = 72)
+    /// <param name="group">右键详情里能左右翻看的同组陷阱（不给就只看这一张）。</param>
+    internal static G.Button TrapMiniCard(TrapCard card, float width = 72, IReadOnlyList<TrapCard>? group = null)
     {
         var button = new G.Button
         {
@@ -501,7 +502,14 @@ internal sealed class SummonPanel : ISummonUi
             CustomMinimumSize = new G.Vector2(width, width * 1.3f),
         };
         Ui.Tip(button, TrapTip(card));
-        if (TrapDraftPanel.TrapModel(card) is { } model) VanillaCard.RightClickInspect(button, () => [model], 0);
+        if (TrapDraftPanel.TrapModel(card) is { } model)
+        {
+            // 和挑陷阱页一样能翻看同组的牌（0.0.52 实测召唤面板只能看一张）
+            var cards = (group ?? [card]).ToList();
+            int at = Math.Max(0, cards.IndexOf(card));
+            VanillaCard.RightClickInspect(button, () => cards.Select(TrapDraftPanel.TrapModel).OfType<object>().ToList(),
+                cards.Take(at).Count(c => TrapDraftPanel.TrapModel(c) != null));
+        }
         StyleCard(button, false);
         var col = new G.VBoxContainer { MouseFilter = G.Control.MouseFilterEnum.Ignore, Alignment = G.BoxContainer.AlignmentMode.Center };
         col.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);

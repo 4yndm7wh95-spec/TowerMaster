@@ -47,6 +47,7 @@ public static class MasterRelics
     internal static MasterRelicDef? DefOf(object? relic) => relic != null && ByType.TryGetValue(relic.GetType(), out var d) ? d : null;
     internal static MasterRelicDef? Find(string id) => Defs.FirstOrDefault(d => d.Id == id);
     internal static bool IsOurs(object relic) => ByType.ContainsKey(relic.GetType());
+    internal static Type? TypeOf(string id) => ById.GetValueOrDefault(id);
 
     // ---------------------------------------------------------------- 生成类型（MasterCards.Register 里调，ModelDb.Init 之前）
 

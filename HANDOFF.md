@@ -1,3 +1,13 @@
+## 0.0.52 实测 → 0.0.53：先古之民塔主祝福（2026-10-10）
+
+0.0.52 实测（`docs/ui-052-result.md`）：右键详情在最上层、翻页、Escape/空白关闭后面板恢复；伏击援军召唤门在新怪脚下；寻龙尺/右键详情/两者组合都没复现黑屏；39 条摘要两端一致。
+只读调研 `docs/game-api/ancients-052-flow.md`：每个玩家各有一份古人事件，选项各端各自生成，选中后原版同步「第几个」；AncientEventModel.RelicOption(relic) 自己 Obtain + Done。
+0.0.53：
+- MasterAncient：给所有古人的 GenerateInitialOptions 挂后缀；Owner 是塔主时换成 3 件塔主还没有的遗物（种子 + 幕洗牌，不碰事件 Rng），用原版 RelicOption。
+  BeforeChosen 里记日志；房主选小金库 +8 召唤点；爬塔玩家屏幕提示「塔主也拿到了祝福」。遗物全有了才保留原版祝福。设置 master_relics=false 时不挂。
+- 召唤面板 / 挑陷阱「手里已有」的陷阱小卡，右键详情能左右翻看同组的陷阱。
+- 黑屏若再出现：按调研文档末尾顺序读 ActionExecutor 当前动作、EventSynchronizer._pendingOptionTasks、CombatStateSynchronizer TCS、NTransition。
+
 ## 0.0.51 实测 → 0.0.52：伏击援军特效、右键详情被挡（2026-10-10）
 
 0.0.51 实测（`docs/ui-051-result.md`）：Broken Card 修好；战斗中拒投票、胜利后能投；冷读档、动画、托盘、真实鼠标挑陷阱/确认/托盘悬停通过；六条新特效（empower/mend/drain/frail/daze/summon）生成并接入；107 条摘要两端一致。

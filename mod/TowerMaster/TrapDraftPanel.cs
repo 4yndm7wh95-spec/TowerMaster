@@ -158,7 +158,7 @@ internal sealed class TrapDraftPanel(TrapDraftChoice choice) : ISummonUi
         _hand.AddChild(Ui.Label("手里已有", 14));
         foreach (var c in d.Hand)
         {
-            var mini = P.TrapMiniCard(c, 56);
+            var mini = P.TrapMiniCard(c, 56, d.Hand);
             mini.MouseFilter = G.Control.MouseFilterEnum.Pass;
             mini.FocusMode = G.Control.FocusModeEnum.None;
             _hand.AddChild(mini);
