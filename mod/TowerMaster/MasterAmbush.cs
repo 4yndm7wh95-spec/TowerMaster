@@ -51,8 +51,15 @@ internal static class MasterAmbush
     {
         var point = GameReflection.Get(state, "CurrentMapPoint");
         var type = point == null ? null : GameReflection.Get(point, "PointType")?.ToString();
-        var room = GameReflection.Get(state, "CurrentRoom")?.GetType().Name;
-        return type == "Unknown" && room == "CombatRoom";
+        var room = GameReflection.Get(state, "CurrentRoom");
+        if (type != "Unknown" || room?.GetType().Name != "CombatRoom") return false;
+        // 事件里打起来的（0.0.50 实测「我能打两个」误触发）：CombatRoom 记着父事件
+        var parent = GameReflection.Get(room, "ParentEventId");
+        var parentText = parent?.ToString() ?? "";
+        bool fromEvent = GameReflection.Get(room, "ShouldResumeParentEventAfterCombat") is true
+                         || (parent != null && parentText.Length > 0 && !parentText.Equals("none", StringComparison.OrdinalIgnoreCase) && !parentText.EndsWith(".NONE", StringComparison.OrdinalIgnoreCase));
+        Log.Info($"问号房伏击：判断房间（父事件「{parentText}」，事件后继续 {GameReflection.Get(room, "ShouldResumeParentEventAfterCombat")}）→ {(fromEvent ? "事件战，不伏击" : "问号战斗")}");
+        return !fromEvent;
     }
 
     /// <summary>各端：执行选中的伏击效果。</summary>

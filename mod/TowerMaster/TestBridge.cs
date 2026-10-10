@@ -454,14 +454,21 @@ internal static class TestBridge
     }
 
     /// <summary>本机玩家投票去某个地图点：和点地图一样，入队一个 VoteForMapCoordAction（塔主不允许，塔主是自动跟投的）。</summary>
+    private static bool CombatInProgress()
+    {
+        try { return CombatManager() is { } m && GameReflection.Get(m, "IsInProgress") is true; }
+        catch { return false; }
+    }
+
     private static object MapVote(JsonObject a)
     {
         if (Test3MasterAutoPilot.LocalIsMaster && a["force"]?.GetValue<bool>() != true)
             throw Fail("not_allowed", "塔主不能自己选路（自动跟随爬塔玩家）；要测拦截请传 force=true");
         var state = StateOrNull() ?? throw Fail("invalid_phase", "不在对局里");
         // 0.0.48 测试助手在问号房刚变成战斗时投了票，塔主回合卡住：战斗中、房间还没处理完都拒绝
+        // 只拦「战斗还在打」：打完（胜利/奖励界面）原版已经能选路，不拦（0.0.50 实测胜利后仍误拒）
         if (ThreatPhase.CombatState() is { } fighting && GameReflection.Get(fighting, "RoundNumber") is { } rn && Convert.ToInt32(rn) > 0
-            && GameReflection.Get(state, "CurrentRoom")?.GetType().Name == "CombatRoom" && a["force"]?.GetValue<bool>() != true)
+            && GameReflection.Get(state, "CurrentRoom")?.GetType().Name == "CombatRoom" && CombatInProgress() && a["force"]?.GetValue<bool>() != true)
             throw Fail("invalid_phase", "还在战斗中，打完再投票（问号房也可能是战斗）");
         int col = a["col"]?.GetValue<int>() ?? throw Fail("bad_request", "要 col"), row = a["row"]?.GetValue<int>() ?? throw Fail("bad_request", "要 row");
         var run = RunOrNull()!;

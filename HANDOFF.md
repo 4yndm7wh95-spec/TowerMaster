@@ -1,3 +1,10 @@
+## 0.0.50 实测 → 0.0.51：卡面 Broken Card、事件战误触发伏击、测试投票误拒（2026-10-10）
+
+0.0.50 实测（`docs/ui-050-result.md`）：6 个骨骼部件过检查（叠回原图差 0.1%，无露洞），游戏里骨架搭好、举灯/推灯/埋牌连续播放；陷阱托盘、伏兵/援军/买路钱/跳过、迷雾、读档通过；62 条摘要两端完全一致。
+问题：挑陷阱卡面 Broken Card（只设 NCard.Model 不写标题说明）；事件选项打起来的战斗弹了伏击；胜利后测试接口仍拒投票。
+0.0.51：VanillaCard.CreateFor 设 Model 后调 NCard.UpdateVisuals(None, Normal)，之后再写挑选花费（立刻、0.05 秒、0.3 秒各一次）；
+MasterAmbush.IsAmbushRoom 排除 CombatRoom.ParentEventId / ShouldResumeParentEventAfterCombat 的事件战（日志写判断依据）；测试接口只在 CombatManager.IsInProgress 时拒投票。
+
 ## 0.0.50：动画拼法写死 + 检查工具（2026-10-09）
 
 用户担心 Codex 拼骨骼会错位。0.0.50：关键帧移到 art/rig_anims.json（游戏和检查工具共用）；testing/rig/check_rig.py 用和游戏同一套变换

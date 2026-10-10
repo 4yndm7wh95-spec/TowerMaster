@@ -85,14 +85,26 @@ internal static class VanillaCard
             holder.AddChild(card);
             card.Ready += () =>
             {
-                try { card.GetType().GetProperty("Model")?.SetValue(card, model); }
-                catch (Exception e) { Log.Warn($"原版卡牌框架：绑定塔主牌模型失败：{e.InnerException?.Message ?? e.Message}"); }
-                if (cost != null) SummonPanel.Tree.CreateTimer(0.05).Timeout += () =>
+                try
                 {
-                    if (!G.GodotObject.IsInstanceValid(card)) return;
-                    if (card.GetNodeOrNull<G.CanvasItem>("CardContainer/EnergyIcon") is { } icon) icon.Visible = true;
-                    SetText(card, "CardContainer/EnergyIcon/EnergyLabel", cost);
-                };
+                    card.GetType().GetProperty("Model")?.SetValue(card, model);
+                    // 设 Model 只刷新卡图和类型，标题、说明要 UpdateVisuals 才写（0.0.50 实测不调就显示 Broken Card）
+                    Refresh(card);
+                }
+                catch (Exception e) { Log.Warn($"原版卡牌框架：绑定塔主牌模型失败：{e.InnerException?.Message ?? e.Message}"); }
+                if (cost != null)
+                {
+                    // UpdateVisuals 会把左上角写回模型费用：刷新之后再写挑选花费，过一会儿再写一次防止后续刷新盖掉
+                    void SetCost()
+                    {
+                        if (!G.GodotObject.IsInstanceValid(card)) return;
+                        if (card.GetNodeOrNull<G.CanvasItem>("CardContainer/EnergyIcon") is { } icon) icon.Visible = true;
+                        SetText(card, "CardContainer/EnergyIcon/EnergyLabel", cost);
+                    }
+                    SetCost();
+                    SummonPanel.Tree.CreateTimer(0.05).Timeout += SetCost;
+                    SummonPanel.Tree.CreateTimer(0.3).Timeout += SetCost;
+                }
             };
             return holder;
         }
@@ -101,6 +113,16 @@ internal static class VanillaCard
             Log.Warn($"原版卡牌框架：塔主牌卡面失败：{e.InnerException?.Message ?? e.Message}");
             return null;
         }
+    }
+
+    /// <summary>原版 NCard.UpdateVisuals(PileType.None, CardPreviewMode.Normal)：按模型写标题、说明、费用。</summary>
+    private static void Refresh(G.Control card)
+    {
+        var m = card.GetType().GetMethods(GameReflection.All).FirstOrDefault(x => x.Name == "UpdateVisuals" && x.GetParameters().Length == 2);
+        if (m == null) { Log.Warn("原版卡牌框架：找不到 NCard.UpdateVisuals，卡面文字可能不对"); return; }
+        var ps = m.GetParameters();
+        object Arg(Type t, string name) => Enum.GetNames(t).Contains(name) ? Enum.Parse(t, name) : Enum.GetValues(t).GetValue(0)!;
+        m.Invoke(card, [Arg(ps[0].ParameterType, "None"), Arg(ps[1].ParameterType, "Normal")]);
     }
 
     /// <summary>右键查看：打开原版卡牌详情（NGame.GetInspectCardScreen().Open），可以左右翻看同一组牌。</summary>
