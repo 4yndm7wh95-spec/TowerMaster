@@ -5,7 +5,7 @@ namespace TowerMaster;
 /// <summary>
 /// 塔主事件配图上的环境动效：很少、很慢、很淡的粒子（用户：「像原版几片羽毛缓缓落下，很微弱的动效」）。
 /// 不抢画面，不闪：每种同时最多十来颗，透明度不超过 0.35，淡入淡出，速度每秒十几到几十像素。
-/// 粒子图用 art/particle_*.png（Codex 画），没有就用程序画的柔光点。
+/// 粒子图全部程序生成（FxTextures：柔光点、四角星、拖尾、碎片）。
 /// 用法：<see cref="Attach"/>(配图控件, 事件 id)，控件大小变了会跟着调整发射区域。接线在问号事件镜像里做。
 /// </summary>
 internal static class MasterEventAmbience
@@ -77,7 +77,14 @@ internal static class MasterEventAmbience
             Lifetime = s.Lifetime,
             Preprocess = s.Lifetime, // 一打开就是「已经飘了一阵」的样子，不是从零开始喷
             Randomness = 0.5f,
-            Texture = Art.Get(s.Texture) ?? SoftDot(),
+            // 程序生成的粒子图（和战斗特效同一套 FxTextures，不用 imagegen 的图）
+            Texture = s.Texture switch
+            {
+                "particle_spark" => FxTextures.Star(),
+                "particle_rain" => FxTextures.Streak(),
+                "particle_confetti" => FxTextures.Shard(),
+                _ => FxTextures.Dot(),
+            },
             EmissionShape = G.CpuParticles2D.EmissionShapeEnum.Rectangle,
             Direction = s.Direction,
             Spread = s.Spread,
@@ -102,25 +109,5 @@ internal static class MasterEventAmbience
             p.ScaleAmountCurve = curve;
         }
         return p;
-    }
-
-    private static G.Texture2D? _dot;
-
-    /// <summary>没有粒子图时用的柔光点（24×24，中心白、边缘透明）。</summary>
-    private static G.Texture2D SoftDot()
-    {
-        if (_dot != null) return _dot;
-        const int n = 24;
-        var bytes = new byte[n * n * 4];
-        for (int y = 0; y < n; y++)
-        for (int x = 0; x < n; x++)
-        {
-            float dx = (x + 0.5f) / n * 2 - 1, dy = (y + 0.5f) / n * 2 - 1;
-            float a = Math.Clamp(1 - MathF.Sqrt(dx * dx + dy * dy), 0, 1);
-            int i = (y * n + x) * 4;
-            bytes[i] = bytes[i + 1] = bytes[i + 2] = 255;
-            bytes[i + 3] = (byte)(a * a * 255);
-        }
-        return _dot = G.ImageTexture.CreateFromImage(G.Image.CreateFromData(n, n, false, G.Image.Format.Rgba8, bytes));
     }
 }

@@ -34,6 +34,8 @@ internal sealed class TestSettings
     [JsonPropertyName("master_relics")] public bool MasterRelics { get; set; } = true;
     /// <summary>问号事件里塔主那份换成塔主事件（黑市、赌场等）。</summary>
     [JsonPropertyName("master_events")] public bool MasterEvents { get; set; } = true;
+    /// <summary>塔主战斗特效：render = 游戏内实时渲染（默认），sheet = 旧的 8 帧序列图。</summary>
+    [JsonPropertyName("vfx_style")] public string VfxStyle { get; set; } = "render";
 
     /// <summary>
     /// 塔主的真实卡牌（第一阶段）：启动时注册塔主牌，新局把塔主牌组换成塔主牌，原版牌组界面能看到。

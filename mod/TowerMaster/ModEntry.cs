@@ -58,6 +58,8 @@ public static class ModEntry
         else if (settings.SummonPhase) Log.Warn("召唤阶段需要 test1b_mixed_encounter 开着（复用它的清单通道），没有启用");
         if (settings.MasterTurn && settings.SummonPhase && settings.Test1bMixedEncounter) ThreatPhase.Apply(harmony, config, prices);
         else if (settings.MasterTurn) Log.Warn("塔主回合需要 summon_phase 和 test1b_mixed_encounter 开着，没有启用");
+        MasterVfx.Rendered = !string.Equals(settings.VfxStyle, "sheet", StringComparison.OrdinalIgnoreCase);
+        Log.Info($"塔主特效：{(MasterVfx.Rendered ? "游戏内渲染" : "序列图")}（vfx_style={settings.VfxStyle}）");
         Log.Info($"塔主牌（原版手牌出牌）：设置 master_cards={settings.MasterCards}");
         if (!settings.MasterCards) MasterCards.FailReason = "towermaster.test.json 里 master_cards 是 false";
         if (settings.MasterCards)

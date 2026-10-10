@@ -1,3 +1,14 @@
+## 0.0.57：战斗特效改成游戏内实时渲染（2026-10-10）
+
+用户：「imagegen 的特效太廉价，你直接写好特效渲染的代码」「可以稍微华丽炫技一些，按你的理解和审美」。
+0.0.57：
+- MasterFx：9 个特效（ward/mark/bury/empower/mend/drain/frail/daze/summon）全部程序生成 + 叠加发光：
+  符文法阵（FxTextures.Rune：双环 + 24 刻度 + 6 点 + 六芒星，地面压成椭圆、边转边展开）、冲击波、护罩、光柱、闪光（四角星）、心跳光晕、
+  收拢拖尾（锁定）、CPUParticles2D 一次性喷发（拖尾火花顺速度拉长、碎片翻转、绕圈星星、向内吸的烟）。时长 1.1～1.8 秒。
+- MasterVfx 默认走 MasterFx；设置 vfx_style="sheet" 退回旧序列图（vfx_*.png 保留）。
+- 事件背景动效（MasterEventAmbience）也改用程序纹理，不再用 particle_*.png。
+- 测试接口 /master/vfx_preview（tm_master_vfx_preview）：9 个特效排一排预览，mode=both 上排旧、下排新。
+
 ## 0.0.55 实测 → 0.0.56：问号事件塔主玩法（2026-10-10）
 
 0.0.55 实测（`docs/ui-055-result.md`）：塔主不再整张闪；伏兵/援军/买路钱/陷阱推灯动作正确，打断不丢特效；静态立绘降级正常；5 张事件配图（2560×1200，原版配图比例 32:15）、

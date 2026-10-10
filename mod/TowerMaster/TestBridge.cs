@@ -227,6 +227,7 @@ internal static class TestBridge
                 "/master/ambush" => _ => Main(MasterAmbushTest),
                 "/master/event_preview" => a => Main(() => MasterEventPreview(a)),
                 "/master/event_force" => a => Main(() => MasterEventForce(a)),
+                "/master/vfx_preview" => a => Main(() => MasterVfxPreview(a)),
                 "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
@@ -816,6 +817,40 @@ internal static class TestBridge
         if (MasterEvents.Find(id) == null) throw Fail("unknown_option", $"没有塔主事件 {id}");
         MasterEventMirror.ForceNext = id;
         return new { forced = id, note = "两端都要设同一个 id；下一个非共享问号事件生效一次" };
+    }
+
+    /// <summary>
+    /// 预览塔主战斗特效：kind=ward 等或 all（9 个排一排）；mode=render（游戏内渲染，默认）/ sheet（旧序列图）/ both（上排旧、下排新）；
+    /// size=参考身高（默认 300）；backdrop=true 垫一层暗底（3 秒后自动去掉）。
+    /// </summary>
+    private static object MasterVfxPreview(JsonObject a)
+    {
+        var kind = a["kind"]?.GetValue<string>() ?? "all";
+        var mode = a["mode"]?.GetValue<string>() ?? "render";
+        float size = (float)(a["size"]?.GetValue<double>() ?? 300);
+        var kinds = kind == "all" ? MasterFx.Kinds : [kind];
+        if (kinds.Any(k => !MasterFx.Kinds.Contains(k))) throw Fail("bad_args", $"kind 只能是 all 或 {string.Join("/", MasterFx.Kinds)}");
+        var screen = SummonPanel.Tree.Root.GetVisibleRect().Size;
+        if (a["backdrop"]?.GetValue<bool>() == true)
+        {
+            var layer = new G.CanvasLayer { Layer = 0 };
+            var shade = new G.ColorRect { Color = new G.Color(0.05f, 0.04f, 0.08f, 0.92f) };
+            shade.SetAnchorsPreset(G.Control.LayoutPreset.FullRect);
+            layer.AddChild(shade);
+            SummonPanel.Tree.Root.AddChild(layer);
+            SummonPanel.Tree.CreateTimer(3).Timeout += () => { if (G.GodotObject.IsInstanceValid(layer)) layer.QueueFree(); };
+        }
+        var rows = mode == "both" ? new[] { true, false } : [mode == "sheet"];
+        for (int row = 0; row < rows.Length; row++)
+        {
+            float y = rows.Length == 1 ? screen.Y * 0.72f : screen.Y * (row == 0 ? 0.45f : 0.92f);
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                float x = screen.X * (i + 0.5f) / kinds.Length;
+                MasterVfx.Preview(kinds[i], new G.Vector2(x, y), kinds.Length > 3 ? Math.Min(size, screen.X / kinds.Length * 1.1f) : size, rows[row]);
+            }
+        }
+        return new { kinds, mode, size, screen = new[] { screen.X, screen.Y } };
     }
 
     private static G.CanvasLayer? _eventPreview;

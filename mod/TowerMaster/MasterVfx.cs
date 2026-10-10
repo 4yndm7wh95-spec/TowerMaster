@@ -3,14 +3,17 @@ using G = Godot;
 namespace TowerMaster;
 
 /// <summary>
-/// 塔主出牌、埋陷阱的特效（方案见 docs/master-animation-plan.md）：art/vfx_*.png 是 8 帧横向序列（每帧 256×256），
-/// 在目标身上按 16 帧/秒播一次就删。纯显示，各端各播各的；图不存在就什么都不做。
+/// 塔主出牌、埋陷阱的特效。纯显示，各端各播各的。
+/// 0.0.57 起默认游戏内实时渲染（<see cref="MasterFx"/>）；设置 vfx_style="sheet" 退回旧的 8 帧序列图（art/vfx_*.png，16 帧/秒，图不存在就不播）。
 /// - vfx_ward：格挡类（加固、坚壁、荆棘、金身、怪物便当、伏兵），罩在怪物脚下往上长；
 /// - vfx_mark：易伤类（易伤、全体易伤、起哄、黑名单），印在玩家身上；
 /// - vfx_bury：埋陷阱，所有陷阱（含空陷阱）一个样，插在怪物一侧的地面上，盖几张插几次。
 /// </summary>
 internal static class MasterVfx
 {
+    /// <summary>true = 游戏内渲染（默认）；false = 旧序列图。</summary>
+    internal static bool Rendered { get; set; } = true;
+
     private const int Frames = 8;
     private const double Fps = 16;
 
@@ -40,6 +43,15 @@ internal static class MasterVfx
         catch (Exception e) { Log.Warn($"塔主特效：播放失败：{e.Message}"); }
     }
 
+    /// <summary>预览用：在 feet（脚下）播一个特效，sheet=true 用旧序列图。</summary>
+    internal static void Preview(string kind, G.Vector2 feet, float size, bool sheet)
+    {
+        if (!sheet) { MasterFx.Play(kind, feet, size); return; }
+        bool ground = kind is "ward" or "bury" or "empower" or "mend" or "summon";
+        if (ground) Play($"vfx_{kind}", feet, size * 1.25f, groundY: kind == "bury" ? 200 : 220);
+        else Play($"vfx_{kind}", feet - new G.Vector2(0, size * 0.45f), size * 0.9f, groundY: null);
+    }
+
     internal static void WardAllEnemies() { try { foreach (var e in MasterHand.LivingEnemies()) PlayOn(e, "vfx_ward", ground: true); } catch { /* 纯显示 */ } }
     internal static void MarkOn(object creature) { try { PlayOn(creature, "vfx_mark", ground: false); } catch { /* 纯显示 */ } }
 
@@ -48,7 +60,7 @@ internal static class MasterVfx
     {
         try
         {
-            if (count <= 0 || Art.Get("vfx_bury") == null) return;
+            if (count <= 0 || !Rendered && Art.Get("vfx_bury") == null) return;
             var rects = MasterHand.LivingEnemies().Select(Rect).OfType<G.Rect2>().ToList();
             if (rects.Count == 0) return;
             float left = rects.Min(r => r.Position.X), right = rects.Max(r => r.End.X), ground = rects.Max(r => r.End.Y);
@@ -57,7 +69,12 @@ internal static class MasterVfx
             {
                 float x = left + (right - left) * (count == 1 ? 0.5f : (i + 0.5f) / count) + rng.Next(-30, 31);
                 float size = Math.Clamp((right - left) / Math.Max(2, count) * 0.9f, 140, 220);
-                SummonPanel.Tree.CreateTimer(0.2 * i + 0.01).Timeout += () => Play("vfx_bury", new G.Vector2(x, ground + size * 0.05f), size, groundY: 200);
+                var at = new G.Vector2(x, ground + size * 0.05f);
+                SummonPanel.Tree.CreateTimer(0.2 * i + 0.01).Timeout += () =>
+                {
+                    if (Rendered) MasterFx.Play("bury", at, size * 1.3f);
+                    else Play("vfx_bury", at, size, groundY: 200);
+                };
             }
         }
         catch (Exception e) { Log.Warn($"塔主特效：埋陷阱特效失败：{e.Message}"); }
@@ -66,6 +83,11 @@ internal static class MasterVfx
     private static void PlayOn(object creature, string sheet, bool ground)
     {
         if (Rect(creature) is not { } r) return;
+        if (Rendered)
+        {
+            MasterFx.Play(sheet["vfx_".Length..], new G.Vector2(r.Position.X + r.Size.X / 2, r.End.Y), Math.Clamp(r.Size.Y, 140, 420));
+            return;
+        }
         float size = Math.Clamp(Math.Max(r.Size.X, r.Size.Y) * (ground ? 1.25f : 0.9f), 120, 420);
         if (ground) Play(sheet, new G.Vector2(r.Position.X + r.Size.X / 2, r.End.Y), size, groundY: 220);
         else Play(sheet, r.Position + r.Size / 2, size, groundY: null);
