@@ -1,3 +1,17 @@
+## 0.0.55 实测 → 0.0.56：问号事件塔主玩法（2026-10-10）
+
+0.0.55 实测（`docs/ui-055-result.md`）：塔主不再整张闪；伏兵/援军/买路钱/陷阱推灯动作正确，打断不丢特效；静态立绘降级正常；5 张事件配图（2560×1200，原版配图比例 32:15）、
+6 个选项图标、5 张粒子图已生成；动效预览五种都偏弱但不抢画面（比原版羽毛更克制）。未覆盖：第二幕两项（本局 Boss 战阵亡）。
+只读调研 `docs/game-api/events-054-flow.md`：8 种共享事件、5 种事件战（都在共享里）要跳过；选项序号由原版同步；LocString(表, key)；SetEventFinished 出结果页；配图 Portrait 2560×1200。
+0.0.56：
+- Core/MasterEvents：5 个塔主事件（黑市商人、地下赌场、加班申请、怪物工会、塔主的烦恼）的文字、选项、结果页，按种子 + 楼层挑事件和随机结果；本地化条目生成。2 个单测。
+- MasterEventMirror：所有非共享、默认布局的普通事件挂 GenerateInitialOptions 后缀，Owner 是塔主就换成塔主事件的选项（EventOption + 自己的 LocString，不进跑图历史）；
+  选中后各端 SetEventFinished 出结果页；账本（召唤点、陷阱、额外牌）只在房主改，牌组变化发 deck；按「楼层奖励 id -(层*10+8)」防读档重复。
+  塔主本机：标题、首页说明（NEventRoom.SetTitle/SetDescription 后缀改 Layout 文字）、配图（NEventLayout.SetEvent 后缀，去掉原版配图动效，换 event_*.png + MasterEventAmbience）。
+  爬塔玩家屏幕提示「塔主在问号房遇到了…」。设置 master_events（默认 true）。
+- MasterLedger：AddExtraCard、UpgradeTrap。
+- 选项小图标（icon_gamble 等）这版还没用上：原版事件选项按钮没有图标位，下一版再看放哪。
+
 ## 0.0.55：塔主事件配图的环境动效（2026-10-10）
 
 用户：事件房背景要有微弱、克制的动态（像原版几片羽毛缓缓落下）。

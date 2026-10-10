@@ -69,6 +69,11 @@ public static class ModEntry
                 MasterCards.FailReason = e.InnerException?.Message ?? e.Message;
                 Log.Error("塔主牌注册失败，塔主仍用英雄牌和旧的塔主回合面板", e);
             }
+            if (settings.MasterEvents)
+            {
+                try { MasterEventMirror.Apply(harmony); }
+                catch (Exception e) { Log.Error("塔主事件：挂载失败（塔主在问号房看到原版事件）", e); }
+            }
             if (settings.MasterRelics)
             {
                 try { MasterAncient.Apply(harmony); }

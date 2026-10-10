@@ -86,6 +86,24 @@ internal static class MasterLedger
         Save();
     }
 
+    /// <summary>额外得到一张行动牌（塔主事件：黑市、复印）。</summary>
+    public static void AddExtraCard(string op, string reason)
+    {
+        _extraCards.Add(op);
+        Log.Info($"塔主牌：{reason}，得到 {op}，额外牌 {_extraCards.Count} 张");
+        Save();
+    }
+
+    /// <summary>手里第 index 张陷阱升一级（最高 3 级）。返回升级后的牌，不能升返回 null。</summary>
+    public static TrapCard? UpgradeTrap(int index, string reason)
+    {
+        if (index < 0 || index >= _traps.Count || _traps[index].Tier >= 3) return null;
+        _traps[index] = _traps[index] with { Tier = _traps[index].Tier + 1 };
+        Log.Info($"塔主陷阱：{reason}，{_traps[index].Name} 升到 {_traps[index].Tier} 级");
+        Save();
+        return _traps[index];
+    }
+
     /// <summary>这一幕的陷阱选过没有。</summary>
     public static bool DraftDone(int actNo) => _packsPicked.Contains(actNo);
 
