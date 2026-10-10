@@ -85,3 +85,29 @@
 | `card_bg_action.png` | 塔主行动牌 | The inside of a dim arcane tower study seen at eye level: a worn dark-stone tabletop in the lower fifth catching a pool of violet candle-light, a faint glowing rune circle hovering on the wall behind, bookshelves and hanging chains fading into deep purple shadow at the edges; empty space in the center for an object. |
 | `card_bg_trap.png` | 陷阱牌 | A damp dungeon corridor: wet flagstone floor in the lower fifth with a cold teal light pool, an iron portcullis grid on the back wall, rusted chains and a drain grate, mist near the floor; edges in near-black teal shadow; empty space in the center for an object. |
 | `card_bg_relic.png` | 遗物牌（塔主宝箱候选） | A treasure alcove: a deep crimson-brown velvet cushion surface in the lower fifth under a warm golden spotlight, draped velvet folds and a carved gilded niche behind, a few gold coins and dust sparkles in the dark corners; empty space in the center for an object. |
+
+
+## 塔主普通事件素材（0.0.55，2026-10-10）
+
+使用 imagegen，塔主立绘参考；暗紫/深蓝背景、暖金提灯、手绘游戏插画，幽默但主体清楚，无文字。默认事件 Portrait 逻辑2560×1200、32:15，因此配图统一此比例（详见 game-api/events-054-flow.md）。
+
+|文件|尺寸/底|内容与动效位置|
+|---|---|---|
+|event_black_market.png|2560×1200 不透明|斗篷商人打开挂满发光卡牌的大衣；中下暖金灰尘。|
+|event_casino.png|同上|骷髅荷官摇骰子，紫筹码在x20–80%、y45–85%。|
+|event_overtime.png|同上|深夜提灯、文件、咖啡；杯口约x61%、y57%，不画固定烟。初稿杯口偏低已局部重绘。|
+|event_monster_union.png|同上|举图形牌的小怪、史莱姆木槌；顶部留彩纸飘落空间。|
+|event_master_worry.png|同上|塔主坐台阶摊牌，头顶小乌云，底边约y14%，不画固定雨。|
+|particle_dust.png|32×32透明|柔和浅色光点。|
+|particle_spark.png|48×48透明|四角浅色星光。|
+|particle_steam.png|64×64透明|一缕柔和白烟。|
+|particle_confetti.png|24×24透明|浅色小纸片。|
+|particle_rain.png|8×32透明|细雨丝。|
+|icon_gamble.png|128×128透明|金边骰子。|
+|icon_buy.png|同上|深蓝金边钱袋。|
+|icon_overtime.png|同上|深蓝金边咖啡杯。|
+|icon_discount.png|同上|打折标签形状，无字。|
+|icon_copy.png|同上|两张叠牌。|
+|icon_leave.png|同上|向外打开、透出暖光的门。|
+
+11张透明素材经脚本检查alpha和四角透明；5张配图RGB不透明。`docs/screenshots/ui055-all-art.png`为16张总览，粒子在总览中放大4倍便于观察；实际文件保持上表尺寸。动效预览GIF见ui-055-result.md。这里只提交自己的新图，没有原版贴图或场景资源。
