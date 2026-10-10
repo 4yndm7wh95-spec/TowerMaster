@@ -226,6 +226,7 @@ internal static class TestBridge
                 "/master/relic" => a => Main(() => MasterRelic(a)),
                 "/master/ambush" => _ => Main(MasterAmbushTest),
                 "/master/event_preview" => a => Main(() => MasterEventPreview(a)),
+                "/master/event_force" => a => Main(() => MasterEventForce(a)),
                 "/master/play" => a => Main(() => MasterPlay(a)),
                 "/traps/draft/select" => a => Main(() => TrapDraftSelect(a)),
                 "/traps/draft/confirm" => _ => Main(TrapDraftConfirm),
@@ -805,6 +806,16 @@ internal static class TestBridge
         ThreatPhase.Send(new ThreatCommand(1, 0, 0, ThreatPhase.Round, "relic", MonsterId: id));
         if (id == "piggy_bank") MasterLedger.GainPoints(8, "小金库（测试接口）");
         return new { granted = id, note = "各端执行 relic 指令后到手" };
+    }
+
+    /// <summary>测试：下一个问号事件里塔主那份强制用 id（两端都要调）；不给 id 返回事件列表和当前设置。</summary>
+    private static object MasterEventForce(JsonObject a)
+    {
+        var all = MasterEvents.All.Select(e => new { e.Id, e.Title, options = e.Options.Select(o => o.Title) });
+        if (a["id"]?.GetValue<string>() is not { } id) return new { forced = MasterEventMirror.ForceNext, all };
+        if (MasterEvents.Find(id) == null) throw Fail("unknown_option", $"没有塔主事件 {id}");
+        MasterEventMirror.ForceNext = id;
+        return new { forced = id, note = "两端都要设同一个 id；下一个非共享问号事件生效一次" };
     }
 
     private static G.CanvasLayer? _eventPreview;

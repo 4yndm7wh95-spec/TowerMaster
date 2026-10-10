@@ -10,6 +10,7 @@
   塔主本机：标题、首页说明（NEventRoom.SetTitle/SetDescription 后缀改 Layout 文字）、配图（NEventLayout.SetEvent 后缀，去掉原版配图动效，换 event_*.png + MasterEventAmbience）。
   爬塔玩家屏幕提示「塔主在问号房遇到了…」。设置 master_events（默认 true）。
 - MasterLedger：AddExtraCard、UpgradeTrap。
+- 测试接口 /master/event_force（tm_master_event_force，两端各调一次）强制下一个塔主事件。
 - 选项小图标（icon_gamble 等）这版还没用上：原版事件选项按钮没有图标位，下一版再看放哪。
 
 ## 0.0.55：塔主事件配图的环境动效（2026-10-10）

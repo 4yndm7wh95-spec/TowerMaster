@@ -572,6 +572,8 @@ TOOLS = [
     tool("tm_master_event_preview", "美术验收：全屏预览塔主事件配图 + 环境动效（id=black_market/casino/overtime/monster_union/master_worry；width/height 配图尺寸，默认 900×600）；close=true 关掉。",
          {**INST, "id": S, "width": I, "height": I, "close": {"type": "boolean"}}, [],
          lambda a: call(host_or(a), "/master/event_preview", {k: a[k] for k in ("id", "width", "height", "close") if a.get(k) is not None})),
+    tool("tm_master_event_force", "测试：下一个非共享问号事件里塔主那份强制用 id（black_market/casino/overtime/monster_union/master_worry）。必须对 A、B 两端各调一次同一个 id。不给 id 列出全部。",
+         {**INST, "id": S}, [], lambda a: call(host_or(a), "/master/event_force", {"id": a["id"]} if a.get("id") else {})),
     tool("tm_master_relic", "塔主遗物：不给 id 返回已有和全部遗物；给 id（如 lucky_cat、bento、fog_censer）就给塔主这件遗物（各端同步）。",
          {**INST, "id": S}, [], lambda a: call(host_or(a), "/master/relic", {"id": a["id"]} if a.get("id") else {})),
     tool("tm_master_report", "塔主战报（一局结束时弹的面板）：返回统计、称号；won=true/false 强制胜负（不给按爬塔玩家是否全灭），show=true 弹出面板截图，close=true 关掉。",

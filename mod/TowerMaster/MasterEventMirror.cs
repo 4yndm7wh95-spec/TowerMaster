@@ -28,6 +28,9 @@ internal static class MasterEventMirror
     private static readonly ConditionalWeakTable<object, object> MergedTables = new();
     private static bool _patched;
 
+    /// <summary>测试用：下一次塔主事件强制用这个（两端都要设，否则选项不一致）。用一次就清掉。</summary>
+    internal static string? ForceNext { get; set; }
+
     internal static void Apply(Harmony harmony)
     {
         if (_patched) return;
@@ -76,7 +79,9 @@ internal static class MasterEventMirror
             var state = GameReflection.Get(Test1bMixedEncounter.Run, "State") ?? throw new InvalidOperationException("没有对局状态");
             var seed = Convert.ToUInt64(GameReflection.Get(GameReflection.Get(state, "Rng")!, "Seed"));
             int floor = Convert.ToInt32(GameReflection.Get(state, "TotalFloor"));
-            var mirror = new Mirror(MasterEvents.Pick(seed, floor), seed, floor, ThreatPhase.ActNoOf(state));
+            var def = ForceNext is { } forced && MasterEvents.Find(forced) is { } f ? f : MasterEvents.Pick(seed, floor);
+            ForceNext = null;
+            var mirror = new Mirror(def, seed, floor, ThreatPhase.ActNoOf(state));
             __result = BuildOptions(__instance, mirror);
             Mirrors.AddOrUpdate(__instance, mirror);
             Log.Info($"塔主事件：第 {floor} 层 {__instance.GetType().Name}，塔主那份换成「{mirror.Def.Title}」");
